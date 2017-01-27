@@ -67,11 +67,29 @@ def radial_profile(sphere, max_r, spacing):
 
 # --------------------------- KDE PROFILES ------------------------------------  
 
-class yt_kde(object):
-    def __init__(self, sphere, particle_id, center=None):
-        self.sphere = sphere
+class galaxy(object):
+    def __init__(self, dataset, particle_id, center):
+        self.ds = dataset
         self.particle_id = particle_id
+        self.ds = dataset
         self.center = center
+        self.sphere = self.ds.sphere(center=center, radius=1000 * yt.units.pc)
+        self.stellar_mass = np.sum(self.sphere[('STAR', "MASS")].in_units("msun"))
+
+        self.radii = dict()
+        self.densities = dict()
+
+        self.add_disk()
+        
+
+    def add_disk(self, radius=1000*yt.units.pc, height=50*yt.units.pc):
+        """ Adds a disk aligned with the angular momentum vector"""
+        j_vec = self.sphere.quantities.angular_momentum_vector()
+        self.disk = self.ds.disk(center=self.center, normal=j_vec, 
+                                      radius=radius, height=height)
+        # j_vec = self.disk.quantities.angular_momentum_vector()
+        # self.disk = self.ds.disk(center=self.center, normal=j_vec, 
+        #                               radius=radius, height=height)
 
     def centering(self):
         """Determines the center of the stellar density profile. """
@@ -100,6 +118,10 @@ class yt_kde(object):
                                 star_z, masses, kernel_size)
 
         self.center = self.center * yt.units.pc
+        self.sphere = self.ds.sphere(center=self.center, 
+                                          radius=1000 * yt.units.pc)
+        self.add_disk()
+
 
     def kde_iterations(self, kde_cell_size,
                        star_x, star_y, star_z, masses, kernel_size):
@@ -157,7 +179,16 @@ class yt_kde(object):
         return coefficient * np.exp(exponent)
 
     @staticmethod
-    def kde(location, star_x, star_y, star_z, masses, size):
+    def gaussian_2d_radial(radius, sigma):
+        """This is a simplified Gaussian for use here.
+
+        This is a radial Gaussian in 2 dimensions. """
+        exponent = (-1) * radius**2 / (2 * sigma**2)
+        coefficient = 1.0 / (sigma**2 * 2 * np.pi)
+        return coefficient * np.exp(exponent)
+
+    @staticmethod
+    def kde(location, star_coords, masses, size):
         """ This calculates the density at a given point
 
         This takes the array of star positions in x, y, and z, plus their masses,
@@ -166,30 +197,36 @@ class yt_kde(object):
 
         :param location: 3 value array with a single set of x, y, z value where we
                          will calculate the kde density.
-        :param star_x: array with x positions of the stars. Should be in parsecs.
-        :param star_y, star_z: same thing
+        :param star_coords: list of arrays holding the x, y, and possibly z
+                            positions of all the stars.
         :param masses: array of the masses of the star particles. Should have units
                        of solar masses.
         :param size: value of the standard deviation to use in the Gaussian kernel.
                      should be about the size of the smallest cell in the simulation
         """
-        # get each component of the location
-        x, y, z = location
+        if len(location) != len(star_coords):
+            raise ValueError("Length of location and star_coords must be same.")
         
         # get the distance of each star from the point of interest (Pythag. theorem)
-        diffs_x = star_x - x
-        diffs_y = star_y - y
-        diffs_z = star_z - z
-        distance = np.sqrt(diffs_x**2 + diffs_y**2 + diffs_z**2)
+        sum_squares = 0
+        for star, loc in zip(star_coords, location):
+            sum_squares += (star - loc)**2
+        distance = np.sqrt(sum_squares)
         
         # Then get the density of each star particle at this location, weighted
         # by the mass. This will be an array with the density for each star.
-        density =  yt_kde.gaussian_3d_radial(distance, size) * masses
+        if len(location) == 2:
+            density =  galaxy.gaussian_2d_radial(distance, size) * masses
+        elif len(location) == 3:
+            density =  galaxy.gaussian_3d_radial(distance, size) * masses
+        else:
+            raise ValueError("Only works for 2 or 3 dimensions.")
         # we want the total density, so sum the contributions of all the star 
         # particles
         return np.sum(density)
 
-    def radial_profile(self, quantity="MASS", spacing=0.1, outer_radius=500):
+    def kde_profile_spherical(self, quantities=["MASS"], spacing=0.1, 
+                                 outer_radius=1000):
         """
         Create a radial profile of a given quantity of the stars, typicall mass.
 
@@ -205,6 +242,7 @@ class yt_kde(object):
         :param outer_radius: Maximum radius out to which to calculate the radial
                              profile. Is in parsecs. 
         """
+
         # get all the radii at which to calculate the density
         radii = np.arange(0, outer_radius, spacing)
         # then generate the random angular coordinates
@@ -232,51 +270,190 @@ class yt_kde(object):
         star_x = np.array(self.sphere[('STAR', 'POSITION_X')].in_units("pc"))
         star_y = np.array(self.sphere[('STAR', 'POSITION_Y')].in_units("pc"))
         star_z = np.array(self.sphere[('STAR', 'POSITION_Z')].in_units("pc"))
-        new_quantity = ('STAR', "{}".format(quantity))
-        values = np.array(self.sphere[new_quantity].in_units("msun"))
+        mass = np.array(self.sphere[('STAR', "MASS")].in_units("msun"))
+        star_locations = [star_x, star_y, star_z]
+
         # the smoothing kernel we will use in the KDE process is the size of
         # the smallest cell in the simulation
         kernel_size = np.min(self.sphere[('index', 'dx')].in_units("pc")).value
 
-        # then we can get the KDE density
-        densities = [self.kde(loc, star_x, star_y, star_z, values, kernel_size) 
-                     for loc in locations]
-        densities = np.array(densities)
+        for quantity in quantities:
+            if quantity == "MASS":
+                densities = [self.kde(loc, star_locations, mass, kernel_size) 
+                             for loc in locations]
+                self.radii["mass_kde_spherical"] = radii
+                self.densities["mass_kde_spherical"] = np.array(densities)
 
-        self.density_radii = radii
-        self.densities = densities
+            elif quantity == "Z":
+                # we want to use the already existing mass profile for 
+                # metallicity, too, so we don't have to calcluate it again.
+                try:
+                    self.densities["mass_kde_spherical"]
+                    self.radii["mass_kde_spherical"]
+                except KeyError:
+                    # Mass hasn't been calculated, so we can just do that. 
+                    quantities.append("MASS")
+                    quantities.append("Z")
+                    continue
 
+                # If the mass profile has been calculated with a different 
+                # set of radii, we need to recalculate the mass profile for our
+                # radii, but without overwriting the old radii.
+                if not np.array_equal(self.radii["mass_kde_spherical"], radii):
+                    mass_densities = [self.kde(loc, star_locations, mass, kernel_size) 
+                                     for loc in locations]
+                    mass_densities = np.array(mass_densities)
+                else:
+                    mass_densities = self.densities["mass_kde_spherical"]
 
+                # We can then get the metal quantities, and turn them into 
+                # the total metallicity.
+                z_Ia = np.array(self.sphere[('STAR', 'METALLICITY_SNIa')])
+                z_II = np.array(self.sphere[('STAR', 'METALLICITY_SNII')])
+        
+                total_z = z_Ia + z_II
+                
+                total_metals = total_z * mass
 
+                metal_densities = [self.kde(loc, star_locations, total_metals, kernel_size) 
+                                   for loc in locations]
 
+                self.densities["z_kde_spherical"] = np.array(metal_densities) / mass_densities
+                self.radii["z_kde_spherical"] = radii
+            else:
+                print("{} is not implemented yet.".format(quantity))
+        
 
+    def kde_profile_cylindrical(self, quantities=["MASS"], 
+                                spacing=0.1, outer_radius=500):
+        """
+        Create a radial profile of metallicity
+        :param spacing: The density will be calculated from zero to 
+                        `outer_radius` with a spacing determined by this 
+                        variable. The points will be equally spaced in radius,
+                        while the angular coordinates will be random. The units
+                        of `spacing` need to be parsecs.
+        :param outer_radius: Maximum radius out to which to calculate the radial
+                             profile. Is in parsecs. 
+        """
+        # get all the radii at which to calculate the density
+        radii = np.arange(0, outer_radius, spacing)
+        # then generate the random angular coordinate
+        theta = np.random.uniform(0, 2 * np.pi, len(radii))
 
+        # turn this into x,y relative to the center. This is all we need, since
+        # the cylindrical coordinates the star particles use are relative
+        # to the center as well.
+        x = radii * np.cos(theta)
+        y = radii * np.sin(theta)
 
+        locations = zip(x, y)
 
+        # we have to get the quantities needed to calculate the KDE density.
+        # we also convert to numpy arrays because they are faster.
+        
+        # We want the metallicity at each point, which is the sum of the metals
+        # divided by the stellar mass there. To get metals we multiply Z times
+        # the stellar mass. We calcluate sum(Z_i m_i) / sum(m_i) 
+        star_r = np.array(self.disk[('STAR', 'particle_position_cylindrical_radius')].in_units("pc"))
+        star_theta = np.array(self.disk[('STAR', 'particle_position_cylindrical_theta')])
 
+        star_x = star_r * np.cos(star_theta)
+        star_y = star_r * np.sin(star_theta)
+        mass = np.array(self.disk[('STAR', "MASS")].in_units("msun"))
+        star_locations = [star_x, star_y]
 
-#TODO: rewrite this in terms of the class functions
-    # def average_profile(radius, densities):
-    #     r_d_pairs = np.vstack([radius, densities]).T
-    #     r_d_pairs = sorted(r_d_pairs, key=lambda x: x[0])
-    #     if log:
-    #         bins = np.logspace(np.log10(np.sort(radius)[1]), np.log10(max(radius)), 100)
-    #     else:
-    #         bins = np.linspace(min(radius), max(radius), 100)
+        # the smoothing kernel we will use in the KDE process is the size of
+        # the smallest cell in the simulation
+        kernel_size = np.min(self.disk[('index', 'dx')].in_units("pc")).value
+        
+        for quantity in quantities:
+            if quantity == "MASS":
+                densities = [self.kde(loc, star_locations, mass, kernel_size) 
+                             for loc in locations]
+                self.radii["mass_kde_cylindrical"] = radii
+                self.densities["mass_kde_cylindrical"] = np.array(densities)
+
+            elif quantity == "Z":
+                # we want to use the already existing mass profile for 
+                # metallicity, too, so we don't have to calcluate it again.
+                try:
+                    self.densities["mass_kde_cylindrical"]
+                    self.radii["mass_kde_cylindrical"]
+                except KeyError:
+                    # Mass hasn't been calculated, so we can just do that. 
+                    quantities.append("MASS")
+                    quantities.append("Z")
+                    continue
+
+                # If the mass profile has been calculated with a different 
+                # set of radii, we need to recalculate the mass profile for our
+                # radii, but without overwriting the old radii.
+                if not np.array_equal(self.radii["mass_kde_cylindrical"], radii):
+                    mass_densities = [self.kde(loc, star_locations, mass, kernel_size) 
+                                     for loc in locations]
+                    mass_densities = np.array(mass_densities)
+                else:
+                    mass_densities = self.densities["mass_kde_cylindrical"]
+
+                # We can then get the metal quantities, and turn them into 
+                # the total metallicity.
+                z_Ia = np.array(self.disk[('STAR', 'METALLICITY_SNIa')])
+                z_II = np.array(self.disk[('STAR', 'METALLICITY_SNII')])
+        
+                total_z = z_Ia + z_II
+                
+                total_metals = total_z * mass
+
+                metal_densities = [self.kde(loc, star_locations, total_metals, kernel_size) 
+                                   for loc in locations]
+
+                self.densities["z_kde_cylindrical"] = np.array(metal_densities) / mass_densities
+                self.radii["z_kde_cylindrical"] = radii
+            else:
+                print("{} is not implemented yet.".format(quantity))
+
+    def bin_profile(self, quantities=["MASS"], type="spherical",
+                            spacing=10, outer_radius=500):
+        """ Calculates a profile"""
+        mid_radii = np.arange(0 + spacing / 2.0, outer_radius, spacing) * yt.units.pc
+
+        mass = np.array(self.sphere[("STAR", "MASS")].in_units("msun"))
+        z_Ia = np.array(self.disk[('STAR', 'METALLICITY_SNIa')])
+        z_II = np.array(self.disk[('STAR', 'METALLICITY_SNII')])
+
+        if type == "spherical":
+            star_radii = self.sphere[('STAR', "particle_spherical_position_radius")]
+        elif type == "cylindrical":
+            star_radii = self.disk[('STAR', "particle_cylindrical_position_radius")]
+
+        for quantity in quantities:
+            this_quantity = []
+            for m_r in mid_radii:
+                
+                good_idx = np.where(np.abs(star_radii - m_r) < spacing / 2.0)
+
+                if quantity == "MASS":
+
+                    this_mass = mass[good_idx]
+                    this_quantity.append(np.sum(this_mass))
+                elif quantity == "Z":
+                    this_mass = mass[good_idx]
+                    this_z_Ia = z_Ia[good_idx]
+                    this_z_II = z_II[good_idx]
             
+                    total_z = this_z_Ia + this_z_II
+                    
+                    total_metals = total_z * mass
+
+                    this_quantity.append(np.sum(total_metals) / np.sum(mass))
+
+            label = "{}_bins_{}".format(quantity.lower(), type)
+            self.radii[label] = radii
+            self.densities[label] = this_quantity
+
+
             
-    #     x_avg, y_avg = [], []
-    #     for i in range(len(bins) - 1):
-    #         le = bins[i]
-    #         re = bins[i + 1]
-    #         good = [pair for pair in r_d_pairs if le < pair[0] < re]
-    #         if len(good) == 0:
-    #             if len(y_avg) != 0:
-    #                 avg_d = y_avg[-1]
-    #             else: 
-    #                 avg_d = 0
-    #         else:
-    #             avg_d = sum([pair[1] for pair in good]) / len(good)
-            
-    #         x_avg.append((bins[i] + bins[i + 1]) / 2.0)
-    #         y_avg.append(avg_d)
+
+
+
