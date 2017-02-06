@@ -2,78 +2,19 @@ import yt
 from yt import units
 import numpy as np
 import matplotlib.pyplot as plt
-import betterplotlib as bpl
-
-def radial_profile(sphere, max_r, spacing):
-    """
-    Create a radial stellar density profile around the center of a sphere.
-
-    :param sphere: yt sphere object containing all the data
-    :param max_r: maximum radius to calculate the profile out to. Needs to have
-                  a unit attached to it!
-    :param spacing: Spacing used to bin the radius. A small one will allow you
-                    to see individual large star particles. This must also have
-                    a radius attached to it.
-    :returns: two lists. The first contains the bin centers used to calculate 
-              the density profile, and the second contains the stellar density
-              at these radii in solar masses per cubic parsec.
-    """
-
-    # first get the positions and masses of all the stars in the sphere
-    x = sphere[('STAR', 'POSITION_X')]
-    y = sphere[('STAR', 'POSITION_Y')]
-    z = sphere[('STAR', 'POSITION_Z')]
-    masses = sphere[('STAR', 'MASS')]
-    
-    # get the center of the sphere
-    center = sphere.center
-    
-    # then compute the radius of each star particle in the sphere
-    x_diff = x - center[0]
-    y_diff = y - center[1]
-    z_diff = z - center[2]
-    radius = np.sqrt(x_diff**2 + y_diff**2 + z_diff**2)
-    
-    # create our binning in radius. We need to check that the user passed in
-    # a value with units. We create inner and outer radii arrays, plus the 
-    # center of each bin, just for convenience later
-    try:
-        inner_radii = np.arange(0, max_r.value, spacing.value) * units.pc 
-    except AttributeError:
-        raise ValueError("Please pass in both `max_r` and `spacing` "
-                         "with yt units.")
-    outer_radii = inner_radii + spacing
-    bin_centers = (inner_radii + outer_radii) / 2.0
-    
-    # initialize stellar density array before filling it
-    star_density = []
-    for i_r, o_r, bin_center in zip(inner_radii, outer_radii, bin_centers):
-        # find the stars that are in this bin
-        good_idx = np.where(abs(radius - bin_center) < spacing / 2.0)
-        # and calculate the total mass in solar masses of stars in this bin
-        total_mass = masses[good_idx].sum().in_units("msun")
-
-        # calculate the volume of this radial bin
-        volume = (4.0 / 3.0) * np.pi * (o_r**3 - i_r**3)
-        # and then calculate the density
-        star_density.append(total_mass / volume)
-
-        # plot for debugging
-#         fig, ax = plt.subplots()
-#         ax.hist(radius[good_idx].in_units("pc"))
-#         ax.text(0.5, 0.5, str(bin_center), transform=ax.transAxes)
-        
-    return bin_centers, star_density
-
-# --------------------------- KDE PROFILES ------------------------------------  
+import betterplotlib as bpl 
 
 class galaxy(object):
-    def __init__(self, dataset, particle_id, center):
+    def __init__(self, dataset, particle_id, center, radius=1000, 
+                 disk_height=50):
         self.ds = dataset
         self.particle_id = particle_id
         self.ds = dataset
         self.center = center
-        self.sphere = self.ds.sphere(center=center, radius=1000 * yt.units.pc)
+        self.radius = radius * yt.units.pc
+        self.disk_height = disk_height * yt.units.pc
+
+        self.sphere = self.ds.sphere(center=center, radius=self.radius)
         self.stellar_mass = np.sum(self.sphere[('STAR', "MASS")].in_units("msun"))
 
         self.radii = dict()
@@ -82,11 +23,12 @@ class galaxy(object):
         self.add_disk()
         
 
-    def add_disk(self, radius=1000*yt.units.pc, height=50*yt.units.pc):
+    def add_disk(self):
         """ Adds a disk aligned with the angular momentum vector"""
         j_vec = self.sphere.quantities.angular_momentum_vector()
         self.disk = self.ds.disk(center=self.center, normal=j_vec, 
-                                      radius=radius, height=height)
+                                      radius=self.radius, 
+                                      height=self.disk_height)
         # j_vec = self.disk.quantities.angular_momentum_vector()
         # self.disk = self.ds.disk(center=self.center, normal=j_vec, 
         #                               radius=radius, height=height)
@@ -118,8 +60,7 @@ class galaxy(object):
                                 star_z, masses, kernel_size)
 
         self.center = self.center * yt.units.pc
-        self.sphere = self.ds.sphere(center=self.center, 
-                                          radius=1000 * yt.units.pc)
+        self.sphere = self.ds.sphere(center=self.center, radius=self.radius)
         self.add_disk()
 
 
@@ -413,47 +354,76 @@ class galaxy(object):
             else:
                 print("{} is not implemented yet.".format(quantity))
 
-    def bin_profile(self, quantities=["MASS"], type="spherical",
+    def bin_profile(self, quantities=["MASS"], coords="spherical",
                             spacing=10, outer_radius=500):
-        """ Calculates a profile"""
-        mid_radii = np.arange(0 + spacing / 2.0, outer_radius, spacing) * yt.units.pc
+        """ Calculates a profile of a given quantity in bins"""
 
-        mass = np.array(self.sphere[("STAR", "MASS")].in_units("msun"))
-        z_Ia = np.array(self.disk[('STAR', 'METALLICITY_SNIa')])
-        z_II = np.array(self.disk[('STAR', 'METALLICITY_SNII')])
+        # get the bin centers, The inner radius of the first bin is at zero.
+        mid_radii = np.arange(spacing/2.0, outer_radius, spacing) * yt.units.pc
 
-        if type == "spherical":
-            star_radii = self.sphere[('STAR', "particle_spherical_position_radius")]
-        elif type == "cylindrical":
-            star_radii = self.disk[('STAR', "particle_cylindrical_position_radius")]
-
+        # depending on what coordinate system the user wants us to use, we 
+        # need to get the star radii in those coordinate systems. We use the 
+        # appropriate data container to make sure the coordinate system is
+        # right
+        if coords == "spherical":
+            shape = self.sphere
+            star_radii = self.sphere[('STAR', "particle_position_spherical_radius")].in_units("pc")
+        elif coords == "cylindrical":
+            shape = self.disk
+            star_radii = self.disk[('STAR', "particle_position_cylindrical_radius")].in_units("pc")
+        
+        # then get things we will use often. We won't use metallicity every
+        # time, but it's easier to get that data outside of the loop.
+        mass = np.array(shape[("STAR", "MASS")].in_units("msun"))
+        z_Ia = np.array(shape[('STAR', 'METALLICITY_SNIa')])
+        z_II = np.array(shape[('STAR', 'METALLICITY_SNII')])
+        
+        # We can then calculate the profiles for all the quantities the user
+        # asked for
         for quantity in quantities:
+            # start a list, which will be appended to.
             this_quantity = []
+            # iterate through each bin center
             for m_r in mid_radii:
-                
+                # find the star particles that are in this bin. We check their
+                # distance away from the bin center, and make sure it's less 
+                # than half of the bin width.
                 good_idx = np.where(np.abs(star_radii - m_r) < spacing / 2.0)
-
+                # WE then do different things for different profiles.
                 if quantity == "MASS":
-
+                    # get the mass values
                     this_mass = mass[good_idx]
-                    this_quantity.append(np.sum(this_mass))
+
+                    # we need the volume or area for each bin
+                    inner_radius = m_r - (spacing / 2.0) * yt.units.pc
+                    outer_radius = m_r + (spacing / 2.0) * yt.units.pc
+                    if coords == "spherical":
+                        area = np.pi * (4/3)*(outer_radius**3 - inner_radius**3)
+                    elif coords == "cylindrical":
+                        area = np.pi * (outer_radius**2 - inner_radius**2)
+                    # we can then get the mass density.
+                    this_quantity.append(np.sum(this_mass) / area.value)
                 elif quantity == "Z":
+                    # for metallicity we will calculate the total metals mass
+                    # in each bin, then divide by the total stellar mass.
+                    # We first get the quantities in this bin
                     this_mass = mass[good_idx]
                     this_z_Ia = z_Ia[good_idx]
                     this_z_II = z_II[good_idx]
-            
+                    # total metallicity (Z) is the sum of the components
                     total_z = this_z_Ia + this_z_II
-                    
-                    total_metals = total_z * mass
+                    # we multiply by the mass to get the total metal mass
+                    total_metals = total_z * this_mass
+                    # We can then recalculate the metallicity
+                    this_quantity.append(np.sum(total_metals) / np.sum(this_mass))
 
-                    this_quantity.append(np.sum(total_metals) / np.sum(mass))
+            # We can then put the quantities in the appropriate location 
+            label = "{}_bins_{}".format(quantity.lower(), coords)
+            self.radii[label] = mid_radii
+            self.densities[label] = np.array(this_quantity)
 
-            label = "{}_bins_{}".format(quantity.lower(), type)
-            self.radii[label] = radii
-            self.densities[label] = this_quantity
 
-
-            
+                
 
 
 
