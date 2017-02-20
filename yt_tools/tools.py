@@ -5,10 +5,16 @@ import matplotlib.pyplot as plt
 import betterplotlib as bpl 
 
 class galaxy(object):
-    def __init__(self, dataset, particle_id, center, radius=1000, 
-                 disk_height=50):
-        self.ds = dataset
-        self.particle_id = particle_id
+    def __init__(self, dataset, center, radius=1000, disk_height=50):
+        """ Create a galaxy object.
+
+        :param dataset: yt dataset object that contains this galaxy.
+        :param center: 
+        :param radius: Radius that will be used to create both the sphere and disk
+                       objects. Must be in parsecs.
+        :param disk_height
+
+        """
         self.ds = dataset
         self.center = center
         self.radius = radius * yt.units.pc
