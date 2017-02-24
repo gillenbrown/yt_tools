@@ -18,10 +18,10 @@ def arcsech(x):
     return np.log((1 + np.sqrt(1.0 - x**2)) / x)
 
 def hernquist_x(s):
+    if s == 0:
+        s = 0.00000001
     if s == 1:
         return 1
-    elif s == 0:
-        return np.log(2.0 / s)
     elif s < 1:
         return arcsech(s) / (np.sqrt(1 - s**2))
     else:

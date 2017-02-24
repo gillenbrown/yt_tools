@@ -5,20 +5,40 @@ import matplotlib.pyplot as plt
 import betterplotlib as bpl 
 
 class galaxy(object):
-    def __init__(self, dataset, center, radius=1000, disk_height=50):
+    def __init__(self, dataset, center, radius=1000 * yt.units.pc, 
+                 disk_height=50 * yt.units.pc):
         """ Create a galaxy object.
 
         :param dataset: yt dataset object that contains this galaxy.
-        :param center: 
+        :param center: 3 element array with the center. Must have units.
         :param radius: Radius that will be used to create both the sphere and disk
-                       objects. Must be in parsecs.
-        :param disk_height
+                       objects. Can have a unit, but if no unit is passed in 
+                       parsecs are assumed.
+        :param disk_height: Height of the disk that will be created by finding
+                            the angular momentum vector. If this is zero, then
+                            no disk will be created. As this is computationally 
+                            expensive, this can be advantageous. As with the 
+                            radius, this can be passed with units, but if no
+                            units are included parsecs are assumed.
 
         """
         self.ds = dataset
         self.center = center
-        self.radius = radius * yt.units.pc
-        self.disk_height = disk_height * yt.units.pc
+        # We have to check the units on the disk height and radius. It is just
+        # a number, it won't have any units, but if it does then we will just
+        # use those units
+        try:
+            radius.units
+        except AttributeError:
+            radius = radius * yt.units.pc
+
+        try:
+            disk_height.units
+        except AttributeError:
+            disk_height = disk_height * yt.units.pc
+               
+        self.radius = radius
+        self.disk_height = disk_height
 
         self.sphere = self.ds.sphere(center=center, radius=self.radius)
         self.stellar_mass = np.sum(self.sphere[('STAR', "MASS")].in_units("msun"))
@@ -26,7 +46,8 @@ class galaxy(object):
         self.radii = dict()
         self.densities = dict()
 
-        self.add_disk()
+        if disk_height > 0:
+            self.add_disk()
         
 
     def add_disk(self):
@@ -41,19 +62,42 @@ class galaxy(object):
 
     def centering(self):
         """Determines the center of the stellar density profile. """
+        
+        # the smoothing kernel we will use in the KDE process is the size of
+        # the smallest cell in the simulation
+        kernel_size = np.min(self.sphere[("index", "dx")]).in_units("pc").value
+        
+        # use the maximum stellar density of the sphere to start with.
+        self.center = self.sphere.quantities.max_location(("deposit", "STAR_density"))
+        # the star_centera above has the density as the first value, then the
+        # next three values should be in code length but are in cm for some reason
+        self.center = self.ds.arr([self.center[i].value for i in [1, 2, 3]], "code_length")
+
+        # The radius we use for the fitting matters. For big halos we want to 
+        # save computation time and use something small, while for small halos
+        # every star counts, so we want to use the full sphere.
+        small_radius = 20*kernel_size*yt.units.pc
+        if len(self.sphere[("STAR", "MASS")]) > 100:
+            useful_radius = small_radius
+        else:
+            useful_radius = self.radius
+        temp_sphere = self.ds.sphere(center=self.center, radius=useful_radius)
+
         # get all the items at the very beginning, to reduce computation time.
         # this is because accessing that data can take a while.
         # we also convert to numpy arrays because they are faster.
-        star_x = np.array(self.sphere[('STAR', 'POSITION_X')].in_units("pc"))
-        star_y = np.array(self.sphere[('STAR', 'POSITION_Y')].in_units("pc"))
-        star_z = np.array(self.sphere[('STAR', 'POSITION_Z')].in_units("pc"))
-        masses = np.array(self.sphere[('STAR', 'MASS')].in_units("msun"))
-        # the smoothing kernel we will use in the KDE process is the size of
-        # the smallest cell in the simulation
-        kernel_size = np.min(self.sphere[('index', 'dx')].in_units("pc")).value
-        
-        # use the center of the sphere to start with.
-        self.center = self.sphere.center.in_units("pc").value
+        star_x = np.array(temp_sphere[('STAR', 'POSITION_X')].in_units("pc"))
+        star_y = np.array(temp_sphere[('STAR', 'POSITION_Y')].in_units("pc"))
+        star_z = np.array(temp_sphere[('STAR', 'POSITION_Z')].in_units("pc"))
+        masses = np.array(temp_sphere[('STAR', 'MASS')].in_units("msun"))
+
+        # If there are no star particles in the small sphere, don't mess with 
+        # anything, and just return
+        if len(star_x) == 0:
+            return
+
+        # then get this in parsecs, which is what we want to use
+        self.center = self.center.in_units("pc").value
     
         # We will to the KDE process on increasingly smaller scales. First 
         # have a very large area, and find the center. Then use a smaller area,
@@ -67,7 +111,10 @@ class galaxy(object):
 
         self.center = self.center * yt.units.pc
         self.sphere = self.ds.sphere(center=self.center, radius=self.radius)
-        self.add_disk()
+        if self.disk_height.value > 0:
+            self.add_disk()
+
+        print(self.center.in_units("kpc"))
 
 
     def kde_iterations(self, kde_cell_size,
@@ -107,7 +154,7 @@ class galaxy(object):
         locations = np.array([(x, y, z) for x in xs for y in ys for z in zs])
         
         # then calculate the density at all these locations.
-        densities = [self.kde(loc, star_x, star_y, star_z, masses, kernel_size) 
+        densities = [self.kde(loc, [star_x, star_y, star_z], masses, kernel_size) 
                      for loc in locations]
         densities = np.array(densities)
 
