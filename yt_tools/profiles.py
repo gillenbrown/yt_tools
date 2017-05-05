@@ -37,3 +37,23 @@ def hernquist_2d(r, M, a):
     return M * ((2 + s**2) * x - 3) / (2 * np.pi * a**2 * (1 - s**2)**2)
 
 hernquist_2d = np.vectorize(hernquist_2d)
+
+def hernquist_2d_half_mass(a):
+    """ From equation 38 in Hernquist paper"""
+    return 1.8153 * a
+
+def hernquist_3d_half_mass(a):
+    """From equation 4 in Hernquist paper"""
+    return (1 + np.sqrt(2)) * a
+
+def plummer_2d_half_mass(a):
+    return a 
+
+def plummer_3d_half_mass(a):
+    return a / (np.sqrt(2**(2.0/3.0) - 1))
+
+def exp_disk_half_mass(a):
+    # determined numerically
+    return a * 1.67835
+
+    
