@@ -15,6 +15,7 @@ def test_metals_sum(yields_test_case):
 def test_normalize_metals(yields_test_case):
     """Test whether or not the normalization is working properly"""
     yields_test_case.normalize_metals(1)
+    assert yields_test_case._metals_sum() == 1
     assert yields_test_case.H_1 == 1.0 / 52.0  # 1 / sum(3..10)
     assert yields_test_case.F_9 == 9.0 / 52.0
     assert yields_test_case.Na_10 == 10.0 / 52.0
@@ -24,6 +25,7 @@ def test_normalize_metals(yields_test_case):
 
     # normalize to a value other than 1
     yields_test_case.normalize_metals(25.0)
+    assert yields_test_case._metals_sum() == 25.0
     assert yields_test_case.H_1 == 25.0 / 52.0  # 1 / sum(1..10)
     assert yields_test_case.F_9 == 9.0 * 25.0 / 52.0
     assert np.isclose(yields_test_case.Na_10, 10.0 * 25.0 / 52.0)
@@ -34,6 +36,8 @@ def test_set_metallicity_error_checking(yields_test_case):
     """Metallicities are only vaild between zero and one."""
     with pytest.raises(ValueError):
         yields_test_case.set_metallicity(2)
+    with pytest.raises(ValueError):
+        yields_test_case.set_metallicity(-0.001)
 
 def test_interpolate_z_test(yields_test_case):
     """Test whether the interpolation is working correctly in the test case
@@ -65,10 +69,17 @@ def test_interpolate_z_test(yields_test_case):
 
 def test_get_iwamoto_path():
     """Tests the function that gets the path of the Iwamoto yields"""
-    file_loc =  yields._get_iwamoto_path()
+    file_loc =  yields._get_data_path(yields.iwamoto_file)
     # I know the first line, so I can read that and see what it is
     iwamoto_file = open(file_loc, "r")
     assert iwamoto_file.readline() == "# Table 3 from Iwamoto et al 1999\n"
+
+def test_get_nomoto_path():
+    """Tests the function that gets the path of the Iwamoto yields"""
+    file_loc =  yields._get_data_path(yields.nomoto_file)
+    # I know the first line, so I can read that and see what it is
+    iwamoto_file = open(file_loc, "r")
+    assert iwamoto_file.readline() == "# Table 3 from Nomoto et al 2006\n"
 
 def test_iwamoto_element_parsing():
     """Tests turning the format of the Iwamoto output into the format this
@@ -191,5 +202,112 @@ def test_met_log():
     assert yields._metallicity_log(0.01) == -2
     assert yields._metallicity_log(100) == 2
 
-## TODO: test the way I only normalize sometimes after setting the metallicity.
-#        make sure that works the way I think it should.
+def test_normalization_stability(yields_test_case):
+    """Once we set the normalization, the total amount of metals should not
+    change. Make sure that is the case. """
+    yields_test_case.set_metallicity(0)
+    total_metals = 10
+    yields_test_case.normalize_metals(total_metals)
+    assert np.isclose(yields_test_case._metals_sum(), total_metals)
+    # then change the metallicity
+    yields_test_case.set_metallicity(0.2)
+    assert np.isclose(yields_test_case._metals_sum(), total_metals)
+    # then do it again
+    yields_test_case.set_metallicity(1)
+    assert np.isclose(yields_test_case._metals_sum(), total_metals)
+
+def test_nomoto_parser():
+    """Test the funciton that takes the name and element from the Nomoto file
+    and puts it in the right format that we want."""
+    assert yields._parse_nomoto_element("01", "p") == "H_1"
+    assert yields._parse_nomoto_element("02", "d") == "H_2"
+    assert yields._parse_nomoto_element("09", "Be") == "Be_9"
+    assert yields._parse_nomoto_element("24", "Na") == "Na_24"
+    assert yields._parse_nomoto_element("30", "Si") == "Si_30"
+
+
+def test_make_nomoto_at_zero_met():
+    """Test that the Nomoto yields return the correct values. 
+    
+    I will test at all the given metallicities in the paper, to make sure it 
+    works at the values in the table. I will put all the metallicity points
+    in the same function, to make sure that is working correctly too."""
+    nomoto_test = yields.Yields("nomoto_06_II")
+    nomoto_test.set_metallicity(0)
+    assert nomoto_test.H_1 == 3.28E-02
+    assert nomoto_test.H_2 == 5.76E-18
+    assert nomoto_test.Si_28 == 8.11E-04
+    assert nomoto_test.Ca_48 == 8.04E-15
+    assert nomoto_test.Zn_64 == 6.32E-07
+    assert nomoto_test.Ge_74 == 1.33E-14
+    with pytest.raises(AttributeError):
+        nomoto_test.U_135
+
+    nomoto_test.set_metallicity(0.001)
+    assert nomoto_test.H_1 == 3.14E-02
+    assert nomoto_test.H_2 == 2.21E-15
+    assert nomoto_test.Si_28 == 7.09E-04
+    assert nomoto_test.Ca_48 == 6.91E-10
+    assert nomoto_test.Zn_64 == 5.74E-07
+    assert nomoto_test.Ge_74 == 2.18E-08
+    with pytest.raises(AttributeError):
+        nomoto_test.U_135
+
+    nomoto_test.set_metallicity(0.004)
+    assert nomoto_test.H_1 == 2.96E-02
+    assert nomoto_test.H_2 == 1.97E-16
+    assert nomoto_test.Si_28 == 6.17E-04
+    assert nomoto_test.Ca_48 == 2.93E-09
+    assert nomoto_test.Zn_64 == 5.07E-07
+    assert nomoto_test.Ge_74 == 1.35E-07
+    with pytest.raises(AttributeError):
+        nomoto_test.U_135
+
+    nomoto_test.set_metallicity(0.02)
+    assert nomoto_test.H_1 == 2.45E-02
+    assert nomoto_test.H_2 == 5.34E-16
+    assert nomoto_test.Si_28 == 4.55E-04
+    assert nomoto_test.Ca_48 == 1.07E-08
+    assert nomoto_test.Zn_64 == 4.43E-07
+    assert nomoto_test.Ge_74 == 7.93E-07
+    with pytest.raises(AttributeError):
+        nomoto_test.U_135
+
+def test_make_nomoto_interpolation_range():
+    """Tests that the interpolation is returning values in the range we need."""
+    # first just test that the values are in the right range (ie between the
+    # abundances of the metallicities that span the metallicity used.
+    nomoto_test = yields.Yields("nomoto_06_II")
+    nomoto_test.set_metallicity(0.002)
+    assert 3.14E-2 > nomoto_test.H_1 > 2.96E-2
+    assert 7.09E-4 > nomoto_test.Si_28 > 6.17E-4
+    assert 3.34E-5 > nomoto_test.Ca_40 > 3.02E-5
+
+    # try a different metallicity value
+    nomoto_test.set_metallicity(0.01)
+    assert 2.96E-2 > nomoto_test.H_1 > 2.45E-2
+    assert 6.17E-4 > nomoto_test.Si_28 > 4.55E-4
+    assert 3.02E-5 > nomoto_test.Ca_40 > 2.39E-5
+
+def test_make_nomoto_interpolation_values():
+    """Tests that the interpolation is working correctly by directly testing 
+       values, not just checking their range."""
+    nomoto_test = yields.Yields("nomoto_06_II")
+    # I want to get a metallicity directly in between in log space, which can
+    # be gotten using the logspace function
+    middle = np.logspace(yields._metallicity_log(0),
+                         yields._metallicity_log(0.001), 3)[1]  # get middle val
+    nomoto_test.set_metallicity(middle)
+    assert np.isclose(nomoto_test.H_1, np.mean([3.28E-2, 3.14E-2]))
+    assert np.isclose(nomoto_test.Ca_46, np.mean([5.69E-14, 2.06E-10]))
+    assert np.isclose(nomoto_test.Ge_74, np.mean([1.33E-14, 2.18E-8]))
+
+    # then repeat for a different metallicity
+    middle = np.logspace(yields._metallicity_log(0.004),
+                         yields._metallicity_log(0.02), 3)[1]  # get middle val
+    nomoto_test.set_metallicity(middle)
+    assert np.isclose(nomoto_test.H_1, np.mean([2.96E-2, 2.45E-2]))
+    assert np.isclose(nomoto_test.Ca_46, np.mean([8.71E-10, 3.60E-9]))
+    assert np.isclose(nomoto_test.Ge_74, np.mean([1.35E-7, 7.93E-7]))
+
+# TODO: test metallicity outside that of the range

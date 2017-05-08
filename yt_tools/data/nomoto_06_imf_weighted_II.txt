@@ -2,7 +2,7 @@
 # IMF weighted SNII yields
 # has yields for different metallicities
 #
-# A     name    Z=0             Z=0.001         Z=0.004         Z=0.002
+# A     name    Z=0             Z=0.001         Z=0.004         Z=0.02
 01		p		3.28E-02		3.14E-02		2.96E-02		2.45E-02
 02		d		5.76E-18		2.21E-15		1.97E-16		5.34E-16
 03		He		2.51E-07		5.24E-07		6.52E-07		7.06E-07

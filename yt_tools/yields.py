@@ -3,14 +3,18 @@ import os
 from scipy import interpolate
 import numpy as np
 
+iwamoto_file = "iwamoto_99_Ia_yields.txt"
+nomoto_file = "nomoto_06_imf_weighted_II.txt"
 
-def _get_iwamoto_path():
+
+def _get_data_path(data_file):
     """Returns the path of the Iwamoto input file on this machine.
     
     We know the relative path of it compared to this file, so it's easy to
     know where it is."""
     this_file_dir = os.path.dirname(__file__)
-    return this_file_dir + "/data/iwamoto_99_Ia_yields.txt"
+    return this_file_dir + "/data/{}".format(data_file)
+
 
 
 def _parse_iwamoto_element(original_string):
@@ -26,6 +30,18 @@ def _parse_iwamoto_element(original_string):
     number = original_string[first_bracket + 1:second_bracket]
     name = original_string[second_bracket + 1:]
     return "{}_{}".format(name, number)
+
+def _parse_nomoto_element(number, name):
+    """The Nomoto 2006 file has a separate column for the name and the 
+    mass number, so we can take those and turn them into one thing like
+    the code wants. One minor hassle is that the file uses "p" and "d" for
+    Hydrogen and Deuterium, respectively."""
+    if number == "01" and name == "p":
+        return "H_1"
+    elif number == "02" and name == "d":
+        return "H_2"
+    else:
+        return "{}_{}".format(name, number.lstrip("0"))
 
 
 def _parse_iwamoto_model(full_name):
@@ -82,6 +98,8 @@ class Yields(object):
             self.make_test()
         elif model_set.startswith("iwamoto_99_Ia_"):
             self.make_iwamoto_99_Ia(_parse_iwamoto_model(model_set))
+        elif model_set == "nomoto_06_II":
+            self.make_nomoto_06_II()
 
         # all model sets have a zero metallicity option, so set the initial
         # metallicity to that. This takes care of the _set_member() call too.
@@ -204,7 +222,7 @@ class Yields(object):
         our_idx = column_idxs[model]
 
         # then iterate through each line and handle it appropriately
-        with open(_get_iwamoto_path(), "r") as in_file:
+        with open(_get_data_path(iwamoto_file), "r") as in_file:
             for line in in_file:
                 # ignore the comments
                 if not line.startswith("#"):
@@ -223,5 +241,37 @@ class Yields(object):
                     interp_obj = interpolate.interp1d([_metallicity_log(0),
                                                        _metallicity_log(1)],
                                                       [float(abundance)]*2,
+                                                      kind="linear")
+                    self._abundances_interp[formatted_element] = interp_obj
+
+    def make_nomoto_06_II(self):
+        """Populates the model with the yields from the Nomoto 2006 models"""
+
+        # we know the metallicity of the models Nomoto used
+        metallicity_values = [0, 0.001, 0.004, 0.02]
+        # to interpolate we need the log of that
+        log_met_values = [_metallicity_log(met) for met in metallicity_values]
+
+        # then iterate through each line and handle it appropriately
+        with open(_get_data_path(nomoto_file), "r") as in_file:
+            for line in in_file:
+                # ignore the comments
+                if not line.startswith("#"):
+                    # We then need to get the appropriate values from the line.
+                    # to do this we split it on spaces, then we know where
+                    # everything is
+                    split_line = line.split()
+                    mass_number = split_line[0]
+                    atomic_name = split_line[1]
+                    these_abundances = split_line[2:]
+
+                    # We can then parse the string to get the elemental format
+                    # we need
+                    formatted_element = _parse_nomoto_element(mass_number,
+                                                              atomic_name)
+                    # We then need to make the interpolation object. Since this
+                    # will be the same at all metallicities, this is easy
+                    interp_obj = interpolate.interp1d(log_met_values,
+                                                      these_abundances,
                                                       kind="linear")
                     self._abundances_interp[formatted_element] = interp_obj
