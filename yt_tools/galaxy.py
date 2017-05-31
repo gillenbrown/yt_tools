@@ -31,3 +31,12 @@ class Galaxy(object):
         # we need to check that the radius has units too
         utils.test_for_units(radius, "radius")
         # set the attribute if it passes tests
+        self.radius = radius
+
+        # create the sphere that contains the galaxy
+        self.sphere = self.ds.sphere(center=self.center, radius=self.radius)
+
+        # set the total stellar mass within the sphere
+        all_star_masses = self.sphere[('STAR', "MASS")].in_units("msun")
+        self.stellar_mass = np.sum(all_star_masses)
+

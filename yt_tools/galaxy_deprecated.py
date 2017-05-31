@@ -6,50 +6,50 @@ import betterplotlib as bpl
 
 from . import kde
 
-class galaxy_deprecated(object):
-    def __init__(self, dataset, center, radius=1000 * yt.units.pc, 
-                 disk_height=50 * yt.units.pc):
-        """ Create a galaxy object.
-
-        :param dataset: yt dataset object that contains this galaxy.
-        :param center: 3 element array with the center. Must have units.
-        :param radius: Radius that will be used to create both the sphere and disk
-                       objects. Can have a unit, but if no unit is passed in 
-                       parsecs are assumed.
-        :param disk_height: Height of the disk that will be created by finding
-                            the angular momentum vector. If this is zero, then
-                            no disk will be created. As this is computationally 
-                            expensive, this can be advantageous. As with the 
-                            radius, this can be passed with units, but if no
-                            units are included parsecs are assumed.
-
-        """
-        self.ds = dataset
-        self.center = center
-        # We have to check the units on the disk height and radius. It is just
-        # a number, it won't have any units, but if it does then we will just
-        # use those units
-        try:
-            radius.units
-        except AttributeError:
-            radius = radius * yt.units.pc
-
-        try:
-            disk_height.units
-        except AttributeError:
-            disk_height = disk_height * yt.units.pc
-               
-        self.radius = radius
-        self.disk_height = disk_height
-
-        self.sphere = self.ds.sphere(center=center, radius=self.radius)
-        self.stellar_mass = np.sum(self.sphere[('STAR', "MASS")].in_units("msun"))
-
-        self.radii = dict()
-        self.densities = dict()
-
-        if disk_height > 0:
-            self.add_disk()
+# class galaxy_deprecated(object):
+#     def __init__(self, dataset, center, radius=1000 * yt.units.pc,
+#                  disk_height=50 * yt.units.pc):
+#         """ Create a galaxy object.
+#
+#         :param dataset: yt dataset object that contains this galaxy.
+#         :param center: 3 element array with the center. Must have units.
+#         :param radius: Radius that will be used to create both the sphere and disk
+#                        objects. Can have a unit, but if no unit is passed in
+#                        parsecs are assumed.
+#         :param disk_height: Height of the disk that will be created by finding
+#                             the angular momentum vector. If this is zero, then
+#                             no disk will be created. As this is computationally
+#                             expensive, this can be advantageous. As with the
+#                             radius, this can be passed with units, but if no
+#                             units are included parsecs are assumed.
+#
+#         """
+#         self.ds = dataset
+#         self.center = center
+#         # We have to check the units on the disk height and radius. It is just
+#         # a number, it won't have any units, but if it does then we will just
+#         # use those units
+#         try:
+#             radius.units
+#         except AttributeError:
+#             radius = radius * yt.units.pc
+#
+#         try:
+#             disk_height.units
+#         except AttributeError:
+#             disk_height = disk_height * yt.units.pc
+#
+#         self.radius = radius
+#         self.disk_height = disk_height
+#
+#         self.sphere = self.ds.sphere(center=center, radius=self.radius)
+#         self.stellar_mass = np.sum(self.sphere[('STAR', "MASS")].in_units("msun"))
+#
+#         self.radii = dict()
+#         self.densities = dict()
+#
+#         if disk_height > 0:
+#             self.add_disk()
         
 
     def add_disk(self, radius=None, disk_height=None):
