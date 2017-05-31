@@ -12,7 +12,7 @@ from scipy.integrate import quad
 
 def test_kde_init_results_3d():
     """Tests that a KDE object in 3D has the correct values"""
-    kde_obj = kde.kde([[1, 2, 3], [2, 3, 4], [3, 4, 5]], [4, 5, 6])
+    kde_obj = kde.KDE([[1, 2, 3], [2, 3, 4], [3, 4, 5]], [4, 5, 6])
     assert kde_obj.dimension == 3
     assert kde_obj.x == [1, 2, 3]
     assert kde_obj.y == [2, 3, 4]
@@ -23,7 +23,7 @@ def test_kde_init_results_3d():
 def test_kde_init_results_2d():
     """Tests that a KDE object in 2D has the correct values, including it
     not having a z coordinate. """
-    kde_obj = kde.kde([[1, 2, 3], [2, 3, 4]], [3, 4, 5])
+    kde_obj = kde.KDE([[1, 2, 3], [2, 3, 4]], [3, 4, 5])
     assert kde_obj.dimension == 2
     assert kde_obj.x == [1, 2, 3]
     assert kde_obj.y == [2, 3, 4]
@@ -34,29 +34,29 @@ def test_kde_init_results_2d():
 
 def test_kde_init_no_weights():
     """Tests that if you don't pass in weights, all are weighted equally."""
-    kde_obj = kde.kde([[1, 2, 3], [2, 3, 4]])
+    kde_obj = kde.KDE([[1, 2, 3], [2, 3, 4]])
     assert np.array_equal(kde_obj.values, np.ones(3))
 
 def test_kde_init_checking():
     """Test the various error checking that happens"""
     with pytest.raises(ValueError):
         # values has to have the same length as x and y
-        kde_obj = kde.kde([[1, 2, 3], [2, 3, 4]], [3, 4, 5, 6])
+        kde_obj = kde.KDE([[1, 2, 3], [2, 3, 4]], [3, 4, 5, 6])
     with pytest.raises(ValueError):
         # values has to have the same length as x and y
-        kde_obj = kde.kde([[1, 2, 3], [2, 3, 4], [3, 4, 5]], [1, 2, 3, 4])
+        kde_obj = kde.KDE([[1, 2, 3], [2, 3, 4], [3, 4, 5]], [1, 2, 3, 4])
     with pytest.raises(ValueError):
         # x, y, and z have to have the same length
-        kde_obj = kde.kde([[1, 2, 3, 4], [2, 3, 4], [3, 4, 5]], [1, 2, 3])
+        kde_obj = kde.KDE([[1, 2, 3, 4], [2, 3, 4], [3, 4, 5]], [1, 2, 3])
     with pytest.raises(TypeError):
         # x, y, and z have to be arrays
-        kde.kde([1, 2, 3], [1])
+        kde.KDE([1, 2, 3], [1])
     with pytest.raises(TypeError):
         # values has to be an array
-        kde.kde([[0], [0], [0]], 1)
+        kde.KDE([[0], [0], [0]], 1)
     with pytest.raises(TypeError):
         # x, y, and z have to be arrays, even if we don't pass in any values
-        kde.kde([0, 0, 0])
+        kde.KDE([0, 0, 0])
 
 # -----------------------------------------------------------
 
@@ -95,20 +95,20 @@ def test_distance_array():
 
 @pytest.fixture
 def single_point_at_zero_2d():
-    return kde.kde([np.array([0]), np.array([0])])
+    return kde.KDE([np.array([0]), np.array([0])])
 
 @pytest.fixture
 def single_point_at_zero_3d():
-    return kde.kde([np.array([0]), np.array([0]), np.array([0])])
+    return kde.KDE([np.array([0]), np.array([0]), np.array([0])])
 
 @pytest.fixture
 def single_point_at_zero_2d_weighted():
-    return kde.kde([np.array([0]), np.array([0])], 
+    return kde.KDE([np.array([0]), np.array([0])],
                    np.array([np.random.uniform(1, 5)]))
 
 @pytest.fixture
 def single_point_at_zero_3d_weighted():
-    return kde.kde([np.array([0]), np.array([0]), np.array([0])], 
+    return kde.KDE([np.array([0]), np.array([0]), np.array([0])],
                    np.array([np.random.uniform(1, 5)]))
 
 # -----------------------------------------------------------
@@ -162,7 +162,7 @@ def test_density_4_points_2d():
     sign around the origin, where each point is weighted differently."""
     weights = [2, 3, 4, 5]
     # create points on the axes 1 unit away from the center
-    kde_obj = kde.kde([np.array([1, -1, 0, 0]), 
+    kde_obj = kde.KDE([np.array([1, -1, 0, 0]),
                        np.array([0, 0, 1, -1])], 
                       weights)
     sigma = 4.987
@@ -179,7 +179,7 @@ def test_density_6_points_3d():
     1 unit away from the origin, but has different weights"""
     weights = [2, 3, 4, 5, 6, 7]
     # create points on the axes 1 unit away from the center
-    kde_obj = kde.kde([np.array([1, -1,  0,  0,  0,  0]), 
+    kde_obj = kde.KDE([np.array([1, -1,  0,  0,  0,  0]),
                        np.array([0,  0,  1, -1,  0,  0]),
                        np.array([0,  0,  0,  0,  1, -1])], 
                       weights)
@@ -201,23 +201,23 @@ def test_density_6_points_3d():
 
 def test_initial_cell_size_3d():
     """Test the process that creates the size of the initial kernel"""
-    kde_obj = kde.kde([np.array([10, 110]), 
+    kde_obj = kde.KDE([np.array([10, 110]),
                        np.array([0,  1]),
                        np.array([0,  50])])
     assert kde_obj._initial_cell_size() == 10
 
-    kde_obj = kde.kde([np.array([10, 11]), 
+    kde_obj = kde.KDE([np.array([10, 11]),
                        np.array([0,  1]),
                        np.array([0,  49])])
     assert kde_obj._initial_cell_size() == 4.9
 
 def test_initial_cell_size_2d():
     """Test the process that creates the size of the initial kernel"""
-    kde_obj = kde.kde([np.array([10, 110]), 
+    kde_obj = kde.KDE([np.array([10, 110]),
                        np.array([0,  50])])
     assert kde_obj._initial_cell_size() == 10
 
-    kde_obj = kde.kde([np.array([10, 11]), 
+    kde_obj = kde.KDE([np.array([10, 11]),
                        np.array([0,  49])])
     assert kde_obj._initial_cell_size() == 4.9
 
@@ -294,7 +294,7 @@ def test_centering_single_point_3d(single_point_at_zero_3d_weighted):
                       rtol=0, atol=accuracy)
 
     # test not at zero
-    kde_obj = kde.kde([np.array([10]), np.array([1]), np.array([5])],
+    kde_obj = kde.KDE([np.array([10]), np.array([1]), np.array([5])],
                       np.array([4]))
     kde_obj.centering(0.5, accuracy)
     assert np.isclose(kde_obj.location_max_x, 10, 
@@ -308,26 +308,26 @@ def test_centering_single_point_3d(single_point_at_zero_3d_weighted):
 def two_points_3d():
     """ Returns two points, one at (0, 0, 0), the other at (1, 1, 1) with 
      equal weights"""
-    return kde.kde([np.array([0, 1]), np.array([0, 1]), np.array([0, 1])])
+    return kde.KDE([np.array([0, 1]), np.array([0, 1]), np.array([0, 1])])
 
 @pytest.fixture
 def two_points_2d():
     """ Returns two points, one at (0, 0), the other at (1, 1) with 
      equal weights"""
-    return kde.kde([np.array([0, 1]), np.array([0, 1])])
+    return kde.KDE([np.array([0, 1]), np.array([0, 1])])
 
 @pytest.fixture
 def two_points_3d_weighted():
     """ Returns two points, one at (0, 0, 0), the other at (1, 1, 1) with 
      weights of (10, 1)"""
-    return kde.kde([np.array([0, 1]), np.array([0, 1]), np.array([0, 1])], 
+    return kde.KDE([np.array([0, 1]), np.array([0, 1]), np.array([0, 1])],
                    np.array([10, 1]))
 
 @pytest.fixture
 def two_points_2d_weighted():
     """ Returns two points, one at (0, 0), the other at (1, 1) with 
      weights of (10, 1)"""
-    return kde.kde([np.array([0, 1]), np.array([0, 1])], 
+    return kde.KDE([np.array([0, 1]), np.array([0, 1])],
                    np.array([10, 1]))
 
 def test_two_points_large_kernel_3d(two_points_3d):

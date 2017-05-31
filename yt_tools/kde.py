@@ -93,7 +93,7 @@ def max_in_pairs(values, labels):
     return labels[max_idx]
 
 
-class kde(object):
+class KDE(object):
     """Class used for doing kernel density estimation in multiple dimensions"""
     def __init__(self, locations, values=None):
         """ Initialize the KDE object.
@@ -189,11 +189,6 @@ class kde(object):
             return max([x_size, y_size, z_size]) / 10.0
         else:
             return max([x_size, y_size]) / 10.0
-
-
-        
-
-    
 
     def centering(self, kernel_size, accuracy):
         """ Determines the location of the densest place in the KDE region
