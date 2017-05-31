@@ -1,3 +1,3 @@
-from .galaxy import *
-from .utils import *
+from .galaxy_deprecated import *
 from .profiles import *
+from .galaxy import *
