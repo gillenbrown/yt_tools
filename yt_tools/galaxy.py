@@ -136,96 +136,96 @@ class galaxy(object):
         return all(center_on_edge)
 
 
-    # def kde_iterations(self, kde_cell_size,
-    #                    star_x, star_y, star_z, masses, kernel_size):
-    #     """ Does one iteration of KDE centering. 
+    def kde_iterations(self, kde_cell_size,
+                       star_x, star_y, star_z, masses, kernel_size):
+        """ Does one iteration of KDE centering. 
 
-    #     Given a preliminary center, it finds a more precise center in the 
-    #     vicinity of the previous center.
+        Given a preliminary center, it finds a more precise center in the 
+        vicinity of the previous center.
 
-    #     :param kde_cell_size: Size of the discrete boxes where we will calculate
-    #                           the kde density. This is not the same as the size of 
-    #                           the cells in the simulation, this will start much 
-    #                           larger (for early iterations) and can get smaller
-    #                           for later ones.
-    #     :param star_x, star_y, star_z: x, y, and z position of all the stars in the
-    #                                    simulation, respectively. This does need to 
-    #                                    be all stars in a given galaxy, not just the
-    #                                    ones at the very center, because they can all
-    #                                    contribute to the density at the center. 
-    #                                    These should have units of parsecs.
-    #     :param masses: array of masses of the star particles, in solar masses.
-    #     :param kernel_size: Size of the Gaussian kernel used to to the KDE 
-    #                         estimation. Should be approximately the size of the
-    #                         smallest cell in the simulation. 
-    #     :param plot: Whether to plot the density near the center in a 2D 
-    #                  histogram style plot. Useful for debugging only, basically.
-    #     """ 
+        :param kde_cell_size: Size of the discrete boxes where we will calculate
+                              the kde density. This is not the same as the size of 
+                              the cells in the simulation, this will start much 
+                              larger (for early iterations) and can get smaller
+                              for later ones.
+        :param star_x, star_y, star_z: x, y, and z position of all the stars in the
+                                       simulation, respectively. This does need to 
+                                       be all stars in a given galaxy, not just the
+                                       ones at the very center, because they can all
+                                       contribute to the density at the center. 
+                                       These should have units of parsecs.
+        :param masses: array of masses of the star particles, in solar masses.
+        :param kernel_size: Size of the Gaussian kernel used to to the KDE 
+                            estimation. Should be approximately the size of the
+                            smallest cell in the simulation. 
+        :param plot: Whether to plot the density near the center in a 2D 
+                     histogram style plot. Useful for debugging only, basically.
+        """
 
-    #     # get the location of the x, y, and z positions we will be calculating
-    #     # the KDE density at. There will be 11 locations in each dimension, spaced 
-    #     # according to the kde_cell_size parameter. 
-    #     steps = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5]
-    #     xs = [self.center[0] + kde_cell_size * step for step in steps]
-    #     ys = [self.center[1] + kde_cell_size * step for step in steps]
-    #     zs = [self.center[2] + kde_cell_size * step for step in steps]
-    #     # then turn these into a 1D array of x, y, z tuples.
-    #     locations = np.array([(x, y, z) for x in xs for y in ys for z in zs])
-    #     step_tuple = [(x, y, z) for x in steps for y in steps for z in steps]
+        # get the location of the x, y, and z positions we will be calculating
+        # the KDE density at. There will be 11 locations in each dimension, spaced
+        # according to the kde_cell_size parameter.
+        steps = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5]
+        xs = [self.center[0] + kde_cell_size * step for step in steps]
+        ys = [self.center[1] + kde_cell_size * step for step in steps]
+        zs = [self.center[2] + kde_cell_size * step for step in steps]
+        # then turn these into a 1D array of x, y, z tuples.
+        locations = np.array([(x, y, z) for x in xs for y in ys for z in zs])
+        step_tuple = [(x, y, z) for x in steps for y in steps for z in steps]
         
-    #     # then calculate the density at all these locations.
-    #     densities = [self.kde(loc, [star_x, star_y, star_z], masses, kernel_size) 
-    #                  for loc in locations]
-    #     densities = np.array(densities)
+        # then calculate the density at all these locations.
+        densities = [self.kde(loc, [star_x, star_y, star_z], masses, kernel_size)
+                     for loc in locations]
+        densities = np.array(densities)
 
-    #     # Then find the maximum value, and the location at that value.
-    #     max_location = np.argmax(densities)
-    #     self.center = locations[max_location]
+        # Then find the maximum value, and the location at that value.
+        max_location = np.argmax(densities)
+        self.center = locations[max_location]
 
-    #     step_of_max = step_tuple[max_location]
-    #     if 5 in step_of_max or -5 in step_of_max:
-    #         return True
-    #     else:
-    #         return False
+        step_of_max = step_tuple[max_location]
+        if 5 in step_of_max or -5 in step_of_max:
+            return True
+        else:
+            return False
 
 
-    # @staticmethod
-    # def kde(location, star_coords, masses, size):
-    #     """ This calculates the density at a given point
+    @staticmethod
+    def kde(location, star_coords, masses, size):
+        """ This calculates the density at a given point
 
-    #     This takes the array of star positions in x, y, and z, plus their masses,
-    #     and constructs the Gaussian density at the given point, using the kernel
-    #     size given by `size`
+        This takes the array of star positions in x, y, and z, plus their masses,
+        and constructs the Gaussian density at the given point, using the kernel
+        size given by `size`
 
-    #     :param location: 3 value array with a single set of x, y, z value where we
-    #                      will calculate the kde density.
-    #     :param star_coords: list of arrays holding the x, y, and possibly z
-    #                         positions of all the stars.
-    #     :param masses: array of the masses of the star particles. Should have units
-    #                    of solar masses.
-    #     :param size: value of the standard deviation to use in the Gaussian kernel.
-    #                  should be about the size of the smallest cell in the simulation
-    #     """
-    #     if len(location) != len(star_coords):
-    #         raise ValueError("Length of location and star_coords must be same.")
+        :param location: 3 value array with a single set of x, y, z value where we
+                         will calculate the kde density.
+        :param star_coords: list of arrays holding the x, y, and possibly z
+                            positions of all the stars.
+        :param masses: array of the masses of the star particles. Should have units
+                       of solar masses.
+        :param size: value of the standard deviation to use in the Gaussian kernel.
+                     should be about the size of the smallest cell in the simulation
+        """
+        if len(location) != len(star_coords):
+            raise ValueError("Length of location and star_coords must be same.")
         
-    #     # get the distance of each star from the point of interest (Pythag. theorem)
-    #     sum_squares = 0
-    #     for star, loc in zip(star_coords, location):
-    #         sum_squares += (star - loc)**2
-    #     distance = np.sqrt(sum_squares)
+        # get the distance of each star from the point of interest (Pythag. theorem)
+        sum_squares = 0
+        for star, loc in zip(star_coords, location):
+            sum_squares += (star - loc)**2
+        distance = np.sqrt(sum_squares)
         
-    #     # Then get the density of each star particle at this location, weighted
-    #     # by the mass. This will be an array with the density for each star.
-    #     if len(location) == 2:
-    #         density =  kde.gaussian_2d_radial(distance, size) * masses
-    #     elif len(location) == 3:
-    #         density =  kde.gaussian_3d_radial(distance, size) * masses
-    #     else:
-    #         raise ValueError("Only works for 2 or 3 dimensions.")
-    #     # we want the total density, so sum the contributions of all the star 
-    #     # particles
-    #     return np.sum(density)
+        # Then get the density of each star particle at this location, weighted
+        # by the mass. This will be an array with the density for each star.
+        if len(location) == 2:
+            density =  kde.gaussian_2d_radial(distance, size) * masses
+        elif len(location) == 3:
+            density =  kde.gaussian_3d_radial(distance, size) * masses
+        else:
+            raise ValueError("Only works for 2 or 3 dimensions.")
+        # we want the total density, so sum the contributions of all the star
+        # particles
+        return np.sum(density)
 
     def kde_profile_spherical(self, quantities=["MASS"], spacing=0.1, 
                                  outer_radius=1000):
