@@ -128,14 +128,14 @@ def test_kde_profile_results_reasonable(gal):
     """Check whether the results have roughtly correct values."""
     # we need spherical on all of this to avoid runtime errors from no disk.
     gal.kde_profile("MASS", dimension=3,
-                    spacing=10.0 * pc, outer_radius=20.0 * pc)
+                    spacing=40.0 * pc, outer_radius=50.0 * pc)
     gal.kde_profile("Z", dimension=3,
-                    spacing=10.0 * pc, outer_radius=20.0 * pc)
+                    spacing=40.0 * pc, outer_radius=50.0 * pc)
     gal.add_disk()
     gal.kde_profile("MASS", dimension=2,
-                    spacing=10.0 * pc, outer_radius=20.0 * pc)
+                    spacing=40.0 * pc, outer_radius=50.0 * pc)
     gal.kde_profile("Z", dimension=2,
-                    spacing=10.0 * pc, outer_radius=20.0 * pc)
+                    spacing=40.0 * pc, outer_radius=50.0 * pc)
     # there should be high density at the center here
     assert gal.densities["mass_kde_3D"][0] > 10**4
     assert gal.densities["mass_kde_2D"][0] > 10**5
