@@ -1,4 +1,7 @@
+from __future__ import division
 import numpy as np
+
+from . import utils
 
 def _gaussian_error_checking(radius, sigma):
     """Checks that both the standard deviation and radius are positive"""
@@ -23,8 +26,8 @@ def gaussian_3d_radial(radius, sigma):
     _gaussian_error_checking(radius, sigma)
 
     # then we can calculate the Gaussian function
-    exponent = (-1) * radius**2 / (2 * sigma**2)
-    coefficient = 1.0 / (sigma**3 * (2 * np.pi)**(1.5))
+    exponent = (-1.0) * radius**2 / (2.0 * sigma**2)
+    coefficient = 1.0 / (sigma**3 * (2.0 * np.pi)**(1.5))
     return coefficient * np.exp(exponent)
 
 def gaussian_2d_radial(radius, sigma):
@@ -193,6 +196,7 @@ class KDE(object):
     def centering(self, kernel_size, accuracy):
         """ Determines the location of the densest place in the KDE region
 
+        :param kernel_size: Size of the smoothing kernel.
         :param accuracy: value of how precisely to determine the center. The 
                          center determined will be such that
                          abs(true_center - found_center) < accuracy
@@ -244,6 +248,51 @@ class KDE(object):
             self.location_max_x = x
             self.location_max_y = y
             self.location_max_z = z
+
+
+    def radial_profile(self, kernel_size, radii, center):
+        """Create a radial KDE profile.
+        
+        :param kernel_size: Size of the smoothing kernel.
+        :param radii: List of radii at which the density will be calculated.
+                      Since KDE binning doesn't make sense, this will work by 
+                      randomly distributing a point over the sphere with a given
+                      radius for each radius in this list. Because of this 
+                      sparse sampling, it makes sense to have much denser 
+                      spacing of radial values then you would when doing a 
+                      binned profile.
+        :param center: location around which the profile will be calculated.
+        :returns: List of densities corresponding to the radii passed in.
+        """
+        # check that the length of the center matches the dimensions we have
+        if len(center) != self.dimension:
+            raise ValueError("The center must be of the same dimension as the "
+                             "data")
+
+        # get those locations we want to sample the density at. These are
+        # relative to the center for now.
+        if self.dimension == 3:
+            rel_locs = utils.get_3d_sperical_points(radii)
+        elif self.dimension == 2:
+            rel_locs = utils.get_2d_polar_points(radii)
+        else:
+            raise ValueError("Only 2 or 3D for now.")
+
+        # then turn these into real space locations by adding the galaxy
+        # center to the relative locations.
+        individual_locs = [rel_locs[i] + center[i] for i in range(len(center))]
+        # ^ that is a two/three element list where each element is an array of
+        # x/y/z values
+        # then turn those into a list of tuples where each point is a single
+        # (x, y, [z]) tuple
+        locations = zip(*individual_locs)
+        # these locations will still be sorted in order of increasing radius,
+        # so they are easy to use. We still have to iterate, and can't do it
+        # in a vectorized way, unfortunately.
+        return np.array([self.density(kernel_size, *loc) for loc in locations])
+
+
+
         
 
     
