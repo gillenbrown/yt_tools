@@ -326,18 +326,18 @@ class galaxy_deprecated(object):
     #             print("{} is not implemented yet.".format(quantity))
         
 
-    def kde_profile_cylindrical(self, quantities=["MASS"], 
-                                spacing=0.1, outer_radius=500):
-        """
-        Create a radial profile of metallicity
-        :param spacing: The density will be calculated from zero to 
-                        `outer_radius` with a spacing determined by this 
-                        variable. The points will be equally spaced in radius,
-                        while the angular coordinates will be random. The units
-                        of `spacing` need to be parsecs.
-        :param outer_radius: Maximum radius out to which to calculate the radial
-                             profile. Is in parsecs. 
-         """
+    # def kde_profile_cylindrical(self, quantities=["MASS"],
+    #                             spacing=0.1, outer_radius=500):
+    #     """
+    #     Create a radial profile of metallicity
+    #     :param spacing: The density will be calculated from zero to
+    #                     `outer_radius` with a spacing determined by this
+    #                     variable. The points will be equally spaced in radius,
+    #                     while the angular coordinates will be random. The units
+    #                     of `spacing` need to be parsecs.
+    #     :param outer_radius: Maximum radius out to which to calculate the radial
+    #                          profile. Is in parsecs.
+    #      """
         # # get all the radii at which to calculate the density
         # radii = np.arange(0, outer_radius, spacing)
         # # then generate the random angular coordinate

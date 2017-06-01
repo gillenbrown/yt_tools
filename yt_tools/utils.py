@@ -16,6 +16,16 @@ def test_for_units(item, name):
     if type(these_units) is not units.unit_object.Unit:
         raise TypeError("{} must have be a quantity with units.".format(name))
 
+def test_iterable(item, name):
+    """Sees if item is iterable. If not raises a TypeError. 
+    
+    :param item: object to check.
+    :param name: Name to call the object in the error message if it fails."""
+    try:
+        iter(item)
+    except TypeError:
+        raise TypeError("{} must be an iterable. ".format(item))
+
 def generate_random_theta_phi(number):
     """Generates random points on the surface of a sphere. 
     
