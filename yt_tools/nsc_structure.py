@@ -24,7 +24,7 @@ def log_plummer_disk(r, M_c, M_d, a_c, a_d):
 class Fitting(object):
     """Performs the fitting to determine where the NSC is. """
     # set the bounds for the fitting and the initial guess
-    bounds = [[0.01, 0.01, 0.01, 0.01], [15, 15, 5000, 500]]
+    bounds = [[0.01, 0.01, 0.01, 0.01], [15, 15, 500, 5000]]
     guess = [6, 6, 400, 10]
 
     def __init__(self, radii, densities):
@@ -47,7 +47,31 @@ class Fitting(object):
     def fit(self):
         """Performs the fit and stores the parameters."""
         params, errs =  optimize.curve_fit(log_plummer_disk, self.radii,
-                                           self.densities, bounds=self.bounds,
-                                           p0=self.guess)
+                                           np.log10(self.densities),
+                                           bounds=self.bounds, p0=self.guess)
         self.M_c, self.M_d, self.a_c, self.a_d = params
+
+        # if the masses are close to zero, set those
+        if np.isclose(self.M_c, self.bounds[0][0], atol=0.02):
+            self.M_c = 0
+        if np.isclose(self.M_d, self.bounds[0][1], atol=0.02):
+            self.M_d = 0
+
+class NscStructure(object):
+    """Handles all the structure calculations for the NSCs. 
+    
+    This includes the mass and half mass radii primarily, in both a parameteric 
+    and non parametric way. """
+    def __init__(self, radii, densities):
+        """Create the structure object
+
+        :param radii: list of radii at which the densities were calculated.
+        :param densities: list of densities, corresponding to the radii.
+
+        """
+
+        # first we create the fitting object and use it to get the basic
+        # structural parameters that will be used later
+        self.fitting = Fitting(radii, densities)
+        self.fitting.fit()
 
