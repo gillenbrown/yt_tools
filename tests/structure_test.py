@@ -117,3 +117,90 @@ def test_non_parametric_half_mass_disk(struct_disk):
 def test_non_parametric_half_mass_total(struct_total):
     assert struct_total.r_half_non_parametric is not None
     assert struct_total.r_half_non_parametric > 0
+
+# -----------------------------------------------------------------------------
+
+# test the axis ratios stuff
+
+# -----------------------------------------------------------------------------
+# setup some simple values to use
+values = np.linspace(-10, 10, 100)
+zeroes = np.zeros(100)
+xs = np.concatenate([values, zeroes, zeroes])
+ys = np.concatenate([zeroes, values, zeroes])
+zs = np.concatenate([zeroes, zeroes, values])
+masses = np.ones(300) * 5.34  # mass doesn't matter if all the same
+
+def test_axis_ratios_error_checking():
+    nsc_structure.AxisRatios(xs, ys, zs, masses) # no error
+    with pytest.raises(ValueError):
+        nsc_structure.AxisRatios(xs, ys, zs, [1, 2, 3])
+    with pytest.raises(ValueError):
+        nsc_structure.AxisRatios([1, 2, 2], ys, zs, masses)
+
+def test_axis_ratios_symmetric():
+    """Test with a symmetric structure. Should give 1 values for all ratios."""
+    a_r = nsc_structure.AxisRatios(xs, ys, zs, masses)
+    assert a_r.a_over_b == 1
+    assert a_r.b_over_a == 1
+    assert a_r.a_over_c == 1
+    assert a_r.c_over_a == 1
+    assert a_r.b_over_c == 1
+    assert a_r.c_over_b == 1
+    assert a_r.ellipticity == 0
+
+def test_axis_ratios_one_not_symmetric():
+    """Test with a structure wher one axis is larger than the others. """
+    a_r = nsc_structure.AxisRatios(xs * 4, ys, zs, masses)
+    assert np.isclose(a_r.a_over_b, 4.0)
+    assert np.isclose(a_r.b_over_a, 0.25)
+    assert np.isclose(a_r.a_over_c, 4.0)
+    assert np.isclose(a_r.c_over_a, 0.25)
+    assert np.isclose(a_r.b_over_c, 1.0)
+    assert np.isclose(a_r.c_over_b, 1.0)
+    assert np.isclose(a_r.ellipticity, 0.75)
+
+def test_axis_ratios_all_not_symmetric():
+    """Test with a structure where all three axes are different."""
+    a_r = nsc_structure.AxisRatios(xs, ys * 2, zs * 3, masses)
+    assert np.isclose(a_r.a_over_b, 1.5)
+    assert np.isclose(a_r.b_over_a, 1.0 / 1.5)
+    assert np.isclose(a_r.a_over_c, 3.0)
+    assert np.isclose(a_r.c_over_a, 1.0 / 3.0)
+    assert np.isclose(a_r.b_over_c, 2.0)
+    assert np.isclose(a_r.c_over_b, 0.5)
+    assert np.isclose(a_r.ellipticity, 2.0 / 3.0)
+
+def test_axis_ratios_all_not_symmetric_rotated():
+    """Test with a rotated structure where are three axes are different. """
+    new_x = xs
+    new_y = ys * 2
+    new_z = zs * 3
+
+    # then rotate through an angle
+    theta = 23.4
+    new_new_xs = new_x * np.cos(theta) - new_y * np.sin(theta)
+    new_new_ys = new_x * np.sin(theta) + new_y * np.cos(theta)
+
+    a_r = nsc_structure.AxisRatios(new_new_xs, new_new_ys, new_z, masses)
+    assert np.isclose(a_r.a_over_b, 1.5)
+    assert np.isclose(a_r.b_over_a, 1.0 / 1.5)
+    assert np.isclose(a_r.a_over_c, 3.0)
+    assert np.isclose(a_r.c_over_a, 1.0 / 3.0)
+    assert np.isclose(a_r.b_over_c, 2.0)
+    assert np.isclose(a_r.c_over_b, 0.5)
+
+def test_axis_ratios_different_mass():
+    """Test where all locations are the same, but different masses makes the
+    axis ratios different. This is just based on the components being different.
+    """
+    ones = np.ones(100)
+    new_masses = np.concatenate([ones, ones*2, ones*3])
+    a_r = nsc_structure.AxisRatios(xs, ys, zs, new_masses)
+    assert np.isclose(a_r.a_over_b, np.sqrt(1.5))
+    assert np.isclose(a_r.b_over_a, np.sqrt(1.0 / 1.5))
+    assert np.isclose(a_r.a_over_c, np.sqrt(3.0))
+    assert np.isclose(a_r.c_over_a, np.sqrt(1.0 / 3.0))
+    assert np.isclose(a_r.b_over_c, np.sqrt(2.0))
+    assert np.isclose(a_r.c_over_b, np.sqrt(0.5))
+

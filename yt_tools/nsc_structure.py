@@ -190,3 +190,82 @@ class NscStructure(object):
                 return
 
 
+class AxisRatios(object):
+    """Calculates the axes ratios of the object using the "intertia tensor."
+    
+    This is in quotes because it's not really the interia tensor. See Zemp et 
+    al 2011. Equation 3 shows what the tensor I'm using is, and equations 5 and
+    8 show exactly how I'm doing it. Equation 8 is the calculation I use. The 
+    text after that tells how this isn't really the inertia tensor. In the next
+    section it talks about how this can give axis rations. We just get the 
+    eigenvalues of that tensor and take ratios. """
+    def __init__(self, x, y, z, mass):
+        """
+        Initialize the object. This takes the coordinated and mass, which is all
+        that is needed to calculate the axis ratios.
+        
+        :param x: List of x values for the positions of the stars. 
+        :param y: List of x values for the positions of the stars. 
+        :param z: List of x values for the positions of the stars. 
+        :param mass: List of star masses.
+        """
+        # error checking
+        if not (len(x) == len(y) == len(z) == len(mass)):
+            raise ValueError("All parameters need to be the same length.")
+        # if it passes set the values
+        self.x = x
+        self.y = y
+        self.z = z
+        self.mass = mass
+
+        # create the inertia tensor
+        self._create_inertia_tensor()
+        # and then get the eigenvalues
+        self._create_axes_ratios()
+
+    @staticmethod
+    def _inertia_tensor_component(loc_a, loc_b, mass):
+        """Calculates a component of the "inertia tensor", as takes from 
+        Equation 8 in Zemp et al 2011. """
+        numerator = np.sum(loc_a * loc_b * mass)
+        denominator = np.sum(mass)
+        return numerator / denominator
+
+    def _create_inertia_tensor(self):
+        """Calculate the "inertia tensor". This is calculated from equation 8
+        in Zemp et al 2011. """
+        # set up the initial matrix to be filled
+        matrix = np.zeros([3, 3])
+        # then put the coords in a list for easier access when filling array
+        star_coords = [self.x, self.y, self.z]
+
+        # then calculate that for each value.
+        for i in range(3):
+            for j in range(3):
+                matrix[i][j] = self._inertia_tensor_component(star_coords[i],
+                                                              star_coords[j],
+                                                              self.mass)
+
+        self.inertia_tensor = np.matrix(matrix)
+
+    def _create_axes_ratios(self):
+        """Does the work of getting the axis rations. These are simple the 
+        ratios of the equare toors of the eigenvalues. (see discussion after 
+        equation 10 in Zemp et al 2011). """
+        eigenvalues = np.linalg.eigvals(self.inertia_tensor)
+        c, b, a = sorted(eigenvalues) # sort goes from small to big
+
+        # take square root of all values
+        a = np.sqrt(a)
+        b = np.sqrt(b)
+        c = np.sqrt(c)
+
+        # then turn them into axis ratios.
+        self.a_over_b = a / b
+        self.b_over_a = b / a
+        self.a_over_c = a / c
+        self.c_over_a = c / a
+        self.b_over_c = b / c
+        self.c_over_b = c / b
+
+        self.ellipticity = 1.0 - self.c_over_a
