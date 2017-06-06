@@ -92,3 +92,85 @@ def get_3d_sperical_points(radii):
     theta, phi = generate_random_theta_phi(len(radii))
     return convert_spherical_to_cartesian(radii, theta, phi)
 
+def weighted_mean(values, weights):
+    """Calculate a weighted mean among some values.
+
+    The weighted mean is here defined as
+
+    .. math::
+        \\bar{X} = \\frac{\\sum_i x_i w_i}{\\sum_i w_i}
+
+    So conceptually it's the sum of the weights times the values divided by
+    the sum of the weights.
+
+    For some simple examples:
+    - if the weights are all the same, we just get back the regular mean.
+    - if values are [0, 1] and weights are [1, 2], we get 2/3.
+
+    :param values: List or array of values we want to find the mean of.
+    :param weights: list or array of weights.
+
+    """
+    # convert to arrays to make vectorized computation possible
+    values = np.array(values, dtype=np.float64)
+    weights = np.array(weights, dtype=np.float64)
+
+    # make sure all weights are positive
+    if not np.all(weights >= 0):
+        raise ValueError("All weights must be non-negative.")
+
+    # do error checking with try/except
+    try:
+        return np.sum(values * weights) / np.sum(weights)
+    except ValueError:
+        raise ValueError("Weights and values must be the same length.")
+
+
+def weighted_variance(values, weights, ddof=1):
+    """Calculate the weighted variance among some values.
+
+    The weighted variance is defined as
+
+    .. math::
+        \\sigma^2 = \\frac{\\sum_i (x_i - \\bar{X})^2 w_i}{\\sum_i w_i - \\rm{ddof}}
+
+    Where ddof is identical to that used by `np.var()`. According to the
+    documentation for that:
+
+    "In standard statistical practice, ddof=1 provides an unbiased estimator
+    of the variance of a hypothetical infinite population. ddof=0 provides a
+    maximum likelihood estimate of the variance for normally distributed
+    variables."
+
+    The default setting here is ddof=1.
+
+    :param values: List or array of values to take the variance of.
+    :param weights: List or array of weights. These weights MUST be "frequency
+                    weights", which means that they correspons to the number
+                    of times that the particular values was observed.
+                    See Wikipedia for more info if desired:
+                    https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Weighted_sample_variance
+    :param ddof: described above. Defaults to 1.
+
+    """
+    # error checking is done by the weighted mean function.
+    mean = weighted_mean(values, weights)
+    return np.sum((values - mean)**2 * weights) / (np.sum(weights) - ddof)
+
+def sum_in_quadrature(*args):
+    """Sums the values in quadrature.
+
+    This is defined as
+
+    .. math::
+        \\sqrt{x_0^2 + x_1^2 + \\ldots + x_{n-1}^2 + x_n^2}
+
+    Just pass in all the values you want to sum. They can either be in a list
+    or not.
+
+    Examples:
+    sum_in_quadrature(1, 2, 3) == sqrt(14)
+    sum_in_quadrature([1, 2, 3]) == sqrt(14)
+
+    """
+    return np.sqrt(np.sum(np.array(args)**2))

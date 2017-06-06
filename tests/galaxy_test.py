@@ -45,7 +45,12 @@ def test_gal_radius_unit_check():
 
 @pytest.fixture
 def gal():
-    return galaxy.Galaxy(ds, best_loc, 30 * pc)
+    return galaxy.Galaxy(ds, best_loc, 17 * pc)
+
+@pytest.fixture
+def real_gal():  # has larger radius to actually include everythign we need to
+    gal = galaxy.Galaxy(ds, best_loc, 1000 * pc)
+    gal.add_disk(j_radius=30 * pc)
 
 # -----------------------------------------------------------------------------
 
@@ -137,7 +142,7 @@ def test_kde_profile_results_reasonable(gal):
     gal.kde_profile("Z", dimension=2,
                     spacing=40.0 * pc, outer_radius=50.0 * pc)
     # there should be high density at the center here
-    assert gal.densities["mass_kde_3D"][0] > 10**4
+    assert gal.densities["mass_kde_3D"][0] > 10**3
     assert gal.densities["mass_kde_2D"][0] > 10**5
     # the cylindrical should be a higher value than the spherical, since it
     # only is in 2D, not three
@@ -190,4 +195,21 @@ def test_add_disk_kde_creation(gal):
     gal.add_disk()
     assert isinstance(gal._star_kde_mass_2d, kde.KDE)
     assert isinstance(gal._star_kde_metals_2d, kde.KDE)
+
+# -----------------------------------------------------------------------------
+
+# test the inclusion of the structural properties
+
+# -----------------------------------------------------------------------------
+
+# def test_nsc_radius_units(real_gal):
+#     """Test that the NSC radius has the right units."""
+#     real_gal.calculate_nsc_structure()
+#     assert gal.nsc.nsc_radius.units == yt.units.pc
+#     assert 0 * pc < real_gal.nsc.nsc_radius < 1000 * pc
+#
+# def test_axis_ratio_existence(real_gal):
+#     """Test that the axis ratios for the NSC look reasonable. """
+#     real_gal.calculate_nsc_structure()
+#     real_gal.nsc.axis_ratios
 
