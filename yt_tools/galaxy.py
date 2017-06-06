@@ -3,9 +3,11 @@ import numpy as np
 
 from . import kde
 from . import utils
+from . import nsc_structure
 
 class Galaxy(object):
-    def __init__(self, dataset, center, radius):
+    def __init__(self, dataset, center, radius, j_radius=None, disk_radius=None,
+                 disk_height=None):
         """Create a galaxy object at the specified location with the 
         given size. 
         
@@ -14,6 +16,10 @@ class Galaxy(object):
                        units.
         :param radius: Radius that will be used to create the sphere object.
                        Must also have units.
+        :params j_radius, disk_radius, disk_height: used for the creation of
+                the disk. See the _add_disk functionality for detailed
+                explanation. If these are left blank no disk will be
+                created.
         """
 
         # Check that the dataset is actually a datset, then assign
@@ -52,6 +58,17 @@ class Galaxy(object):
         self.radii = dict()  # used for radial profiles
         self.densities = dict()  # used for radial profiles
         self.disk = None  # used for cylindrical plots
+        self.nsc = None  # used for NSC analysis
+        self.nsc_radius = None  # used for NSC analysis
+        self.nsc_idx = None  # used for NSC analysis
+
+        # we can then add a disk if the user wants to, and initialize the rest
+        # of everything that comes after that.
+        if (j_radius is not None) or (disk_height is not None) or \
+                (disk_radius is not None):
+            self.add_disk(j_radius, disk_radius, disk_height)
+            self.find_nsc_radius()
+            self.create_axis_ratios()
 
     def _create_kde_object(self, dimension=2, quantity="mass"):
         """Creates a KDE object in the desired coordinates for the desired
@@ -192,12 +209,21 @@ class Galaxy(object):
         if quantity.lower() not in ["mass", "z"]:
             raise ValueError("Only mass and Z are supported. ")
 
-    def total_stellar_mass(self):
+    def stellar_mass(self, nsc=False):
         """Calculate the total stellar mass in this galaxy. 
         
         This sums the masses of the star particles that are inside the radius 
-        of the galaxy, and returns the answer in solar masses. """
-        return np.sum(self.sphere[('STAR', "MASS")].in_units("msun"))
+        of the galaxy or NSC, and returns the answer in solar masses.
+
+        """
+
+        masses = self.sphere[('STAR', "MASS")].in_units("msun")
+        if nsc:
+            self._check_nsc_existence()  # will raise error if no NSC
+            return np.sum(masses[self.nsc_idx])
+
+        else:  # whole galaxy
+            return np.sum(masses)
 
     def kde_profile(self, quantity="MASS", dimension=2, spacing=None,
                     outer_radius=None):
@@ -278,6 +304,44 @@ class Galaxy(object):
         key = "{}_kde_{}D".format(quantity.lower(), dimension)
         self.radii[key] = radii
         self.densities[key] = final_densities
+
+    def find_nsc_radius(self):
+        """
+        Finds the radius of the NSC, using the KDE profile and the associated
+        functionality in the NscStructure class.
+
+        :return:
+        """
+
+        # first need to to the KDE fitting procedure
+        self.kde_profile("MASS", spacing=0.05 * yt.units.pc,
+                         outer_radius=1000 * yt.units.pc)
+        self.nsc = nsc_structure.NscStructure(self.radii["mass_kde_2D"],
+                                              self.densities["mass_kde_2D"])
+
+        self.nsc_radius = self.nsc.nsc_radius * yt.units.pc
+        # then get the indices of the stars actually in the NSC
+        radius_key = ('STAR', 'particle_position_spherical_radius')
+        self.nsc_idx = np.where(self.sphere[radius_key] < self.nsc_radius)
+
+    def create_axis_ratios(self):
+        """Creates the axis ratios object. """
+        self._check_nsc_existence()
+
+        # get the locations of the stars in the NSC. Convert to numpy arrays
+        # for speed.
+        x = np.array(self.sphere[('STAR', 'POSITION_X')][self.nsc_idx])
+        y = np.array(self.sphere[('STAR', 'POSITION_Y')][self.nsc_idx])
+        z = np.array(self.sphere[('STAR', 'POSITION_Z')][self.nsc_idx])
+        mass = np.array(self.sphere[('STAR', "MASS")][self.nsc_idx])
+
+        self.nsc_axis_ratios = nsc_structure.AxisRatios(x, y, z, mass)
+
+    def _check_nsc_existence(self):
+        """Checks if we have a NSC radius set or not. Raises an AttributeError
+        if not. """
+        if self.nsc_radius is None:
+            raise AttributeError("NSC radius has not been set.")
 
 
 

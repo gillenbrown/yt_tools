@@ -1,5 +1,6 @@
 from yt_tools import galaxy
 from yt_tools import kde
+from yt_tools import utils
 
 import pytest
 import yt
@@ -49,8 +50,7 @@ def gal():
 
 @pytest.fixture
 def real_gal():  # has larger radius to actually include everythign we need to
-    gal = galaxy.Galaxy(ds, best_loc, 1000 * pc)
-    gal.add_disk(j_radius=30 * pc)
+    return galaxy.Galaxy(ds, best_loc, 1000 * pc, j_radius=30 * pc)
 
 # -----------------------------------------------------------------------------
 
@@ -197,19 +197,24 @@ def test_add_disk_kde_creation(gal):
     assert isinstance(gal._star_kde_metals_2d, kde.KDE)
 
 # -----------------------------------------------------------------------------
-
+#
 # test the inclusion of the structural properties
-
+#
 # -----------------------------------------------------------------------------
 
-# def test_nsc_radius_units(real_gal):
-#     """Test that the NSC radius has the right units."""
-#     real_gal.calculate_nsc_structure()
-#     assert gal.nsc.nsc_radius.units == yt.units.pc
-#     assert 0 * pc < real_gal.nsc.nsc_radius < 1000 * pc
-#
-# def test_axis_ratio_existence(real_gal):
-#     """Test that the axis ratios for the NSC look reasonable. """
-#     real_gal.calculate_nsc_structure()
-#     real_gal.nsc.axis_ratios
+def test_nsc_radius_units_and_mass_and_axis_ratios(real_gal):
+    """Test several things about the NSC. I am combining a lot of things into
+    one test since the real_gal takes a long time to initialize, since it has
+    to do the KDE process. """
+    utils.test_for_units(real_gal.nsc_radius, "NSC radius")
+    assert 0 * pc < real_gal.nsc_radius < real_gal.sphere.radius
+
+    # Test that the NSC mass is less than the total galaxy mass
+    assert real_gal.stellar_mass(nsc=False) > real_gal.stellar_mass(nsc=True)
+
+    # Test that the axis ratios for the NSC look reasonable.
+    assert real_gal.nsc_axis_ratios.b_over_a < 1.0
+
+
+
 
