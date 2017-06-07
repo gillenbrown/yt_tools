@@ -343,5 +343,29 @@ class Galaxy(object):
         if self.nsc_radius is None:
             raise AttributeError("NSC radius has not been set.")
 
+    def nsc_rotation(self):
+        """Calculates the mean rotational velocity and 3D velocity dispersion.
+
+        These quantities are mass weighted."""
+        radial_key = ('STAR', 'particle_velocity_cylindrical_radius')
+        theta_key = ('STAR', 'particle_velocity_cylindrical_theta')
+        z_key = ('STAR', 'particle_velocity_cylindrical_z')
+
+        vel_radial = self.sphere[radial_key].in_units("km/s")[self.nsc_idx]
+        vel_rot = self.sphere[theta_key].in_units("km/s")[self.nsc_idx]
+        vel_z = self.sphere[z_key].in_units("km/s")[self.nsc_idx]
+        masses = self.sphere[('STAR', 'MASS')].in_units("msun")[self.nsc_idx]
+
+        self.mean_rot_vel = utils.weighted_mean(vel_rot, masses)
+
+        sigma_radial = utils.weighted_variance(vel_radial, masses)
+        sigma_rot = utils.weighted_variance(vel_rot, masses)
+        sigma_z = utils.weighted_variance(vel_z, masses)
+
+        self.nsc_3d_sigma = utils.sum_in_quadrature(sigma_z, sigma_rot,
+                                                    sigma_radial)
+
+
+
 
 
