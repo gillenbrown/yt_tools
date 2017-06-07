@@ -112,8 +112,10 @@ def weighted_mean(values, weights):
 
     """
     # convert to arrays to make vectorized computation possible
-    values = np.array(values, dtype=np.float64)
-    weights = np.array(weights, dtype=np.float64)
+    if not isinstance(values, np.ndarray):
+        values = np.array(values, dtype=np.float64)
+    if not isinstance(weights, np.ndarray):
+        weights = np.array(weights, dtype=np.float64)
 
     # make sure all weights are positive
     if not np.all(weights >= 0):

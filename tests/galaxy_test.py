@@ -226,6 +226,8 @@ def test_real_gal_stuff(real_gal):
     # test that the rotation on the NSC has the right units
     utils.test_for_units(real_gal.mean_rot_vel, "rotational velocity")
     utils.test_for_units(real_gal.nsc_3d_sigma, "sigma")
+    real_gal.mean_rot_vel.in_units("km/s")  # will throw error if not compatible
+    real_gal.nsc_3d_sigma.in_units("km/s")  # will throw error if not compatible
 
 
 

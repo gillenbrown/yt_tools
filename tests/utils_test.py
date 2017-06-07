@@ -67,8 +67,8 @@ def test_weighted_mean_all_same_weight():
 
 def test_weighted_mean_with_lists():
     """Lists should work just as well as arrays. """
-    values = [0, 1, 2, 3]
-    weights = [4, 5, 6, 7]
+    values = [0., 1., 2., 3.]
+    weights = [4., 5., 6., 7.]
     assert np.isclose(utils.weighted_mean(values, weights),
                       utils.weighted_mean(np.array(values), np.array(weights)))
 
@@ -120,8 +120,8 @@ def test_weighted_variance_all_same_weight():
 
 def test_weighted_variance_with_lists():
     """Lists should work just as well as arrays. """
-    values = [0, 1, 2, 3]
-    weights = [4, 5, 6, 7]
+    values = [0., 1., 2., 3.]
+    weights = [4., 5., 6., 7.]
     assert np.isclose(utils.weighted_variance(values, weights),
                       utils.weighted_variance(np.array(values),
                                               np.array(weights)))

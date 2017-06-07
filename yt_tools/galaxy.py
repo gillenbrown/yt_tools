@@ -352,16 +352,16 @@ class Galaxy(object):
         theta_key = ('STAR', 'particle_velocity_cylindrical_theta')
         z_key = ('STAR', 'particle_velocity_cylindrical_z')
 
-        vel_radial = self.sphere[radial_key].in_units("km/s")[self.nsc_idx]
+        vel_rad = self.sphere[radial_key].in_units("km/s")[self.nsc_idx]
         vel_rot = self.sphere[theta_key].in_units("km/s")[self.nsc_idx]
         vel_z = self.sphere[z_key].in_units("km/s")[self.nsc_idx]
         masses = self.sphere[('STAR', 'MASS')].in_units("msun")[self.nsc_idx]
 
         self.mean_rot_vel = utils.weighted_mean(vel_rot, masses)
 
-        sigma_radial = np.sqrt(utils.weighted_variance(vel_radial, masses))
-        sigma_rot = np.sqrt(utils.weighted_variance(vel_rot, masses))
-        sigma_z = np.sqrt(utils.weighted_variance(vel_z, masses))
+        sigma_radial = np.sqrt(utils.weighted_variance(vel_rad, masses, ddof=0))
+        sigma_rot = np.sqrt(utils.weighted_variance(vel_rot, masses, ddof=0))
+        sigma_z = np.sqrt(utils.weighted_variance(vel_z, masses, ddof=0))
 
         self.nsc_3d_sigma = utils.sum_in_quadrature(sigma_z, sigma_rot,
                                                     sigma_radial)
