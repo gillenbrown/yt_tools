@@ -69,6 +69,7 @@ class Galaxy(object):
             self.add_disk(j_radius, disk_radius, disk_height)
             self.find_nsc_radius()
             self.create_axis_ratios()
+            self.nsc_rotation()
 
     def _create_kde_object(self, dimension=2, quantity="mass"):
         """Creates a KDE object in the desired coordinates for the desired
@@ -314,7 +315,7 @@ class Galaxy(object):
         """
 
         # first need to to the KDE fitting procedure
-        self.kde_profile("MASS", spacing=0.05 * yt.units.pc,
+        self.kde_profile("MASS", spacing=5 * yt.units.pc,
                          outer_radius=1000 * yt.units.pc)
         self.nsc = nsc_structure.NscStructure(self.radii["mass_kde_2D"],
                                               self.densities["mass_kde_2D"])
@@ -322,7 +323,7 @@ class Galaxy(object):
         self.nsc_radius = self.nsc.nsc_radius * yt.units.pc
         # then get the indices of the stars actually in the NSC
         radius_key = ('STAR', 'particle_position_spherical_radius')
-        self.nsc_idx = np.where(self.sphere[radius_key] < self.nsc_radius)
+        self.nsc_idx = np.where(self.sphere[radius_key] < self.nsc_radius)[0]
 
     def create_axis_ratios(self):
         """Creates the axis ratios object. """
@@ -358,9 +359,9 @@ class Galaxy(object):
 
         self.mean_rot_vel = utils.weighted_mean(vel_rot, masses)
 
-        sigma_radial = utils.weighted_variance(vel_radial, masses)
-        sigma_rot = utils.weighted_variance(vel_rot, masses)
-        sigma_z = utils.weighted_variance(vel_z, masses)
+        sigma_radial = np.sqrt(utils.weighted_variance(vel_radial, masses))
+        sigma_rot = np.sqrt(utils.weighted_variance(vel_rot, masses))
+        sigma_z = np.sqrt(utils.weighted_variance(vel_z, masses))
 
         self.nsc_3d_sigma = utils.sum_in_quadrature(sigma_z, sigma_rot,
                                                     sigma_radial)

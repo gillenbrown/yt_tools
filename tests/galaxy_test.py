@@ -202,7 +202,7 @@ def test_add_disk_kde_creation(gal):
 #
 # -----------------------------------------------------------------------------
 
-def test_nsc_radius_units_and_mass_and_axis_ratios(real_gal):
+def test_real_gal_stuff(real_gal):
     """Test several things about the NSC. I am combining a lot of things into
     one test since the real_gal takes a long time to initialize, since it has
     to do the KDE process. """
@@ -212,9 +212,20 @@ def test_nsc_radius_units_and_mass_and_axis_ratios(real_gal):
     # Test that the NSC mass is less than the total galaxy mass
     assert real_gal.stellar_mass(nsc=False) > real_gal.stellar_mass(nsc=True)
 
+    # test that the NSC indices actually pick up the right objects
+    radii = real_gal.sphere[('STAR', 'particle_position_spherical_radius')]
+    assert np.max(radii[real_gal.nsc_idx]) < real_gal.nsc_radius
+    # then get the indices not in the nsc
+    non_nsc_idx = [idx for idx in range(len(radii))
+                   if idx not in real_gal.nsc_idx]
+    assert np.min(radii[non_nsc_idx]) > real_gal.nsc_radius
+
     # Test that the axis ratios for the NSC look reasonable.
     assert real_gal.nsc_axis_ratios.b_over_a < 1.0
 
+    # test that the rotation on the NSC has the right units
+    utils.test_for_units(real_gal.mean_rot_vel, "rotational velocity")
+    utils.test_for_units(real_gal.nsc_3d_sigma, "sigma")
 
 
 
