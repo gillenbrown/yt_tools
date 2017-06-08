@@ -52,6 +52,13 @@ def gal():
 def real_gal():  # has larger radius to actually include everythign we need to
     return galaxy.Galaxy(ds, best_loc, 1000 * pc, j_radius=30 * pc)
 
+@pytest.fixture
+def read_in_gal():
+    file = open("./real_gal_save.txt", "r")
+    gal =  galaxy.read_gal(ds, file)
+    file.close()
+    return gal
+
 # -----------------------------------------------------------------------------
 
 # test the KDE process
@@ -187,7 +194,7 @@ def test_add_disk_properties(gal):
     assert gal.disk.height == disk_height
     assert gal.disk.radius == disk_radius
     # test that it's not in the default orientation
-    assert not np.array_equal(gal.disk.get_field_parameter("normal"), [0, 0, 1])
+    assert not np.allclose(gal.disk.get_field_parameter("normal"), [0, 0, 1])
 
 def test_add_disk_kde_creation(gal):
     assert gal._star_kde_mass_2d is None
@@ -202,48 +209,101 @@ def test_add_disk_kde_creation(gal):
 #
 # -----------------------------------------------------------------------------
 
-def test_real_gal_stuff(real_gal):
-    """Test several things about the NSC. I am combining a lot of things into
-    one test since the real_gal takes a long time to initialize, since it has
-    to do the KDE process. """
-    utils.test_for_units(real_gal.nsc_radius, "NSC radius")
-    assert 0 * pc < real_gal.nsc_radius < real_gal.sphere.radius
+def test_real_nsc_existence(read_in_gal):
+    utils.test_for_units(read_in_gal.nsc_radius, "NSC radius")
+    assert 0 * pc < read_in_gal.nsc_radius < read_in_gal.sphere.radius
 
+def test_real_nsc_stellar_mass(read_in_gal):
     # Test that the NSC mass is less than the total galaxy mass
-    assert real_gal.stellar_mass(nsc=False) > real_gal.stellar_mass(nsc=True)
+    assert read_in_gal.stellar_mass(nsc=False) > \
+           read_in_gal.stellar_mass(nsc=True)
 
+def test_real_nsc_radius_cut(read_in_gal):
     # test that the NSC indices actually pick up the right objects
-    radii = real_gal.sphere[('STAR', 'particle_position_spherical_radius')]
-    assert np.max(radii[real_gal.nsc_idx]) < real_gal.nsc_radius
+    radii = read_in_gal.sphere[('STAR', 'particle_position_spherical_radius')]
+    assert np.max(radii[read_in_gal.nsc_idx]) < read_in_gal.nsc_radius
     # then get the indices not in the nsc
-    non_nsc_idx = [idx for idx in range(len(radii))
-                   if idx not in real_gal.nsc_idx]
-    assert np.min(radii[non_nsc_idx]) > real_gal.nsc_radius
+    all_idx_set = set(range(len(radii)))
+    nsc_idx_set = set(read_in_gal.nsc_idx)
+    non_nsc_idx = list(all_idx_set.difference(nsc_idx_set))
+    assert np.min(radii[non_nsc_idx]) > read_in_gal.nsc_radius
 
+def test_real_nsc_axis_ratios(read_in_gal):
     # Test that the axis ratios for the NSC look reasonable.
-    assert real_gal.nsc_axis_ratios.b_over_a < 1.0
+    assert read_in_gal.nsc_axis_ratios.b_over_a < 1.0
 
+def test_nsc_rotation_units(read_in_gal):
     # test that the rotation on the NSC has the right units
-    utils.test_for_units(real_gal.mean_rot_vel, "rotational velocity")
-    utils.test_for_units(real_gal.nsc_3d_sigma, "sigma")
-    real_gal.mean_rot_vel.in_units("km/s")  # will throw error if not compatible
-    real_gal.nsc_3d_sigma.in_units("km/s")  # will throw error if not compatible
+    utils.test_for_units(read_in_gal.mean_rot_vel, "rotational velocity")
+    utils.test_for_units(read_in_gal.nsc_3d_sigma, "sigma")
+    read_in_gal.mean_rot_vel.in_units("km/s")  # throw error if not compatible
+    read_in_gal.nsc_3d_sigma.in_units("km/s")  # throw error if not compatible
 
+def test_nsc_abundances(read_in_gal):
     # then check that the abundances exist and are not identical with each other
-    assert -5 < real_gal.nsc_abundances.z_on_h() < 5
-    assert -5 < real_gal.gal_abundances.z_on_h() < 5
-    assert -5 < real_gal.nsc_abundances.x_on_h("Fe") < 5
-    assert -5 < real_gal.gal_abundances.x_on_h("Fe") < 5
-    assert np.isclose(real_gal.nsc_abundances.x_on_fe("Fe"), 0)
-    assert np.isclose(real_gal.gal_abundances.x_on_fe("Fe"), 0)
-    assert -5 < real_gal.nsc_abundances.x_on_fe("Na") < 5
-    assert -5 < real_gal.gal_abundances.x_on_fe("Na") < 5
-    assert real_gal.nsc_abundances.z_on_h() != real_gal.gal_abundances.z_on_h()
-    assert real_gal.nsc_abundances.x_on_h("Na") != \
-           real_gal.gal_abundances.x_on_h("Na")
-    assert real_gal.nsc_abundances.x_on_fe("Na") != \
-           real_gal.gal_abundances.x_on_fe("Na")
+    assert -5 < read_in_gal.nsc_abundances.z_on_h() < 5
+    assert -5 < read_in_gal.gal_abundances.z_on_h() < 5
+    assert -5 < read_in_gal.nsc_abundances.x_on_h("Fe") < 5
+    assert -5 < read_in_gal.gal_abundances.x_on_h("Fe") < 5
+    assert np.isclose(read_in_gal.nsc_abundances.x_on_fe("Fe"), 0)
+    assert np.isclose(read_in_gal.gal_abundances.x_on_fe("Fe"), 0)
+    assert -5 < read_in_gal.nsc_abundances.x_on_fe("Na") < 5
+    assert -5 < read_in_gal.gal_abundances.x_on_fe("Na") < 5
+    assert not np.isclose(read_in_gal.nsc_abundances.z_on_h(),
+                          read_in_gal.gal_abundances.z_on_h())
+    assert not np.isclose(read_in_gal.nsc_abundances.x_on_h("Na"),
+                          read_in_gal.gal_abundances.x_on_h("Na"))
+    assert not np.isclose(read_in_gal.nsc_abundances.x_on_fe("Na"),
+                          read_in_gal.gal_abundances.x_on_fe("Na"))
 
+# -----------------------------------------------------------------------------
+#
+# test the reading and writing
+#
+# -----------------------------------------------------------------------------
 
+def test_reading_writing(real_gal):
+    """The only thing we need is that the object needs to be the same after
+    we write then read it in. There is a lot of checking here, though."""
+    file = open("./real_gal_save.txt", "w")
+    real_gal.write(file)
+    file.close()
+
+    file = open("./real_gal_save.txt", "r")
+    new_gal = galaxy.read_gal(ds, file)
+
+    # then compare things. First basic stuff:
+    assert np.allclose(real_gal.center.in_units("pc").value,
+                       new_gal.center.in_units("pc").value)
+    # ^ the .value is needed to make yt arrays play nice with allclose
+    assert real_gal.radius == new_gal.radius
+    assert real_gal.ds == new_gal.ds
+
+    # spheres should be the same
+    assert np.allclose(real_gal.sphere.center.in_units("pc").value,
+                       new_gal.sphere.center.in_units("pc").value)
+    assert real_gal.sphere.radius == new_gal.sphere.radius
+
+    # disk stuff
+    assert real_gal.disk.radius == new_gal.disk.radius
+    assert np.allclose(real_gal.disk._norm_vec, new_gal.disk._norm_vec)
+    assert real_gal.disk.height == new_gal.disk.height
+
+    # then check some of the derived parameters
+    assert real_gal.nsc_axis_ratios.b_over_a == new_gal.nsc_axis_ratios.b_over_a
+    assert real_gal.nsc_axis_ratios.c_over_a == new_gal.nsc_axis_ratios.c_over_a
+    assert real_gal.nsc_axis_ratios.c_over_b == new_gal.nsc_axis_ratios.c_over_b
+    assert real_gal.nsc_radius == new_gal.nsc_radius
+    assert np.array_equal(real_gal.nsc_idx, new_gal.nsc_idx)
+    assert np.isclose(real_gal.mean_rot_vel.in_units("km/s").value,
+                      new_gal.mean_rot_vel.in_units("km/s").value)
+    assert np.isclose(real_gal.nsc_3d_sigma.in_units("km/s").value,
+                      new_gal.nsc_3d_sigma.in_units("km/s").value)
+    assert np.isclose(real_gal.nsc_abundances.x_on_fe("N"),
+                      new_gal.nsc_abundances.x_on_fe("N"))
+    assert np.isclose(real_gal.nsc_abundances.x_on_h("Ca"),
+                      new_gal.nsc_abundances.x_on_h("Ca"))
+    assert np.isclose(real_gal.nsc_abundances.z_on_h(),
+                      new_gal.nsc_abundances.z_on_h())
 
 

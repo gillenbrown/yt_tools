@@ -6,6 +6,171 @@ from . import utils
 from . import nsc_structure
 from . import abundances
 
+
+# define some helper functions for the read/write process
+def _write_single_item(file_obj, item, name, units=False, multiple=False):
+    """Writes a single item to the file. The file must already be opened and
+    ready for writing.
+
+    Will write a single row to the file of the format:
+    "name: item"  # if a single value with no units
+    "name: item units"  # if a single value with units
+    "name: item[0]  item[1] units"  # if it has multiple parts and units
+
+    :param file_obj: already opened file object that the data will be
+                     written to.
+    :param item: item to be written to the file. It can be a single item, or
+                 something like a list or array too.
+    :param name: Name to call the item in the output file.
+    :param units: Whether or not the item has units on it or not.
+    :type units: bool
+    :param multiple: Whether the item has multiple parts that need to be written
+                     separately. This would be true if it is a list or array.
+    :type multiple: bool
+
+    """
+    file_obj.write("{}:\t".format(name))
+    # when there are multiple items we have to parse them individually
+    if multiple:
+        for i in item:
+            if units:  # we don't want the units now
+                file_obj.write(str(i.value) + "\t")
+            else:
+                file_obj.write(str(i) + "\t")
+    else:  # not multiple. Same as above
+        if units:
+            file_obj.write(str(item.value) + "\t")
+        else:
+            file_obj.write(str(item) + "\t")
+    # then write the units if we need to
+    if units:
+        file_obj.write(str(item.units))
+
+    file_obj.write("\n")
+
+
+def _parse_line(line, multiple=False, units=False):
+    """Parses one line from the output of the galaxy.write() function.
+
+    This does not handle lines that contain KDe data, that is handled
+    separately.
+
+    :param line: Line to parse.
+    :param multiple: Whether or not this line contains an item with multiple
+                     parts, like a list or tuple.
+    :type multiple: bool
+    :param units: Whether or not the iten on this line has units.
+    :type units: bool
+    """
+    split_line = line.split()  # get the components
+    if units:
+        unit = split_line[-1]  # unit will be the last thing
+        if multiple:
+            values = split_line[1:-1]  # first item is the name, last is unit
+        else:
+            values = split_line[1]  # just get the single value, not a list
+        return yt.YTArray(values, unit)  # put the unit on the data
+    else:  # no units.
+        # We have to convert everything to floats here, since we don't have
+        # yt to do that for us.
+        if multiple:
+            return [float(item) for item in split_line[1:]]
+        else:
+            return float(split_line[1])
+
+
+def _parse_kde_line(line):
+    """ Parse a single line containing data from the KDE profile.
+
+    This will return a three element tuple. The first is the type of data this
+    belongs to, which will either be "radii" or "densities". The next will be
+    the key for either the radii or densities dictionary that this line belongs
+    to. The last item will be the list of values that is the value in this
+    dictionary.
+
+    :param line: Line containing KDE data to parse.
+    :returns: "radii" or "density", telling which dictionary these values
+              belong to.
+    :returns: key into the dictonary above
+    :returns: values that go in that dictionary, holding either the radii or
+              densities, as indicated.
+    """
+    split_line = line.split()
+    parsed_key = split_line[0]
+    # this parsed key is of the format "dict_key", where key will have
+    # underscores in it too.
+    data_type = parsed_key.split("_")[0]
+    # we then mangle the rest back into the right format.
+    key = "_".join(parsed_key.split("_")[1:]).strip(":")
+    values = [float(item) for item in split_line[1:]]
+    return data_type, key, values
+
+
+def read_gal(ds, file_obj):
+    """Reads a galaxy object from a file.
+
+    The file has to be an already opened file object that is at the location
+    of a galaxy object, written by the Galaxy.write() function. This function
+    will return a Galaxy object with all the attributes filled in.
+
+    If the file is not in the right spot, a ValueError will be raised.
+
+    :param ds: dataset that the galaxy belongs to.
+    :param file_obj: already opened file that is at the location of a new
+                     galaxy object, as described above.
+    :returns: Galaxy object with the data filled in.
+    :rtype: Galaxy
+    """
+    # first find the location in the file where the the galaxy object starts.
+    # there could be blank lines, which we ignore. I can't iterate through the
+    # file directly, since I need to get individual lines later, and Python
+    # won't allow to mix both styles.
+    while True:
+        line = file_obj.readline()
+        if line.strip() == "new_galaxy_here":
+            break  # this is what we want.
+        elif line != "" and line != "\n":  # if it's anything other than blank
+            raise ValueError("File is not in the right spot for reading")
+
+    # we are now at the right spot. Each line following this is a single
+    # known value that is easy to grab.
+    center = _parse_line(file_obj.readline(), multiple=True, units=True)
+    radius = _parse_line(file_obj.readline(), multiple=False, units=True)
+    disk_radius = _parse_line(file_obj.readline(), multiple=False, units=True)
+    disk_height = _parse_line(file_obj.readline(), multiple=False, units=True)
+    disk_normal = _parse_line(file_obj.readline(), multiple=True, units=False)
+
+    # we can create the galaxy at this point
+    gal = Galaxy(ds, center, radius)
+    # we then add the disk without calculating angular momentum by
+    # specifying the normal vector. This saves computation time.
+    gal.add_disk(disk_radius=disk_radius, disk_height=disk_height,
+                 normal=disk_normal)
+
+    # then we get to the KDE values.
+    while True:
+        line = file_obj.readline()
+        if line.strip() == "end_of_galaxy":
+            break  # this is the end of the file
+        # if we aren't at the end, parse the line
+        data_type, key, values = _parse_kde_line(line)
+        # then assign the values to the correct dictionary
+        if data_type == "radii":
+            gal.radii[key] = values
+        else:  # densities
+            gal.densities[key] = values
+
+    # then we can do the fun stuff where we calculate everythign of interest.
+    # this should all be pretty quick, since the KDE process has already been
+    # read in and doesn't need to be repeated.
+    gal.find_nsc_radius()
+    gal.create_axis_ratios()
+    gal.nsc_rotation()
+    gal.create_abundances()
+
+    return gal
+
+
 class Galaxy(object):
     def __init__(self, dataset, center, radius, j_radius=None, disk_radius=None,
                  disk_height=None):
@@ -126,11 +291,14 @@ class Galaxy(object):
             z_II = np.array(container[('STAR', 'METALLICITY_SNII')])
             total_z = z_Ia + z_II
             values = total_z * masses  # this is total metals
+        else:
+            raise ValueError("Quanity {} is not supported.".format(quantity))
 
         # we can then create the KDE object
         return kde.KDE(locations, values)
 
-    def add_disk(self, j_radius=None, disk_radius=None, disk_height=None):
+    def add_disk(self, j_radius=None, disk_radius=None, disk_height=None,
+                 normal=None):
         """Creates a disk aligned with the angular momentum of the galaxy.
         
         This works by creating a sphere with the radius=`j_radius`, calculating 
@@ -142,6 +310,8 @@ class Galaxy(object):
                          momentum. Needs units.
         :param disk_radius: radius of the resulting disk. Needs units.
         :param disk_height: height of the resulting disk. Needs units.
+        :param normal: If you already know the normal, this will add the disk
+                       without calculating any of the angular momentum stuff.
         :returns: None, but creates the disk attribute for the galaxy. 
         """
         # set default values if not already set
@@ -156,12 +326,13 @@ class Galaxy(object):
         utils.test_for_units(disk_radius, "disk_radius")
         utils.test_for_units(disk_height, "disk_height")
 
-        # then we can go ahead and do things. First create the new sphere
-        j_vec_sphere = self.ds.sphere(center=self.center, radius=j_radius)
-        # find its angular momentum
-        j_vec = j_vec_sphere.quantities.angular_momentum_vector()
+        if normal is None:
+            # then we can go ahead and do things. First create the new sphere
+            j_vec_sphere = self.ds.sphere(center=self.center, radius=j_radius)
+            # find its angular momentum
+            normal = j_vec_sphere.quantities.angular_momentum_vector()
         # then create the disk
-        self.disk = self.ds.disk(center=self.center, normal=j_vec,
+        self.disk = self.ds.disk(center=self.center, normal=normal,
                                  height=disk_height, radius=disk_radius)
 
         # we can then use this disk to create the 2D KDE objects
@@ -321,9 +492,10 @@ class Galaxy(object):
         :return:
         """
 
-        # first need to to the KDE fitting procedure
-        self.kde_profile("MASS", spacing=5 * yt.units.pc,
-                         outer_radius=1000 * yt.units.pc)
+        # first need to to the KDE fitting procedure, possibly.
+        if "mass_kde_2D" not in self.radii:
+            self.kde_profile("MASS", spacing=50 * yt.units.pc,
+                             outer_radius=1000 * yt.units.pc)
         self.nsc = nsc_structure.NscStructure(self.radii["mass_kde_2D"],
                                               self.densities["mass_kde_2D"])
 
@@ -398,6 +570,43 @@ class Galaxy(object):
         self.nsc_abundances = abundances.Abundances(masses[self.nsc_idx],
                                                     z_Ia[self.nsc_idx],
                                                     z_II[self.nsc_idx])
+
+    def write(self, file_obj):
+        """Writes the galaxy object to a file, to be read in later.
+
+        This is done to save time, since the KDE process can be expensive and
+        takes a while. This function only writes out the densities and radii
+        in the KDE processes that have been used so far, as well as some
+        essential data like the center.
+
+        :param file_obj: already opened file object that is ready to be
+                         written to.
+        :returns: None, but writes to the file.
+        """
+
+        # write essential data first.
+        file_obj.write("\n")
+        file_obj.write("new_galaxy_here\n")  # tag so later read-in is easier
+        _write_single_item(file_obj, self.center.in_units("pc"), "center",
+                           units=True, multiple=True)
+        _write_single_item(file_obj, self.radius.in_units("pc"), "radius",
+                           units=True, multiple=False)
+        # disk values
+        _write_single_item(file_obj, self.disk.radius.in_units("pc"),
+                           "disk_radius", units=True)
+        _write_single_item(file_obj, self.disk.height.in_units("pc"),
+                           "disk_height", units=True)
+        _write_single_item(file_obj, self.disk._norm_vec, "disk_normal",
+                           multiple=True)
+
+        # then all we need are the KDE values
+        for key in self.radii:
+            _write_single_item(file_obj, self.radii[key],
+                               "radii_{}".format(key), multiple=True)
+            _write_single_item(file_obj, self.densities[key],
+                              "density_{}".format(key), multiple=True)
+        file_obj.write("end_of_galaxy\n")  # tag so later read-in is easier
+
 
 
 
