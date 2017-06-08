@@ -97,3 +97,78 @@ class Abundances(object):
         sun_frac = (1.0 - self.z_sun) / self.z_sun
 
         return np.log10(star_frac * sun_frac)
+
+    def x_on_h(self, element):
+        """Calculate the [X/H] value for this collection of stars.
+
+        This is calculated in the following way.
+
+        .. math::
+            [X/H] = \log_{10} \left[ \frac{\sum_\star M_\star (Z_\star^{Ia}
+            f_X^{Ia} + Z_\star^{II} f_X^{II})}{\sum_\star M_\star
+            (1 - Z_{tot \star})}\frac{1 - Z_\odot}{Z_\odot f_{X \odot}} \right]
+
+        Where f is the fraction of the total metals element x takes up for
+        either the type Ia or II yields.
+
+        This calculation is basically the sum of the mass in that metal divided
+        by the mass of not metals for both the sun and the star. This works
+        because we assume a cosmic abundance for H, making the mass that isn't
+        in metals a proxy for H.
+
+        :param element: Element to be used in place of X.
+        :type element: str
+        :returns: Value of [X/H] for the given element.
+        :rtype: float
+        """
+        # get the metal mass fractions
+        f_Ia = self.yields_Ia.mass_fraction(element, self.Z_Ia)
+        f_II = self.yields_II.mass_fraction(element, self.Z_II)
+        star_num = np.sum(self.mass * (self.Z_Ia * f_Ia + self.Z_II * f_II))
+        star_denom = np.sum(self.mass * self.one_minus_Z_tot)
+        star_frac = star_num / star_denom
+
+        sun_num = 1.0 - self.z_sun
+        sun_denom = self.z_sun * self.solar_metal_fractions[element]
+        sun_frac = sun_num / sun_denom
+
+        return np.log10(star_frac * sun_frac)
+
+    def x_on_fe(self, element):
+        """Calculate the [X/Fe] value for this collection of stars.
+
+        This is calculated in the following way.
+
+        .. math::
+            [X/Fe] = \log_{10} \left[ \frac{\sum_\star M_\star
+            (Z_\star^{Ia}f_X^{Ia} + Z_\star^{II} f_X^{II})}{\sum_\star M_\star
+            (Z_\star^{Ia}f_{Fe}^{Ia} + Z_\star^{II} f_{Fe}^{II})}
+            \frac{f_{Fe \odot}}{f_{X \odot}} \right]
+
+        Where f is the fraction of the total metals element x takes up for
+        either the type Ia or II yields.
+
+        This calculation is basically the sum of the mass in that metal divided
+        by the mass of iron for both the sun and the star.
+
+        :param element: Element to be used in place of X.
+        :type element: str
+        :returns: Value of [X/Fe] for the given element.
+        :rtype: float
+        """
+        # get the metal mass fractions
+        f_Ia_x = self.yields_Ia.mass_fraction(element, self.Z_Ia)
+        f_II_x = self.yields_II.mass_fraction(element, self.Z_II)
+        f_Ia_Fe = self.yields_Ia.mass_fraction("Fe", self.Z_Ia)
+        f_II_Fe = self.yields_II.mass_fraction("Fe", self.Z_II)
+
+        star_num = np.sum(self.mass * (self.Z_Ia * f_Ia_x + self.Z_II * f_II_x))
+        star_denom = np.sum(self.mass * (self.Z_Ia * f_Ia_Fe +
+                                         self.Z_II * f_II_Fe))
+        star_frac = star_num / star_denom
+
+        sun_num = self.solar_metal_fractions["Fe"]
+        sun_denom = self.solar_metal_fractions[element]
+        sun_frac = sun_num / sun_denom
+
+        return np.log10(star_frac * sun_frac)
