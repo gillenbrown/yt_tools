@@ -175,4 +175,14 @@ def sum_in_quadrature(*args):
     sum_in_quadrature([1, 2, 3]) == sqrt(14)
 
     """
-    return np.sqrt(np.sum(np.array(args)**2))
+    # if args is one element, it is either a list or one element.
+    if len(args) == 1:
+        # see if it's an array
+        try:
+            return np.sqrt((args[0] ** 2).sum())
+        except TypeError:  # it's a list, and doesn't square like that.
+            return np.sqrt(sum([x ** 2 for x in args[0]]))
+        except AttributeError:  #it's a value, and doesn't have sum
+            return args[0]  # square root of itself squared.
+    # if we got here it's an else. We have a list of elements in args.
+    return np.sqrt(sum([x**2 for x in args]))

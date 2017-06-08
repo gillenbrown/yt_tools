@@ -156,6 +156,7 @@ def test_weighted_variance_example():
 def test_sum_in_quadrature_single_values():
     """Should get the value back"""
     assert np.isclose(utils.sum_in_quadrature(5), 5)
+    assert np.isclose(utils.sum_in_quadrature(np.array([5])), 5)
 
 def test_sum_in_quadrature_scalars():
     assert np.isclose(utils.sum_in_quadrature(1, 1, 1), np.sqrt(3))
@@ -168,3 +169,9 @@ def test_sum_in_quadrature_list():
     assert np.isclose(utils.sum_in_quadrature([2, 2, 2]), np.sqrt(12))
     assert np.isclose(utils.sum_in_quadrature([1, 2, 3]), np.sqrt(14))
     assert np.isclose(utils.sum_in_quadrature([2, 3]), np.sqrt(13))
+
+def test_sum_in_quadrature_array():
+    assert np.isclose(utils.sum_in_quadrature(np.array([1, 1, 1])), np.sqrt(3))
+    assert np.isclose(utils.sum_in_quadrature(np.array([2, 2, 2])), np.sqrt(12))
+    assert np.isclose(utils.sum_in_quadrature(np.array([1, 2, 3])), np.sqrt(14))
+    assert np.isclose(utils.sum_in_quadrature(np.array([2, 3])), np.sqrt(13))
