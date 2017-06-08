@@ -229,5 +229,21 @@ def test_real_gal_stuff(real_gal):
     real_gal.mean_rot_vel.in_units("km/s")  # will throw error if not compatible
     real_gal.nsc_3d_sigma.in_units("km/s")  # will throw error if not compatible
 
+    # then check that the abundances exist and are not identical with each other
+    assert -5 < real_gal.nsc_abundances.z_on_h() < 5
+    assert -5 < real_gal.gal_abundances.z_on_h() < 5
+    assert -5 < real_gal.nsc_abundances.x_on_h("Fe") < 5
+    assert -5 < real_gal.gal_abundances.x_on_h("Fe") < 5
+    assert np.isclose(real_gal.nsc_abundances.x_on_fe("Fe"), 0)
+    assert np.isclose(real_gal.gal_abundances.x_on_fe("Fe"), 0)
+    assert -5 < real_gal.nsc_abundances.x_on_fe("Na") < 5
+    assert -5 < real_gal.gal_abundances.x_on_fe("Na") < 5
+    assert real_gal.nsc_abundances.z_on_h() != real_gal.gal_abundances.z_on_h()
+    assert real_gal.nsc_abundances.x_on_h("Na") != \
+           real_gal.gal_abundances.x_on_h("Na")
+    assert real_gal.nsc_abundances.x_on_fe("Na") != \
+           real_gal.gal_abundances.x_on_fe("Na")
+
+
 
 

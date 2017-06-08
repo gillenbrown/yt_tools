@@ -4,6 +4,7 @@ import numpy as np
 from . import kde
 from . import utils
 from . import nsc_structure
+from . import abundances
 
 class Galaxy(object):
     def __init__(self, dataset, center, radius, j_radius=None, disk_radius=None,
@@ -61,6 +62,11 @@ class Galaxy(object):
         self.nsc = None  # used for NSC analysis
         self.nsc_radius = None  # used for NSC analysis
         self.nsc_idx = None  # used for NSC analysis
+        self.nsc_axis_ratios = None  # used for rotation analysis
+        self.mean_rot_vel = None  # used for rotation analysis
+        self.nsc_3d_sigma = None  # used for rotation analysis
+        self.nsc_abundances = None  # used for elemental abundances
+        self.gal_abundances = None  # used for elemental abundances
 
         # we can then add a disk if the user wants to, and initialize the rest
         # of everything that comes after that.
@@ -70,6 +76,7 @@ class Galaxy(object):
             self.find_nsc_radius()
             self.create_axis_ratios()
             self.nsc_rotation()
+            self.create_abundances()
 
     def _create_kde_object(self, dimension=2, quantity="mass"):
         """Creates a KDE object in the desired coordinates for the desired
@@ -348,6 +355,9 @@ class Galaxy(object):
         """Calculates the mean rotational velocity and 3D velocity dispersion.
 
         These quantities are mass weighted."""
+
+        self._check_nsc_existence()  # need an NSC
+
         radial_key = ('STAR', 'particle_velocity_cylindrical_radius')
         theta_key = ('STAR', 'particle_velocity_cylindrical_theta')
         z_key = ('STAR', 'particle_velocity_cylindrical_z')
@@ -365,6 +375,30 @@ class Galaxy(object):
 
         self.nsc_3d_sigma = utils.sum_in_quadrature(sigma_z, sigma_rot,
                                                     sigma_radial)
+
+    def create_abundances(self):
+        """Creates the abundance objects, which handle all the elemental
+        abundance stuff, like [Z/H], [Fe/H], and [X/Fe].
+
+        One object is created for the NSC (self.nsc_abundances), and one for
+        the whole galaxy (self.gal_abundances)."""
+
+        self._check_nsc_existence()  # need an NSC
+
+        # we need masses, Z_Ia, and Z_II. I can convert these to arrays to
+        # help speed, since the units don't matter in the metallicity
+        # calculations. As long as the masses are relative it will still work.
+        masses = np.array(self.sphere[('STAR', 'MASS')])
+        z_Ia = np.array(self.sphere[('STAR', 'METALLICITY_SNIa')])
+        z_II = np.array(self.sphere[('STAR', 'METALLICITY_SNII')])
+
+        # the objects can then be created, where for the NSC we select only
+        # the objects in the NSC
+        self.gal_abundances = abundances.Abundances(masses, z_Ia, z_II)
+        self.nsc_abundances = abundances.Abundances(masses[self.nsc_idx],
+                                                    z_Ia[self.nsc_idx],
+                                                    z_II[self.nsc_idx])
+
 
 
 
