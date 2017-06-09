@@ -1,8 +1,8 @@
 from yt_tools import kde
+from yt_tools import utils
 
 import pytest
 import numpy as np
-from scipy.integrate import quad
 
 # -----------------------------------------------------------
 
@@ -18,7 +18,7 @@ def test_kde_init_results_3d():
     assert kde_obj.y == [2, 3, 4]
     assert kde_obj.z == [3, 4, 5]
     assert kde_obj.values == [4, 5, 6]
-    assert kde_obj.smoothing_function == kde.gaussian_3d_radial
+    assert kde_obj.smoothing_function == utils.gaussian_3d_radial
 
 def test_kde_init_results_2d():
     """Tests that a KDE object in 2D has the correct values, including it
@@ -28,7 +28,7 @@ def test_kde_init_results_2d():
     assert kde_obj.x == [1, 2, 3]
     assert kde_obj.y == [2, 3, 4]
     assert kde_obj.values == [3, 4, 5]
-    assert kde_obj.smoothing_function == kde.gaussian_2d_radial
+    assert kde_obj.smoothing_function == utils.gaussian_2d_radial
     with pytest.raises(AttributeError):
         kde_obj.z
 
@@ -57,38 +57,6 @@ def test_kde_init_checking():
     with pytest.raises(TypeError):
         # x, y, and z have to be arrays, even if we don't pass in any values
         kde.KDE([0, 0, 0])
-
-# -----------------------------------------------------------
-
-#  Test the distance calculation
-
-# -----------------------------------------------------------
-
-def test_distance_zero_dist():
-    """Tests the distance calculation for the trivial case"""
-    assert kde.distance(0, 0, 0, 0) == 0
-
-def test_distance_2D():
-    """Tests the distance calculation in 2D in a couple ways"""
-    assert np.isclose(kde.distance(2, 1, 2, 1), np.sqrt(2))
-    # make sure the squaring is working properly
-    assert np.isclose(kde.distance(3, 1, 3, 1), np.sqrt(8))
-
-def test_distance_3D():
-    """Tests the distance calculation in 3D in a couple ways"""
-    assert np.isclose(kde.distance(2, 1, 2, 1, 2, 1), np.sqrt(3))
-    # make sure order doesn't matter
-    assert np.isclose(kde.distance(1, 3, 1, 3, 1, 3), np.sqrt(12))
-
-def test_distance_array():
-    """Test the distance calculation when using arrays"""
-    kde_dist = kde.distance(np.array([1, 1]), 0, np.array([1, 1]), 0)
-    real_dist = np.array([np.sqrt(2), np.sqrt(2)])
-    assert np.allclose(kde_dist, real_dist)
-
-    kde_dist = kde.distance(np.array([2, 1, 3]), 1, np.array([1, -3, 5]), 2)
-    real_dist = np.array([np.sqrt(2), np.sqrt(25), np.sqrt(13)])
-    assert np.allclose(kde_dist, real_dist)
 
 # -----------------------------------------------------------
 
@@ -142,55 +110,55 @@ def test_density_error_checking_points_3d_loc_2d(single_point_at_zero_3d):
 def test_density_single_point_2d_zero_zero_dist(single_point_at_zero_2d):
     """Test a simple density calculation in 2D"""
     sigma = 5
-    density = kde.gaussian_2d_radial(0, sigma)
+    density = utils.gaussian_2d_radial(0, sigma)
     assert np.isclose(density, single_point_at_zero_2d.density(sigma, 0, 0))
 
 def test_density_single_point_2d_one_zero_dist(single_point_at_one_2d):
     """Test a simple density calculation in 2D"""
     sigma = 5
-    density = kde.gaussian_2d_radial(0, sigma)
+    density = utils.gaussian_2d_radial(0, sigma)
     assert np.isclose(density, single_point_at_one_2d.density(sigma, 1, 1))
 
 def test_density_single_point_3d_zero_zero_dist(single_point_at_zero_3d):
     """Test a simple density calculation in 2D"""
     sigma = 5
-    density = kde.gaussian_3d_radial(0, sigma)
+    density = utils.gaussian_3d_radial(0, sigma)
     assert np.isclose(density, single_point_at_zero_3d.density(sigma, 0, 0, 0))
 
 def test_density_single_point_3d_one_zero_dist(single_point_at_one_3d):
     """Test a simple density calculation in 2D"""
     sigma = 5
-    density = kde.gaussian_3d_radial(0, sigma)
+    density = utils.gaussian_3d_radial(0, sigma)
     assert np.isclose(density, single_point_at_one_3d.density(sigma, 1, 1, 1))
 
 def test_density_single_point_2d_zero_nonzero_dist(single_point_at_zero_2d):
     """Test a simple density calculation in 2D"""
     sigma = 5
-    density = kde.gaussian_2d_radial(1, sigma)
+    density = utils.gaussian_2d_radial(1, sigma)
     assert np.isclose(density, single_point_at_zero_2d.density(sigma, 0, 1))
 
 def test_density_single_point_2d_one_nonzero_dist(single_point_at_one_2d):
     """Test a simple density calculation in 2D"""
     sigma = 5
-    density = kde.gaussian_2d_radial(2, sigma)
+    density = utils.gaussian_2d_radial(2, sigma)
     assert np.isclose(density, single_point_at_one_2d.density(sigma, 3, 1))
 
 def test_density_single_point_3d_zero_nonzero_dist(single_point_at_zero_3d):
     """Test a simple density calculation in 2D"""
     sigma = 5
-    density = kde.gaussian_3d_radial(5, sigma)
+    density = utils.gaussian_3d_radial(5, sigma)
     assert np.isclose(density, single_point_at_zero_3d.density(sigma, 0, 5, 0))
 
 def test_density_single_point_3d_one_nonzero_dist(single_point_at_one_3d):
     """Test a simple density calculation in 2D"""
     sigma = 5
-    density = kde.gaussian_3d_radial(3, sigma)
+    density = utils.gaussian_3d_radial(3, sigma)
     assert np.isclose(density, single_point_at_one_3d.density(sigma, 1, 1, -2))
 
 def test_density_single_point_2d_weighted(single_point_at_zero_2d_weighted):
     """Test a simple density calculation in 2D, but with weights"""
     sigma = 5.357
-    density = kde.gaussian_2d_radial(0, sigma)
+    density = utils.gaussian_2d_radial(0, sigma)
 
     kde_density = single_point_at_zero_2d_weighted.density(sigma, 0, 0)
     weight = np.sum(single_point_at_zero_2d_weighted.values)
@@ -199,7 +167,7 @@ def test_density_single_point_2d_weighted(single_point_at_zero_2d_weighted):
 def test_density_single_point_3d_weighted(single_point_at_zero_3d_weighted):
     """Test a simple density calculation in 3D, but with weights"""
     sigma = 5.357
-    density = kde.gaussian_3d_radial(0, sigma)
+    density = utils.gaussian_3d_radial(0, sigma)
 
     kde_density = single_point_at_zero_3d_weighted.density(sigma, 0, 0, 0)
     weight = np.sum(single_point_at_zero_3d_weighted.values)
@@ -215,7 +183,7 @@ def test_density_4_points_2d():
                       weights)
     sigma = 4.987
     # get the density of a gaussian at 1 unit away
-    density = kde.gaussian_2d_radial(1, sigma)
+    density = utils.gaussian_2d_radial(1, sigma)
     # then multiply by the sum of the weights. This works since they are all 
     # the same distance away, so should have the same density.
     total_density = density * np.sum(weights)
@@ -233,7 +201,7 @@ def test_density_6_points_3d():
                       weights)
     sigma = 4.987
     # get the density of a gaussian at 1 unit away
-    density = kde.gaussian_3d_radial(1, sigma)
+    density = utils.gaussian_3d_radial(1, sigma)
     # then multiply by the sum of the weights. This works since they are all the
     # same distance away from the center, so they should have the same density.
     total_density = density * np.sum(weights)
@@ -422,7 +390,7 @@ def test_two_points_small_kernel_2d(two_points_2d_weighted):
 def test_radial_profile_3d_single_point(single_point_at_zero_3d):
     radii = np.arange(0, 100, 0.5)
     sigma = 2.0
-    true_densities = kde.gaussian_3d_radial(radii, sigma)
+    true_densities = utils.gaussian_3d_radial(radii, sigma)
     assert np.allclose(single_point_at_zero_3d.radial_profile(sigma, radii,
                                                               [0, 0, 0]),
                        true_densities)
@@ -430,7 +398,7 @@ def test_radial_profile_3d_single_point(single_point_at_zero_3d):
 def test_radial_profile_2d_single_point(single_point_at_zero_2d):
     radii = np.arange(0, 100, 0.5)
     sigma = 2.0
-    true_densities = kde.gaussian_2d_radial(radii, sigma)
+    true_densities = utils.gaussian_2d_radial(radii, sigma)
     assert np.allclose(single_point_at_zero_2d.radial_profile(sigma, radii,
                                                               [0, 0]),
                        true_densities)
@@ -443,74 +411,3 @@ def test_radial_profile_error_checking_3D(single_point_at_zero_3d):
     with pytest.raises(ValueError):
         single_point_at_zero_3d.radial_profile(1, np.arange(0, 10),
                                                [1, 1])
-
-
-# -----------------------------------------------------------
-
-#  Testing the radial Gaussian functions
-
-# -----------------------------------------------------------
-
-# we will be checking the results of various integrals. Since there is some
-# numerical error on these, we have to have some tolerance here. Scipy reports
-# errors, but we want to be generous on the size of our tolerance. This factor
-# will be multiplied by the given error, and the difference must be within
-# this range to be correct.
-error_tolerance = 10  
-
-# I am going to be integrating in spherical and cylindrical space, so I will 
-# create these integrands beforehand to make life easier.
-def spherical_integrand(r, func, sigma):
-    return func(r, sigma) * 4 * np.pi * r**2
-
-def cylindrical_integrad(r, func, sigma):
-    return func(r, sigma) * 2 * np.pi * r
-
-def test_3d_radial():
-    """Test the integration of the 3D Gaussian function"""
-    sigma = np.random.uniform(0.001, 100)
-    integral, error = quad(spherical_integrand, 0, np.infty, 
-                           args=(kde.gaussian_3d_radial, sigma))
-    assert(np.isclose(1, integral, atol=error*error_tolerance, rtol=0))
-
-def test_3d_radial():
-    """Test the integration of the 3D Gaussian function"""
-    sigma = np.random.uniform(0.001, 100)
-    integral, error = quad(cylindrical_integrad, 0, np.infty, 
-                           args=(kde.gaussian_2d_radial, sigma))
-    assert(np.isclose(1, integral, atol=error*error_tolerance, rtol=0))
-
-# I also want to test the error checking for these Gaussian functions.
-@pytest.mark.parametrize("func", [kde.gaussian_2d_radial, 
-                                  kde.gaussian_3d_radial])
-def test_gaussian_2d_error_checking_radius(func):
-    """The radius must be positive, whether we have an array or one value"""
-    with pytest.raises(RuntimeError):
-        func(-1, 1)
-    with pytest.raises(RuntimeError):
-        func(np.array([0, 1, 2, 3, -5]), 1)
-
-@pytest.mark.parametrize("func", [kde.gaussian_2d_radial, 
-                                  kde.gaussian_3d_radial])
-def test_gaussian_2d_error_checking_sigma(func):
-    """The standard deviation must be positive"""
-    with pytest.raises(ValueError):
-        func(1, 0)
-    with pytest.raises(ValueError):
-        func(1, -1)
-
-def test_radial_gaussian_2d_actual_points():
-    """Test against points plugged into calculator after deriving formula 
-    manually again. """
-    assert np.isclose(kde.gaussian_2d_radial(2, 5), 0.0058767412)
-    assert np.isclose(kde.gaussian_2d_radial(7, 5), 0.0023893047)
-    assert np.isclose(kde.gaussian_2d_radial(2.3, 7.4), 0.0027693608)
-    assert np.isclose(kde.gaussian_2d_radial(9.5, 7.4), 0.0012749001)
-
-def test_radial_gaussian_3d_actual_points():
-    """Test against points plugged into calculator after deriving formula 
-    manually again. """
-    assert np.isclose(kde.gaussian_3d_radial(2, 5), 4.688961058E-4)
-    assert np.isclose(kde.gaussian_3d_radial(7, 5), 1.906389302E-4)
-    assert np.isclose(kde.gaussian_3d_radial(2.3, 7.4), 1.492993391E-4)
-    assert np.isclose(kde.gaussian_3d_radial(9.5, 7.4), 6.873129013E-5)

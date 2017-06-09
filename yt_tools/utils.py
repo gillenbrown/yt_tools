@@ -1,5 +1,63 @@
+from __future__ import division
+
 from yt import units
 import numpy as np
+
+
+def _gaussian_error_checking(radius, sigma):
+    """Checks that both the standard deviation and radius are positive"""
+
+    # Error checking: standard deviation must be positive;
+    if sigma <= 0:
+        raise ValueError("The standard deviation must be positive.")
+    # the radius must be positive too, but we need to check that for both
+    # arrays and for single values.
+    try:
+        if radius < 0:  # will work if a single value
+            raise RuntimeError("The radius must be nonnegative")
+    except(ValueError):  # will happen if we pass in an array
+        if any(radius < 0):
+            raise RuntimeError("The radius must be nonnegative")
+
+
+def gaussian_3d_radial(radius, sigma):
+    """This is a simplified Gaussian for use here.
+
+    This is a radial Gaussian in 3 dimensions. """
+
+    _gaussian_error_checking(radius, sigma)
+
+    # then we can calculate the Gaussian function
+    exponent = (-1.0) * radius ** 2 / (2.0 * sigma ** 2)
+    coefficient = 1.0 / (sigma ** 3 * (2.0 * np.pi) ** (1.5))
+    return coefficient * np.exp(exponent)
+
+
+def gaussian_2d_radial(radius, sigma):
+    """This is a simplified Gaussian for use here.
+
+    This is a radial Gaussian in 2 dimensions. """
+
+    _gaussian_error_checking(radius, sigma)
+
+    exponent = (-1) * radius ** 2 / (2 * sigma ** 2)
+    coefficient = 1.0 / (sigma ** 2 * 2 * np.pi)
+    return coefficient * np.exp(exponent)
+
+
+def distance(x1, x2, y1=0, y2=0, z1=0, z2=0):
+    """ Calculates a distance between two points using the Pythagorean theorem.
+
+    Note: This does not support lists, since they aren't vectorized.
+    """
+    try:
+        x_dist = x1 - x2
+        y_dist = y1 - y2
+        z_dist = z1 - z2
+    except(TypeError):
+        raise TypeError("This function does not support lists. Try np.array.")
+
+    return np.sqrt(x_dist ** 2 + y_dist ** 2 + z_dist ** 2)
 
 def test_for_units(item, name):
     """Tests if an object has units in the yt system. Raises TypeError if not.
@@ -238,3 +296,74 @@ def bin_values(values, bin_size=100):
         binned_values.append(np.mean(these_values))
 
     return np.array(binned_values)
+
+def sphere_intersection(r1, r2, separation):
+    """Determines whether two spheres are in contact with each other.
+
+    There is a mathematical formula describing the radius of the circle that
+    forms the intersection of the two spheres.
+
+    http://mathworld.wolfram.com/Sphere-SphereIntersection.html
+
+    There is a square root in that. If the argument of that is positive, then we
+    will have a real radius of intersection, so they will intersect. If it is
+    negative, then the radius would be imaginary, so we do not have an
+    intersection.
+
+    :param r1: radius of one sphere
+    :param r2: radius of the other sphere. The order in which you pass these two
+               radii does not matter.
+    :param separation: separation between the two spheres
+    :returns: whether or not the two spheres intersect. Touching is defined as
+              intersecting, since a sphere intersects with itself.
+    :rtype: bool
+    """
+    # all values must be positive, first
+    if r1 < 0 or r2 < 0 or separation < 0 :
+        raise ValueError("Values passed in must be non-negative.")
+    return 4 * separation**2 * r1**2 - (separation**2 - r2**2 + r1**2)**2 >= 0
+
+def sphere_containment(cen_1, cen_2, r_1, r_2):
+    """
+    Test whether sphere 1 is contained within sphere 2.
+
+    :param cen_1: three element list with the x, y, z coordinates of the center
+                  of the first sphere
+    :param cen_2: three element list with the x, y, z coordinates of the center
+                  of the second sphere
+    :param r_1: radius of one sphere
+    :param r_2: radius of the other sphere. The order in which you pass these two
+               radii does not matter.
+    :returns: whether or not sphere 1 is contained within sphere 2. If they
+              touch at any point this will be false. A sphere can not be
+              contained within itself, for example.
+    :rtype: bool
+    """
+    # error checking. I just have to check that the lists have three elements,
+    # and are iterable, the base function will check the radii
+    test_iterable(cen_1, "center")
+    test_iterable(cen_2, "center")
+    if len(cen_1) != 3 or len(cen_2) != 3:
+        raise ValueError("Centers need to be a three element list.")
+    if r_1 < 0 or r_2 < 0:
+        raise ValueError("Radii passed in must be non-negative.")
+
+    # if the first sphere is smaller than the second, the first can't be
+    # contained within the second
+    if r_1 >= r_2:
+        return False
+
+    # we need to know how far the spheres are apart
+    x1, y1, z1 = cen_1
+    x2, y2, z2 = cen_2
+    dist = distance(x1, x2, y1, y2, z1, z2)
+
+    # if the distance between them is larger than the radius of the second
+    # sphere, then the first can't be contained in the second
+    if dist > r_2:
+        return False
+    # if the radius of the second is larger than the separation, then the center
+    # of the first is within the second. We can see if the whole thing is
+    # contained by seeing whether or not there is an intersection between the
+    # two spheres.
+    return not sphere_intersection(r_1, r_2, dist)

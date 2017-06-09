@@ -619,6 +619,25 @@ class Galaxy(object):
                               "density_{}".format(key), multiple=True)
         file_obj.write("end_of_galaxy\n")  # tag so later read-in is easier
 
+    def check_containment(self, other_gal):
+        """
+        Checks whether this galaxy is entirely contained within the virial
+        radius of another.
+
+        :param other_gal: Other galaxy that will be used to see if self is
+                          contained within this one.
+        :return: Whether or not this galaxy is contained within the other.
+        :rtype: bool
+        """
+        # to use the comparison in the utils file, everything has to be in the
+        # same units.
+        cen_1 = self.center.in_units("kpc").value
+        cen_2 = other_gal.center.in_units("kpc").value
+
+        radius_1 = self.radius.in_units("kpc").value
+        radius_2 = other_gal.radius.in_units("kpc").value
+
+        return utils.sphere_containment(cen_1, cen_2, radius_1, radius_2)
 
 
 

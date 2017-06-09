@@ -306,8 +306,6 @@ def test_reading_writing(read_in_gal):
         assert np.allclose(read_in_gal.binned_densities[key],
                            new_gal.binned_densities[key])
 
-
-
     # then check some of the derived parameters
     assert read_in_gal.nsc_axis_ratios.b_over_a == new_gal.nsc_axis_ratios.b_over_a
     assert read_in_gal.nsc_axis_ratios.c_over_a == new_gal.nsc_axis_ratios.c_over_a
@@ -336,3 +334,14 @@ def test_reading_writing(read_in_gal):
                       new_gal.gal_abundances.log_z_over_z_sun())
 
 
+# -----------------------------------------------------------------------------
+#
+# test containment
+#
+# -----------------------------------------------------------------------------
+
+def test_containment(read_in_gal, gal):
+    """Both galaxies are at the same spot, but read_in_gal has a much larger
+    radius, so gal should be contained in read_in_gal."""
+    assert gal.check_containment(read_in_gal)
+    assert not read_in_gal.check_containment(gal)

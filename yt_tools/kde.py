@@ -3,58 +3,6 @@ import numpy as np
 
 from . import utils
 
-def _gaussian_error_checking(radius, sigma):
-    """Checks that both the standard deviation and radius are positive"""
-
-    # Error checking: standard deviation must be positive;
-    if sigma <= 0:
-        raise ValueError("The standard deviation must be positive.")
-    # the radius must be positive too, but we need to check that for both
-    # arrays and for single values.
-    try:
-        if radius < 0:  # will work if a single value
-            raise RuntimeError("The radius must be nonnegative")
-    except(ValueError): # will happen if we pass in an array
-        if any(radius < 0):
-            raise RuntimeError("The radius must be nonnegative")
-
-def gaussian_3d_radial(radius, sigma):
-    """This is a simplified Gaussian for use here.
-
-    This is a radial Gaussian in 3 dimensions. """
-    
-    _gaussian_error_checking(radius, sigma)
-
-    # then we can calculate the Gaussian function
-    exponent = (-1.0) * radius**2 / (2.0 * sigma**2)
-    coefficient = 1.0 / (sigma**3 * (2.0 * np.pi)**(1.5))
-    return coefficient * np.exp(exponent)
-
-def gaussian_2d_radial(radius, sigma):
-    """This is a simplified Gaussian for use here.
-
-    This is a radial Gaussian in 2 dimensions. """
-
-    _gaussian_error_checking(radius, sigma)
-
-    exponent = (-1) * radius**2 / (2 * sigma**2)
-    coefficient = 1.0 / (sigma**2 * 2 * np.pi)
-    return coefficient * np.exp(exponent)
-
-def distance(x1, x2, y1=0, y2=0, z1=0, z2=0):
-    """ Calculates a distance between two points using the Pythagorean theorem.
-
-    Note: This does not support lists, since they aren't vectorized.
-    """
-    try:
-        x_dist = x1 - x2
-        y_dist = y1 - y2
-        z_dist = z1 - z2
-    except(TypeError):
-        raise TypeError("This function does not support lists. Try np.array.")
-
-    return np.sqrt(x_dist**2 + y_dist**2 + z_dist**2)
-
 def grid_resolution_steps(initial_resolution, final_resolution):
     # we will use increasingly smaller grid size as we get closer to the
     # real location of the maximum. I want to space those equally in log 
@@ -142,14 +90,14 @@ class KDE(object):
             self.y = locations[1]
             self.z = locations[2]
             # we can keep track of which smoothing function to use. 
-            self.smoothing_function = gaussian_3d_radial
+            self.smoothing_function = utils.gaussian_3d_radial
             # check that all are the right size
             if not len(self.values) == len(self.x) == len(self.y) == len(self.z):
                 raise ValueError("X,Y,Z, and values need to be the same size.")
         elif self.dimension == 2:
             self.x = locations[0]
             self.y = locations[1]
-            self.smoothing_function = gaussian_2d_radial
+            self.smoothing_function = utils.gaussian_2d_radial
             # check that all are the right size
             if not len(self.values) == len(self.x) == len(self.y):
                 raise ValueError("X, Y, and values need to be the same size.")
@@ -172,9 +120,9 @@ class KDE(object):
         # get the distances from the location the user passed in to the
         # location of all the points
         if self.dimension == 2:
-            distances = distance(self.x, x, self.y, y)
+            distances = utils.distance(self.x, x, self.y, y)
         elif self.dimension == 3:
-            distances = distance(self.x, x, self.y, y, self.z, z)
+            distances = utils.distance(self.x, x, self.y, y, self.z, z)
 
         # then we can calculate the Gaussian density at these distances
         densities = self.smoothing_function(distances, kernel_size)
