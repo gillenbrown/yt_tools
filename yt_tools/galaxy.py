@@ -494,7 +494,7 @@ class Galaxy(object):
 
         # first need to to the KDE fitting procedure, possibly.
         if "mass_kde_2D" not in self.radii:
-            self.kde_profile("MASS", spacing=50 * yt.units.pc,
+            self.kde_profile("MASS", spacing=0.05 * yt.units.pc,
                              outer_radius=1000 * yt.units.pc)
         self.nsc = nsc_structure.NscStructure(self.radii["mass_kde_2D"],
                                               self.densities["mass_kde_2D"])
