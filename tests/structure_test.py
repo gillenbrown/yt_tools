@@ -20,6 +20,15 @@ def test_fitting_init_same_size():
         nsc_structure.Fitting([0, 1, 2], [0, 1])  # not same size
     nsc_structure.Fitting([1, 2, 3], [1, 2, 3])  # no error
 
+def test_fitting_log_safety():
+    # test the removal of log(0) values
+    fit = nsc_structure.Fitting([1, 2, 3], [0, 1, 2])
+    assert np.allclose(fit.radii_logsafe, [2, 3])
+    assert np.allclose(fit.log_densities, [0, 0.30103])
+
+    fit = nsc_structure.Fitting([1, 2, 3], [1, 2, 3])
+    assert np.allclose(fit.radii_logsafe, [1, 2, 3])
+    assert np.allclose(fit.log_densities, [0, 0.30103, 0.4771212547])
 # -----------------------------------------------------------------------------
 
 # test the fitting process against some simple cases.

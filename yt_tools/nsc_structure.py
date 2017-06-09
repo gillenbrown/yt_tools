@@ -39,6 +39,13 @@ class Fitting(object):
         # test that both are iterable
         utils.test_iterable(radii, "radii")
         utils.test_iterable(densities, "densities")
+
+        # convert to numpy arrays
+        if not isinstance(radii, np.ndarray):
+            radii = np.array(radii)
+        if not isinstance(densities, np.ndarray):
+            densities = np.array(densities)
+
         # test that they are the same
         if len(radii) != len(densities):
             raise ValueError("Radiii and densities need to be the same length.")
@@ -46,10 +53,12 @@ class Fitting(object):
         self.radii = radii
         self.densities = densities
 
+        self._create_log_densities()
+
     def fit(self):
         """Performs the fit and stores the parameters."""
-        params, errs =  optimize.curve_fit(log_plummer_disk, self.radii,
-                                           np.log10(self.densities),
+        params, errs =  optimize.curve_fit(log_plummer_disk, self.radii_logsafe,
+                                           self.log_densities,
                                            bounds=self.bounds, p0=self.guess)
         self.M_c, self.M_d, self.a_c, self.a_d = params
 
@@ -64,6 +73,17 @@ class Fitting(object):
             self.M_d = 0
         else:
             self.M_d = 10 ** self.M_d
+
+    def _create_log_densities(self):
+        # we want to do the fitting in log space, but need to be careful of
+        # places where there are zeros, and remove those
+        log_densities = np.log10(self.densities)
+        # see where it is not infinite
+        good_idx = np.isfinite(log_densities)
+
+        # then save the values at those radii
+        self.radii_logsafe = self.radii[good_idx]
+        self.log_densities = log_densities[good_idx]
 
 
 
