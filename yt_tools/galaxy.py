@@ -157,8 +157,10 @@ def read_gal(ds, file_obj):
         # then assign the values to the correct dictionary
         if data_type == "radii":
             gal.radii[key] = values
+            gal.binned_radii[key] = utils.bin_values(values, 100)
         else:  # densities
             gal.densities[key] = values
+            gal.binned_densities[key] = utils.bin_values(values, 100)
 
     # then we can do the fun stuff where we calculate everythign of interest.
     # this should all be pretty quick, since the KDE process has already been
@@ -223,6 +225,8 @@ class Galaxy(object):
         # will be filled in future analyses
         self.radii = dict()  # used for radial profiles
         self.densities = dict()  # used for radial profiles
+        self.binned_radii = dict()  # used for radial profiles
+        self.binned_densities = dict()  # used for radial profiles
         self.disk = None  # used for cylindrical plots
         self.nsc = None  # used for NSC analysis
         self.nsc_radius = None  # used for NSC analysis
@@ -484,6 +488,10 @@ class Galaxy(object):
         self.radii[key] = radii
         self.densities[key] = final_densities
 
+        # store the binned radii too, since I will be using those
+        self.binned_radii[key] = utils.bin_values(radii, 100)
+        self.binned_densities[key] = utils.bin_values(final_densities, 100)
+
     def find_nsc_radius(self):
         """
         Finds the radius of the NSC, using the KDE profile and the associated
@@ -496,8 +504,8 @@ class Galaxy(object):
         if "mass_kde_2D" not in self.radii:
             self.kde_profile("MASS", spacing=0.05 * yt.units.pc,
                              outer_radius=1000 * yt.units.pc)
-        self.nsc = nsc_structure.NscStructure(self.radii["mass_kde_2D"],
-                                              self.densities["mass_kde_2D"])
+        self.nsc = nsc_structure.NscStructure(self.binned_radii["mass_kde_2D"],
+                                              self.binned_densities["mass_kde_2D"])
 
         self.nsc_radius = self.nsc.nsc_radius * yt.units.pc
         # then get the indices of the stars actually in the NSC

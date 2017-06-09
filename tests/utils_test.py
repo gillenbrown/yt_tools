@@ -175,3 +175,32 @@ def test_sum_in_quadrature_array():
     assert np.isclose(utils.sum_in_quadrature(np.array([2, 2, 2])), np.sqrt(12))
     assert np.isclose(utils.sum_in_quadrature(np.array([1, 2, 3])), np.sqrt(14))
     assert np.isclose(utils.sum_in_quadrature(np.array([2, 3])), np.sqrt(13))
+
+# -----------------------------------------------------------------------------
+
+# test binning
+
+# -----------------------------------------------------------------------------
+
+def test_binning_single_values():
+    assert np.allclose(utils.bin_values([1, 1], bin_size=1), [1, 1])
+    assert np.allclose(utils.bin_values([4.5, 2.3], bin_size=1), [4.5, 2.3])
+
+def test_binning_even_bin_size():
+    assert np.allclose(utils.bin_values([1, 1, 2, 2, 3, 3], 2), [1, 2, 3])
+    assert np.allclose(utils.bin_values([1, 2, 3, 4, 5, 6, 7, 8, 9], 3),
+                       [2, 5, 8])
+    assert np.allclose(utils.bin_values([1, 2, 3, 4, 5, 6, 7, 8], 2),
+                       [1.5, 3.5, 5.5, 7.5])
+
+def test_binning_not_even_bins():
+    assert np.allclose(utils.bin_values([1, 2, 3], 2), [2])
+    assert np.allclose(utils.bin_values([1, 2, 3, 4, 5], 2), [1.5, 4])
+    assert np.allclose(utils.bin_values([1, 2, 3, 4, 5, 6, 7, 8], 3),
+                       [2, 6])
+
+def test_binning_length_size():
+    assert len(utils.bin_values(np.arange(100), 10)) == 10
+    assert len(utils.bin_values(np.arange(101), 10)) == 10
+    assert len(utils.bin_values(np.arange(109), 10)) == 10
+

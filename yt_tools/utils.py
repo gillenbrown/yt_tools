@@ -186,3 +186,55 @@ def sum_in_quadrature(*args):
             return args[0]  # square root of itself squared.
     # if we got here it's an else. We have a list of elements in args.
     return np.sqrt(sum([x**2 for x in args]))
+
+
+def bin_values(values, bin_size=100):
+    """
+    Bins values together, returning the average in each bin. Does not
+    return any information about the bin edges or anything else. This does
+    binning where there are an equal amount of data points in each bin, and
+    the bins are done in the order the data was passed in.
+
+    When bin_size doesn't evenly divide the size of the dataset passed in, the
+    last bin will be larger than the others.
+
+    Some test cases:
+    bin_values([1, 1, 2, 2, 3, 3, 4, 4], bin_size=2)
+        will return [1, 2, 3, 4]
+    bin_values([1, 2, 3, 4, 5, 6, 7, 8, 9], bin_size=3)
+        will return [2, 5, 8]
+    bin_values([1, 2, 3, 4, 5, 6, 7, 8], bin_size=3)
+        will return [2, 6], since there aren't enough values to make three bins,
+        and the last 5 values are all put into the last bin.
+
+    :param values: List or array of values to bin
+    :param bin_size: Size of bins. There will be this many data points in all
+                     bins except the last one, which could have a larger
+                     amount of data points if bin_size does not evenly divide
+                     the length of the dataset.
+    :return: array of values that is the average of the values in each bin. This
+             will be of size len(values) // bin_size
+    :rtype: np.ndarray
+    """
+
+    binned_values = []
+
+    # we want to iterate with constant bin size. If we have
+    # a length that isn't divisible by bin_size, the extra stuff
+    # at the end will all get put in one bin.
+    # This is accomplished by itertaing through the indices
+    # in steps of bin_size. We stop when we are somewhere between bin_size and
+    # 2 * bin_size - 1 steps from the end.
+    for left_idx in range(0, len(values) - bin_size + 1, bin_size):
+
+        # we then get the items in this bin. If we are close to the end,
+        # we have to get all the leftover items.
+        if len(values) - left_idx < 2 * bin_size:
+            these_values = values[left_idx:]
+        else:  # we just get the appropriate values
+            these_values = values[left_idx:left_idx + bin_size]
+
+        # then keep the mean.
+        binned_values.append(np.mean(these_values))
+
+    return np.array(binned_values)
