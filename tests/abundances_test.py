@@ -242,3 +242,35 @@ def test_o_on_fe_calculation_single_solar_II(single_mass_solar_II):
 def test_o_on_fe_calculation_not_simple(two_star_different_z):
     """Calculated by hand.  """
     assert np.isclose(two_star_different_z.x_on_fe("O"), -0.8538614906, atol=0)
+
+# -----------------------------------------------------------
+
+#  Test simple metallicity values
+
+# -----------------------------------------------------------
+
+def test_log_z_z_sun_single_zero(single_mass_zero):
+    """For a zero metallicity object we should get a negative infinity."""
+    assert np.isneginf(single_mass_zero.log_z_over_z_sun())
+
+def test_log_z_z_sun_single_solar_Ia(single_mass_solar_Ia):
+    """For solar we should get zero."""
+    assert np.isclose(single_mass_solar_Ia.log_z_over_z_sun(), 0)
+
+def test_log_z_z_sun_single_solar_II(single_mass_solar_II):
+    """For solar we should get zero."""
+    assert np.isclose(single_mass_solar_II.log_z_over_z_sun(), 0)
+
+def test_log_z_z_sun_single_one_Ia(single_mass_one_Ia):
+    """For solar we should get the log of the ratio of 1 and z_sun.
+    This was calculated by hand."""
+    assert np.isclose(single_mass_one_Ia.log_z_over_z_sun(), 1.789274018)
+
+def test_log_z_z_sun_single_one_II(single_mass_one_II):
+    """For solar we should get the log of the ratio of 1 and z_sun.
+    This was calculated by hand."""
+    assert np.isclose(single_mass_one_II.log_z_over_z_sun(), 1.789274018)
+
+def test_log_z_not_simple(two_star_different_z):
+    """Calculated by hand. """
+    assert np.isclose(two_star_different_z.log_z_over_z_sun(), 0.2206377821)

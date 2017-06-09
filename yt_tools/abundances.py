@@ -172,3 +172,20 @@ class Abundances(object):
         sun_frac = sun_num / sun_denom
 
         return np.log10(star_frac * sun_frac)
+
+    def log_z_over_z_sun(self):
+        """Returns the value of log(Z/Z_sun).
+
+        This is a pretty straightforward calculation. We just take the total
+        mass in metals and divide by the total stellar mass to get the
+        overall metallicity of the star particles, then divide that by the
+        solar metallicity.
+
+        :returns: value of log(Z/Z_sun)
+        :rtype: float
+        """
+
+        total_metals = np.sum(self.Z_tot * self.mass)
+        total_mass = np.sum(self.mass)
+        metallicity = total_metals / total_mass
+        return np.log10(metallicity / self.z_sun)
