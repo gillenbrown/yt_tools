@@ -262,66 +262,77 @@ def test_nsc_abundances(read_in_gal):
 #
 # -----------------------------------------------------------------------------
 
-def test_reading_writing(real_gal):
+def test_reading_writing(read_in_gal):
     """The only thing we need is that the object needs to be the same after
     we write then read it in. There is a lot of checking here, though."""
     file = open("./real_gal_save.txt", "w")
-    real_gal.write(file)
+    read_in_gal.write(file)
     file.close()
 
     file = open("./real_gal_save.txt", "r")
     new_gal = galaxy.read_gal(ds, file)
 
     # then compare things. First basic stuff:
-    assert np.allclose(real_gal.center.in_units("pc").value,
+    assert np.allclose(read_in_gal.center.in_units("pc").value,
                        new_gal.center.in_units("pc").value)
     # ^ the .value is needed to make yt arrays play nice with allclose
-    assert real_gal.radius == new_gal.radius
-    assert real_gal.ds == new_gal.ds
+    assert read_in_gal.radius == new_gal.radius
+    assert read_in_gal.ds == new_gal.ds
 
     # spheres should be the same
-    assert np.allclose(real_gal.sphere.center.in_units("pc").value,
+    assert np.allclose(read_in_gal.sphere.center.in_units("pc").value,
                        new_gal.sphere.center.in_units("pc").value)
-    assert real_gal.sphere.radius == new_gal.sphere.radius
+    assert read_in_gal.sphere.radius == new_gal.sphere.radius
 
     # disk stuff
-    assert real_gal.disk.radius == new_gal.disk.radius
-    assert np.allclose(real_gal.disk._norm_vec, new_gal.disk._norm_vec)
-    assert real_gal.disk.height == new_gal.disk.height
+    assert read_in_gal.disk.radius == new_gal.disk.radius
+    assert np.allclose(read_in_gal.disk._norm_vec, new_gal.disk._norm_vec)
+    assert read_in_gal.disk.height == new_gal.disk.height
 
     # KDE profiles should be the same too.
-    assert len(real_gal.radii) > 0  # should have multiple keys
+    assert len(read_in_gal.radii) > 0  # should have multiple keys
     assert len(new_gal.radii) > 0  # should have multiple keys
-    for key in real_gal.binned_radii:
-        assert len(real_gal.radii[key]) > 0
-        assert len(real_gal.densities[key]) > 0
-        assert len(real_gal.binned_radii[key]) > 0
-        assert len(real_gal.binned_densities[key]) > 0
+    for key in read_in_gal.binned_radii:
+        assert len(read_in_gal.radii[key]) > 0
+        assert len(read_in_gal.densities[key]) > 0
+        assert len(read_in_gal.binned_radii[key]) > 0
+        assert len(read_in_gal.binned_densities[key]) > 0
+        # by asserting they match below, we also check new gal length
 
-        assert np.allclose(real_gal.radii[key], new_gal.radii[key])
-        assert np.allclose(real_gal.densities[key], new_gal.densities[key])
-        assert np.allclose(real_gal.binned_radii[key],
+        assert np.allclose(read_in_gal.radii[key], new_gal.radii[key])
+        assert np.allclose(read_in_gal.densities[key], new_gal.densities[key])
+        assert np.allclose(read_in_gal.binned_radii[key],
                            new_gal.binned_radii[key])
-        assert np.allclose(real_gal.binned_densities[key],
+        assert np.allclose(read_in_gal.binned_densities[key],
                            new_gal.binned_densities[key])
 
 
 
     # then check some of the derived parameters
-    assert real_gal.nsc_axis_ratios.b_over_a == new_gal.nsc_axis_ratios.b_over_a
-    assert real_gal.nsc_axis_ratios.c_over_a == new_gal.nsc_axis_ratios.c_over_a
-    assert real_gal.nsc_axis_ratios.c_over_b == new_gal.nsc_axis_ratios.c_over_b
-    assert real_gal.nsc_radius == new_gal.nsc_radius
-    assert np.array_equal(real_gal.nsc_idx, new_gal.nsc_idx)
-    assert np.isclose(real_gal.mean_rot_vel.in_units("km/s").value,
+    assert read_in_gal.nsc_axis_ratios.b_over_a == new_gal.nsc_axis_ratios.b_over_a
+    assert read_in_gal.nsc_axis_ratios.c_over_a == new_gal.nsc_axis_ratios.c_over_a
+    assert read_in_gal.nsc_axis_ratios.c_over_b == new_gal.nsc_axis_ratios.c_over_b
+    assert read_in_gal.nsc_radius == new_gal.nsc_radius
+    assert np.array_equal(read_in_gal.nsc_idx, new_gal.nsc_idx)
+    assert np.isclose(read_in_gal.mean_rot_vel.in_units("km/s").value,
                       new_gal.mean_rot_vel.in_units("km/s").value)
-    assert np.isclose(real_gal.nsc_3d_sigma.in_units("km/s").value,
+    assert np.isclose(read_in_gal.nsc_3d_sigma.in_units("km/s").value,
                       new_gal.nsc_3d_sigma.in_units("km/s").value)
-    assert np.isclose(real_gal.nsc_abundances.x_on_fe("N"),
+    assert np.isclose(read_in_gal.nsc_abundances.x_on_fe("N"),
                       new_gal.nsc_abundances.x_on_fe("N"))
-    assert np.isclose(real_gal.nsc_abundances.x_on_h("Ca"),
+    assert np.isclose(read_in_gal.nsc_abundances.x_on_h("Ca"),
                       new_gal.nsc_abundances.x_on_h("Ca"))
-    assert np.isclose(real_gal.nsc_abundances.z_on_h(),
+    assert np.isclose(read_in_gal.nsc_abundances.log_z_over_z_sun(),
+                      new_gal.nsc_abundances.log_z_over_z_sun())
+    assert np.isclose(read_in_gal.nsc_abundances.z_on_h(),
                       new_gal.nsc_abundances.z_on_h())
+    assert np.isclose(read_in_gal.gal_abundances.x_on_fe("N"),
+                      new_gal.gal_abundances.x_on_fe("N"))
+    assert np.isclose(read_in_gal.gal_abundances.x_on_h("Ca"),
+                      new_gal.gal_abundances.x_on_h("Ca"))
+    assert np.isclose(read_in_gal.gal_abundances.z_on_h(),
+                      new_gal.gal_abundances.z_on_h())
+    assert np.isclose(read_in_gal.gal_abundances.log_z_over_z_sun(),
+                      new_gal.gal_abundances.log_z_over_z_sun())
 
 

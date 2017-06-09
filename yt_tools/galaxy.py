@@ -507,6 +507,10 @@ class Galaxy(object):
         self.nsc = nsc_structure.NscStructure(self.binned_radii["mass_kde_2D"],
                                               self.binned_densities["mass_kde_2D"])
 
+        if self.nsc.nsc_radius is None:
+            self.nsc_radius = None
+            return
+        # if not none we continue
         self.nsc_radius = self.nsc.nsc_radius * yt.units.pc
         # then get the indices of the stars actually in the NSC
         radius_key = ('STAR', 'particle_position_spherical_radius')
