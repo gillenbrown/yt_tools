@@ -182,19 +182,29 @@ def test_add_disk_units(gal):
 
 def test_add_disk_result_type(gal):
     """We should have an actual disk when done. """
-    assert gal.disk is None
+    assert gal.disk_kde is None
     gal.add_disk()
-    assert isinstance(gal.disk, yt.data_objects.selection_data_containers.YTDisk)
+    assert isinstance(gal.disk_kde,
+                      yt.data_objects.selection_data_containers.YTDisk)
+
+    assert gal.disk_nsc is None
+    gal.add_disk(disk_type="nsc")
+    assert isinstance(gal.disk_nsc,
+                      yt.data_objects.selection_data_containers.YTDisk)
+
+    with pytest.raises(ValueError):
+        gal.add_disk(disk_type="wer")
 
 def test_add_disk_properties(gal):
     """Check that the disk has the properties we want. """
     disk_height = 29.3 * pc
     disk_radius = 22.5 * pc
     gal.add_disk(disk_radius=disk_radius, disk_height=disk_height)
-    assert gal.disk.height == disk_height
-    assert gal.disk.radius == disk_radius
+    assert gal.disk_kde.height == disk_height
+    assert gal.disk_kde.radius == disk_radius
     # test that it's not in the default orientation
-    assert not np.allclose(gal.disk.get_field_parameter("normal"), [0, 0, 1])
+    assert not np.allclose(gal.disk_kde.get_field_parameter("normal"),
+                           [0, 0, 1])
 
 # def test_add_disk_kde_creation(gal):
 #     assert gal._star_kde_mass_2d is None
@@ -213,6 +223,14 @@ def test_real_nsc_existence(read_in_gal):
     utils.test_for_units(read_in_gal.nsc_radius, "NSC radius")
     assert 0 * pc < read_in_gal.nsc_radius < read_in_gal.sphere.radius
 
+def test_real_nsc_disk_attributes(read_in_gal):
+    assert np.isclose(read_in_gal.disk_nsc.radius.in_units("pc").value,
+                      2 * read_in_gal.nsc_radius.in_units("pc").value)
+    assert np.isclose(read_in_gal.disk_nsc.height.in_units("pc").value,
+                      2 * read_in_gal.nsc_radius.in_units("pc").value)
+    assert np.allclose(read_in_gal.disk_nsc.center.in_units("pc").value,
+                       read_in_gal.center.in_units("pc").value)
+
 def test_real_nsc_stellar_mass(read_in_gal):
     # Test that the NSC mass is less than the total galaxy mass
     assert read_in_gal.stellar_mass(nsc=False) > \
@@ -221,9 +239,11 @@ def test_real_nsc_stellar_mass(read_in_gal):
 def test_real_nsc_radius_cut(read_in_gal):
     # test that the NSC indices actually pick up the right objects
     radius_key = ('STAR', 'particle_position_spherical_radius')
-    for container, idx in zip([read_in_gal.sphere, read_in_gal.disk],
+    for container, idx in zip([read_in_gal.sphere, read_in_gal.disk_kde,
+                               read_in_gal.disk_nsc],
                               [read_in_gal.nsc_idx_sphere,
-                               read_in_gal.nsc_idx_disk]):
+                               read_in_gal.nsc_idx_disk_kde,
+                               read_in_gal.nsc_idx_disk_nsc]):
         radii = container[radius_key]
         assert np.max(radii[idx]) < read_in_gal.nsc_radius
         # then get the indices not in the nsc
@@ -289,9 +309,14 @@ def test_reading_writing(read_in_gal):
     assert read_in_gal.sphere.radius == new_gal.sphere.radius
 
     # disk stuff
-    assert read_in_gal.disk.radius == new_gal.disk.radius
-    assert np.allclose(read_in_gal.disk._norm_vec, new_gal.disk._norm_vec)
-    assert read_in_gal.disk.height == new_gal.disk.height
+    assert read_in_gal.disk_kde.radius == new_gal.disk_kde.radius
+    assert np.allclose(read_in_gal.disk_kde._norm_vec,
+                       new_gal.disk_kde._norm_vec)
+    assert read_in_gal.disk_kde.height == new_gal.disk_kde.height
+    assert read_in_gal.disk_nsc.radius == new_gal.disk_nsc.radius
+    assert np.allclose(read_in_gal.disk_nsc._norm_vec,
+                       new_gal.disk_nsc._norm_vec)
+    assert read_in_gal.disk_nsc.height == new_gal.disk_nsc.height
 
     # KDE profiles should be the same too.
     assert len(read_in_gal.radii) > 0  # should have multiple keys
@@ -349,4 +374,7 @@ def test_containment(read_in_gal, gal):
     """Both galaxies are at the same spot, but read_in_gal has a much larger
     radius, so gal should be contained in read_in_gal."""
     assert gal.check_containment(read_in_gal)
+    assert not read_in_gal.check_containment(gal)
+    # galaxy can't contain itself.
+    assert not gal.check_containment(gal)
     assert not read_in_gal.check_containment(gal)

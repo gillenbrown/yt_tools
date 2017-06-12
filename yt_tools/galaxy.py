@@ -137,16 +137,27 @@ def read_gal(ds, file_obj):
     # known value that is easy to grab.
     center = _parse_line(file_obj.readline(), multiple=True, units=True)
     radius = _parse_line(file_obj.readline(), multiple=False, units=True)
-    disk_radius = _parse_line(file_obj.readline(), multiple=False, units=True)
-    disk_height = _parse_line(file_obj.readline(), multiple=False, units=True)
-    disk_normal = _parse_line(file_obj.readline(), multiple=True, units=False)
+    disk_kde_radius = _parse_line(file_obj.readline(),
+                                  multiple=False, units=True)
+    disk_kde_height = _parse_line(file_obj.readline(),
+                                  multiple=False, units=True)
+    disk_kde_normal = _parse_line(file_obj.readline(),
+                                  multiple=True, units=False)
+    disk_nsc_radius = _parse_line(file_obj.readline(),
+                                  multiple=False, units=True)
+    disk_nsc_height = _parse_line(file_obj.readline(),
+                                  multiple=False, units=True)
+    disk_nsc_normal = _parse_line(file_obj.readline(),
+                                  multiple=True, units=False)
 
     # we can create the galaxy at this point
     gal = Galaxy(ds, center, radius)
     # we then add the disk without calculating angular momentum by
     # specifying the normal vector. This saves computation time.
-    gal.add_disk(disk_radius=disk_radius, disk_height=disk_height,
-                 normal=disk_normal)
+    gal.add_disk(disk_radius=disk_kde_radius, disk_height=disk_kde_height,
+                 normal=disk_kde_normal)
+    gal.add_disk(disk_radius=disk_nsc_radius, disk_height=disk_nsc_height,
+                 normal=disk_nsc_normal, disk_type="nsc")
 
     # then we get to the KDE values.
     while True:
@@ -224,7 +235,8 @@ class Galaxy(object):
         self.densities = dict()  # used for radial profiles
         self.binned_radii = dict()  # used for radial profiles
         self.binned_densities = dict()  # used for radial profiles
-        self.disk = None  # used for cylindrical plots
+        self.disk_kde = None  # used for cylindrical plots
+        self.disk_nsc = None  # used for cylindrical plots
         self.nsc = None  # used for NSC analysis
         self.nsc_radius = None  # used for NSC analysis
         self.nsc_idx_sphere = None  # used for NSC analysis
@@ -274,7 +286,7 @@ class Galaxy(object):
             # store these locations
             locations = (x, y, z)
         else:  # cylindrical
-            container = self.disk
+            container = self.disk_kde
             r = container[('STAR', 'particle_position_cylindrical_radius')]
             r = np.array(r.in_units("pc"))
             theta = container[('STAR', 'particle_position_cylindrical_theta')]
@@ -300,7 +312,7 @@ class Galaxy(object):
         return kde.KDE(locations, values)
 
     def add_disk(self, j_radius=None, disk_radius=None, disk_height=None,
-                 normal=None):
+                 normal=None, disk_type="kde"):
         """Creates a disk aligned with the angular momentum of the galaxy.
         
         This works by creating a sphere with the radius=`j_radius`, calculating 
@@ -334,8 +346,14 @@ class Galaxy(object):
             # find its angular momentum
             normal = j_vec_sphere.quantities.angular_momentum_vector()
         # then create the disk
-        self.disk = self.ds.disk(center=self.center, normal=normal,
-                                 height=disk_height, radius=disk_radius)
+        disk = self.ds.disk(center=self.center, normal=normal,
+                            height=disk_height, radius=disk_radius)
+        if disk_type == "kde":
+            self.disk_kde = disk
+        elif disk_type == "nsc":
+            self.disk_nsc = disk
+        else:
+            raise ValueError("Disk type not specified properly.")
 
     def centering(self, accuracy=0.1):
         """Recenters the galaxy on the location of the maximum stellar density.
@@ -357,6 +375,8 @@ class Galaxy(object):
 
         # we can then go ahead with the centering, using the user's desired
         # accuracy
+        if self._star_kde_mass_3d is None:
+            self._star_kde_mass_3d = self._create_kde_object(3, "mass")
         self._star_kde_mass_3d.centering(kernel_size, accuracy)
 
         # then get the values
@@ -381,7 +401,7 @@ class Galaxy(object):
         if dimension not in [2, 3]:
             raise ValueError("`dimension` must be either 2 or 3.")
         # check that we are able to actually do the cylindrical profiles
-        if dimension == 2 and self.disk is None:
+        if dimension == 2 and self.disk_kde is None:
             raise RuntimeError("Need to create a disk first. ")
         if quantity.lower() not in ["mass", "z"]:
             raise ValueError("Only mass and Z are supported. ")
@@ -519,9 +539,20 @@ class Galaxy(object):
             return
         # if not none we continue
         self.nsc_radius = self.nsc.nsc_radius * yt.units.pc
+
+        # then create a new disk object that entirely contains the NSC. I choose
+        # twoce the radius so that we are sure to include everything inside,
+        # since yt selects based on cells, not particles.
+        self.add_disk(normal=self.disk_kde._norm_vec,
+                      disk_height=2 * self.nsc_radius,
+                      disk_radius=2 * self.nsc_radius, disk_type="nsc")
+
         # then get the indices of the stars actually in the NSC
         radius_key = ('STAR', 'particle_position_spherical_radius')
-        self.nsc_idx_disk = np.where(self.disk[radius_key] < self.nsc_radius)[0]
+        self.nsc_idx_disk_kde = np.where(self.disk_kde[radius_key] <
+                                         self.nsc_radius)[0]
+        self.nsc_idx_disk_nsc = np.where(self.disk_nsc[radius_key] <
+                                         self.nsc_radius)[0]
         self.nsc_idx_sphere = np.where(self.sphere[radius_key] <
                                        self.nsc_radius)[0]
 
@@ -560,10 +591,16 @@ class Galaxy(object):
         theta_key = ('STAR', 'particle_velocity_cylindrical_theta')
         z_key = ('STAR', 'particle_velocity_cylindrical_z')
 
-        vel_rad = self.sphere[radial_key].in_units("km/s")[self.nsc_idx_sphere]
-        vel_rot = self.sphere[theta_key].in_units("km/s")[self.nsc_idx_sphere]
-        vel_z = self.sphere[z_key].in_units("km/s")[self.nsc_idx_sphere]
-        masses = self.sphere[('STAR', 'MASS')][self.nsc_idx_sphere]
+        vel_rad = self.disk_nsc[radial_key].in_units("km/s")
+        vel_rot = self.disk_nsc[theta_key].in_units("km/s")
+        vel_z = self.disk_nsc[z_key].in_units("km/s")
+        masses = self.disk_nsc[('STAR', 'MASS')].in_units("msun")
+
+        # then restrict down the NSC disk
+        vel_rad = vel_rad[self.nsc_idx_disk_nsc]
+        vel_rot = vel_rot[self.nsc_idx_disk_nsc]
+        vel_z = vel_z[self.nsc_idx_disk_nsc]
+        masses = masses[self.nsc_idx_disk_nsc]
 
         self.mean_rot_vel = utils.weighted_mean(vel_rot, masses)
 
@@ -618,11 +655,17 @@ class Galaxy(object):
         _write_single_item(file_obj, self.radius.in_units("pc"), "radius",
                            units=True, multiple=False)
         # disk values
-        _write_single_item(file_obj, self.disk.radius.in_units("pc"),
-                           "disk_radius", units=True)
-        _write_single_item(file_obj, self.disk.height.in_units("pc"),
-                           "disk_height", units=True)
-        _write_single_item(file_obj, self.disk._norm_vec, "disk_normal",
+        _write_single_item(file_obj, self.disk_kde.radius.in_units("pc"),
+                           "disk_kde_radius", units=True)
+        _write_single_item(file_obj, self.disk_kde.height.in_units("pc"),
+                           "disk_kde_height", units=True)
+        _write_single_item(file_obj, self.disk_kde._norm_vec, "disk_kde_normal",
+                           multiple=True)
+        _write_single_item(file_obj, self.disk_nsc.radius.in_units("pc"),
+                           "disk_nsc_radius", units=True)
+        _write_single_item(file_obj, self.disk_nsc.height.in_units("pc"),
+                           "disk_nsc_height", units=True)
+        _write_single_item(file_obj, self.disk_nsc._norm_vec, "disk_kde_normal",
                            multiple=True)
 
         # then all we need are the KDE values
@@ -637,6 +680,8 @@ class Galaxy(object):
         """
         Checks whether this galaxy is entirely contained within the virial
         radius of another.
+
+        A galaxy cannot contain itself.
 
         :param other_gal: Other galaxy that will be used to see if self is
                           contained within this one.
