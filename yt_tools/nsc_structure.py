@@ -175,8 +175,8 @@ class NscStructure(object):
         # then we can integrate
         integrand_values = [d * 2 * np.pi * r for r, d in zip(radii, densities)]
         mass = integrate.simps(integrand_values, radii)
-        # then take a log.
-        self.M_c_non_parametric = np.log10(mass)
+        # then assign the values
+        self.M_c_non_parametric = mass
 
     def _half_mass(self):
         """Calculate the half mass radius for the cluster non-parametrically.

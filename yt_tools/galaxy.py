@@ -129,7 +129,8 @@ def read_gal(ds, file_obj):
         line = file_obj.readline()
         if line.strip() == "new_galaxy_here":
             break  # this is what we want.
-        elif line != "" and line != "\n":  # if it's anything other than blank
+        elif line != "\n":  # if it's anything other than blank. The end of the
+            # file will be an empty string, so it will get caught too.
             raise ValueError("File is not in the right spot for reading")
 
     # we are now at the right spot. Each line following this is a single
@@ -522,10 +523,15 @@ class Galaxy(object):
 
         # get the locations of the stars in the NSC. Convert to numpy arrays
         # for speed.
-        x = np.array(self.sphere[('STAR', 'POSITION_X')][self.nsc_idx])
-        y = np.array(self.sphere[('STAR', 'POSITION_Y')][self.nsc_idx])
-        z = np.array(self.sphere[('STAR', 'POSITION_Z')][self.nsc_idx])
-        mass = np.array(self.sphere[('STAR', "MASS")][self.nsc_idx])
+        x = np.array(self.sphere[('STAR', 'POSITION_X')].in_units("pc"))
+        y = np.array(self.sphere[('STAR', 'POSITION_Y')].in_units("pc"))
+        z = np.array(self.sphere[('STAR', 'POSITION_Z')].in_units("pc"))
+        mass = np.array(self.sphere[('STAR', "MASS")].in_units("msun"))
+        # then get just the NSC ones, and subtract off the center
+        x = x[self.nsc_idx] - self.center[0].in_units("pc").value
+        y = y[self.nsc_idx] - self.center[1].in_units("pc").value
+        z = z[self.nsc_idx] - self.center[2].in_units("pc").value
+        mass = mass[self.nsc_idx]
 
         self.nsc_axis_ratios = nsc_structure.AxisRatios(x, y, z, mass)
 
