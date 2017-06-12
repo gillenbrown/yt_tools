@@ -220,13 +220,17 @@ def test_real_nsc_stellar_mass(read_in_gal):
 
 def test_real_nsc_radius_cut(read_in_gal):
     # test that the NSC indices actually pick up the right objects
-    radii = read_in_gal.sphere[('STAR', 'particle_position_spherical_radius')]
-    assert np.max(radii[read_in_gal.nsc_idx]) < read_in_gal.nsc_radius
-    # then get the indices not in the nsc
-    all_idx_set = set(range(len(radii)))
-    nsc_idx_set = set(read_in_gal.nsc_idx)
-    non_nsc_idx = list(all_idx_set.difference(nsc_idx_set))
-    assert np.min(radii[non_nsc_idx]) > read_in_gal.nsc_radius
+    radius_key = ('STAR', 'particle_position_spherical_radius')
+    for container, idx in zip([read_in_gal.sphere, read_in_gal.disk],
+                              [read_in_gal.nsc_idx_sphere,
+                               read_in_gal.nsc_idx_disk]):
+        radii = container[radius_key]
+        assert np.max(radii[idx]) < read_in_gal.nsc_radius
+        # then get the indices not in the nsc
+        all_idx_set = set(range(len(radii)))
+        nsc_idx_set = set(idx)
+        non_nsc_idx = list(all_idx_set.difference(nsc_idx_set))
+        assert np.min(radii[non_nsc_idx]) > read_in_gal.nsc_radius
 
 def test_real_nsc_axis_ratios(read_in_gal):
     # Test that the axis ratios for the NSC look reasonable.
@@ -311,7 +315,8 @@ def test_reading_writing(read_in_gal):
     assert read_in_gal.nsc_axis_ratios.c_over_a == new_gal.nsc_axis_ratios.c_over_a
     assert read_in_gal.nsc_axis_ratios.c_over_b == new_gal.nsc_axis_ratios.c_over_b
     assert read_in_gal.nsc_radius == new_gal.nsc_radius
-    assert np.array_equal(read_in_gal.nsc_idx, new_gal.nsc_idx)
+    assert np.array_equal(read_in_gal.nsc_idx_sphere, new_gal.nsc_idx_sphere)
+    assert np.array_equal(read_in_gal.nsc_idx_disk, new_gal.nsc_idx_disk)
     assert np.isclose(read_in_gal.mean_rot_vel.in_units("km/s").value,
                       new_gal.mean_rot_vel.in_units("km/s").value)
     assert np.isclose(read_in_gal.nsc_3d_sigma.in_units("km/s").value,

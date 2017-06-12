@@ -227,7 +227,8 @@ class Galaxy(object):
         self.disk = None  # used for cylindrical plots
         self.nsc = None  # used for NSC analysis
         self.nsc_radius = None  # used for NSC analysis
-        self.nsc_idx = None  # used for NSC analysis
+        self.nsc_idx_sphere = None  # used for NSC analysis
+        self.nsc_idx_disk = None  # used for NSC analysis
         self.nsc_axis_ratios = None  # used for rotation analysis
         self.mean_rot_vel = None  # used for rotation analysis
         self.nsc_3d_sigma = None  # used for rotation analysis
@@ -396,7 +397,7 @@ class Galaxy(object):
         masses = self.sphere[('STAR', "MASS")].in_units("msun")
         if nsc:
             self._check_nsc_existence()  # will raise error if no NSC
-            return np.sum(masses[self.nsc_idx])
+            return np.sum(masses[self.nsc_idx_sphere])
 
         else:  # whole galaxy
             return np.sum(masses)
@@ -520,7 +521,9 @@ class Galaxy(object):
         self.nsc_radius = self.nsc.nsc_radius * yt.units.pc
         # then get the indices of the stars actually in the NSC
         radius_key = ('STAR', 'particle_position_spherical_radius')
-        self.nsc_idx = np.where(self.sphere[radius_key] < self.nsc_radius)[0]
+        self.nsc_idx_disk = np.where(self.disk[radius_key] < self.nsc_radius)[0]
+        self.nsc_idx_sphere = np.where(self.sphere[radius_key] <
+                                       self.nsc_radius)[0]
 
     def create_axis_ratios(self):
         """Creates the axis ratios object. """
@@ -533,10 +536,10 @@ class Galaxy(object):
         z = np.array(self.sphere[('STAR', 'POSITION_Z')].in_units("pc"))
         mass = np.array(self.sphere[('STAR', "MASS")].in_units("msun"))
         # then get just the NSC ones, and subtract off the center
-        x = x[self.nsc_idx] - self.center[0].in_units("pc").value
-        y = y[self.nsc_idx] - self.center[1].in_units("pc").value
-        z = z[self.nsc_idx] - self.center[2].in_units("pc").value
-        mass = mass[self.nsc_idx]
+        x = x[self.nsc_idx_sphere] - self.center[0].in_units("pc").value
+        y = y[self.nsc_idx_sphere] - self.center[1].in_units("pc").value
+        z = z[self.nsc_idx_sphere] - self.center[2].in_units("pc").value
+        mass = mass[self.nsc_idx_sphere]
 
         self.nsc_axis_ratios = nsc_structure.AxisRatios(x, y, z, mass)
 
@@ -557,10 +560,10 @@ class Galaxy(object):
         theta_key = ('STAR', 'particle_velocity_cylindrical_theta')
         z_key = ('STAR', 'particle_velocity_cylindrical_z')
 
-        vel_rad = self.sphere[radial_key].in_units("km/s")[self.nsc_idx]
-        vel_rot = self.sphere[theta_key].in_units("km/s")[self.nsc_idx]
-        vel_z = self.sphere[z_key].in_units("km/s")[self.nsc_idx]
-        masses = self.sphere[('STAR', 'MASS')].in_units("msun")[self.nsc_idx]
+        vel_rad = self.sphere[radial_key].in_units("km/s")[self.nsc_idx_sphere]
+        vel_rot = self.sphere[theta_key].in_units("km/s")[self.nsc_idx_sphere]
+        vel_z = self.sphere[z_key].in_units("km/s")[self.nsc_idx_sphere]
+        masses = self.sphere[('STAR', 'MASS')][self.nsc_idx_sphere]
 
         self.mean_rot_vel = utils.weighted_mean(vel_rot, masses)
 
@@ -590,9 +593,9 @@ class Galaxy(object):
         # the objects can then be created, where for the NSC we select only
         # the objects in the NSC
         self.gal_abundances = abundances.Abundances(masses, z_Ia, z_II)
-        self.nsc_abundances = abundances.Abundances(masses[self.nsc_idx],
-                                                    z_Ia[self.nsc_idx],
-                                                    z_II[self.nsc_idx])
+        self.nsc_abundances = abundances.Abundances(masses[self.nsc_idx_sphere],
+                                                    z_Ia[self.nsc_idx_sphere],
+                                                    z_II[self.nsc_idx_sphere])
 
     def write(self, file_obj):
         """Writes the galaxy object to a file, to be read in later.
