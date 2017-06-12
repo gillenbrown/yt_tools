@@ -196,12 +196,12 @@ def test_add_disk_properties(gal):
     # test that it's not in the default orientation
     assert not np.allclose(gal.disk.get_field_parameter("normal"), [0, 0, 1])
 
-def test_add_disk_kde_creation(gal):
-    assert gal._star_kde_mass_2d is None
-    assert gal._star_kde_metals_2d is None
-    gal.add_disk()
-    assert isinstance(gal._star_kde_mass_2d, kde.KDE)
-    assert isinstance(gal._star_kde_metals_2d, kde.KDE)
+# def test_add_disk_kde_creation(gal):
+#     assert gal._star_kde_mass_2d is None
+#     assert gal._star_kde_metals_2d is None
+#     gal.add_disk()
+#     assert isinstance(gal._star_kde_mass_2d, kde.KDE)
+#     assert isinstance(gal._star_kde_metals_2d, kde.KDE)
 
 # -----------------------------------------------------------------------------
 #

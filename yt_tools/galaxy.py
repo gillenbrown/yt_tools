@@ -214,16 +214,12 @@ class Galaxy(object):
         # and find the smallest cell size (used for KDE)
         self.min_dx = np.min(self.sphere[('index', 'dx')])
 
-        # we can then initialize the KDE object, which will be used for the
-        # centering process as well as profiles
-        self._star_kde_mass_3d = self._create_kde_object(3, "mass")
-        self._star_kde_metals_3d = self._create_kde_object(3, "Z")
-        # have cylindrical coords that aren't used yet
-        self._star_kde_mass_2d = None
-        self._star_kde_metals_2d = None
-
         # then there are several quantities we initialize to zero or blank, but
         # will be filled in future analyses
+        self._star_kde_mass_3d = None  # used for KDE profiles
+        self._star_kde_metals_3d = None  # used for KDE profiles
+        self._star_kde_mass_2d = None  # used for KDE profiles
+        self._star_kde_metals_2d = None  # used for KDE profiles
         self.radii = dict()  # used for radial profiles
         self.densities = dict()  # used for radial profiles
         self.binned_radii = dict()  # used for radial profiles
@@ -340,10 +336,6 @@ class Galaxy(object):
         self.disk = self.ds.disk(center=self.center, normal=normal,
                                  height=disk_height, radius=disk_radius)
 
-        # we can then use this disk to create the 2D KDE objects
-        self._star_kde_mass_2d = self._create_kde_object(2, "mass")
-        self._star_kde_metals_2d = self._create_kde_object(2, "Z")
-
     def centering(self, accuracy=0.1):
         """Recenters the galaxy on the location of the maximum stellar density.
         
@@ -455,11 +447,24 @@ class Galaxy(object):
         # xy from cylindrical already subtracts off the center
         if dimension == 2:
             center = [0, 0]
+            # create the KDE objects if needed
+            if self._star_kde_mass_2d is None:
+                self._star_kde_mass_2d = self._create_kde_object(2, "mass")
             mass_kde = self._star_kde_mass_2d
-            metals_kde = self._star_kde_metals_2d
+            # only assign metals if needed
+            if quantity == "Z":
+                if self._star_kde_metals_2d is None:
+                    self._star_kde_metals_2d = self._create_kde_object(2, "Z")
+                metals_kde = self._star_kde_metals_2d
         else:  # spherical: keep regular center
+            if self._star_kde_mass_3d is None:
+                self._star_kde_mass_3d = self._create_kde_object(3, "mass")
             mass_kde = self._star_kde_mass_3d
-            metals_kde = self._star_kde_metals_3d
+            # only assigne metals if needed
+            if quantity == "Z":
+                if self._star_kde_metals_3d is None:
+                    self._star_kde_metals_3d = self._create_kde_object(3, "Z")
+                metals_kde = self._star_kde_metals_3d
 
         # then create the radii
         radii = np.arange(0, outer_radius, spacing)
