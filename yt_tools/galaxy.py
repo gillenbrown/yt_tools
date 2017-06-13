@@ -49,7 +49,7 @@ def _write_single_item(file_obj, item, name, units=False, multiple=False):
     file_obj.write("\n")
 
 
-def _parse_line(line, multiple=False, units=False):
+def _parse_line(line, multiple=False, units=False, new_type=float):
     """Parses one line from the output of the galaxy.write() function.
 
     This does not handle lines that contain KDe data, that is handled
@@ -61,6 +61,8 @@ def _parse_line(line, multiple=False, units=False):
     :type multiple: bool
     :param units: Whether or not the iten on this line has units.
     :type units: bool
+    :param new_type: What to conver the individual elements of the array to
+                     if there are no units.
     """
     split_line = line.split()  # get the components
     if units:
@@ -74,9 +76,9 @@ def _parse_line(line, multiple=False, units=False):
         # We have to convert everything to floats here, since we don't have
         # yt to do that for us.
         if multiple:
-            return [float(item) for item in split_line[1:]]
+            return np.array([new_type(item) for item in split_line[1:]])
         else:
-            return float(split_line[1])
+            return new_type(split_line[1])
 
 
 def _parse_kde_line(line):
@@ -150,6 +152,16 @@ def read_gal(ds, file_obj):
     disk_nsc_normal = _parse_line(file_obj.readline(),
                                   multiple=True, units=False)
 
+    nsc_idx_sphere = _parse_line(file_obj.readline(),
+                                 multiple=True, units=False, new_type=int)
+    nsc_idx_disk_nsc = _parse_line(file_obj.readline(),
+                                 multiple=True, units=False, new_type=int)
+    nsc_idx_disk_kde = _parse_line(file_obj.readline(),
+                                 multiple=True, units=False, new_type=int)
+
+    mean_rot_vel = _parse_line(file_obj.readline(), multiple=False, units=True)
+    nsc_3d_sigma = _parse_line(file_obj.readline(), multiple=False, units=True)
+
     # we can create the galaxy at this point
     gal = Galaxy(ds, center, radius)
     # we then add the disk without calculating angular momentum by
@@ -158,6 +170,13 @@ def read_gal(ds, file_obj):
                  normal=disk_kde_normal)
     gal.add_disk(disk_radius=disk_nsc_radius, disk_height=disk_nsc_height,
                  normal=disk_nsc_normal, disk_type="nsc")
+
+    # assign the NSC indices and velocity stuff
+    gal.nsc_idx_sphere = nsc_idx_sphere
+    gal.nsc_idx_disk_nsc = nsc_idx_disk_nsc
+    gal.nsc_idx_disk_kde = nsc_idx_disk_kde
+    gal.mean_rot_vel = mean_rot_vel
+    gal.nsc_3d_sigma = nsc_3d_sigma
 
     # then we get to the KDE values.
     while True:
@@ -179,7 +198,6 @@ def read_gal(ds, file_obj):
     # read in and doesn't need to be repeated.
     gal.find_nsc_radius()
     gal.create_axis_ratios()
-    gal.nsc_rotation()
     gal.create_abundances()
 
     return gal
@@ -548,13 +566,14 @@ class Galaxy(object):
                       disk_radius=2 * self.nsc_radius, disk_type="nsc")
 
         # then get the indices of the stars actually in the NSC
-        radius_key = ('STAR', 'particle_position_spherical_radius')
-        self.nsc_idx_disk_kde = np.where(self.disk_kde[radius_key] <
-                                         self.nsc_radius)[0]
-        self.nsc_idx_disk_nsc = np.where(self.disk_nsc[radius_key] <
-                                         self.nsc_radius)[0]
-        self.nsc_idx_sphere = np.where(self.sphere[radius_key] <
-                                       self.nsc_radius)[0]
+        if self.nsc_idx_sphere is None:
+            radius_key = ('STAR', 'particle_position_spherical_radius')
+            self.nsc_idx_disk_kde = np.where(self.disk_kde[radius_key] <
+                                             self.nsc_radius)[0]
+            self.nsc_idx_disk_nsc = np.where(self.disk_nsc[radius_key] <
+                                             self.nsc_radius)[0]
+            self.nsc_idx_sphere = np.where(self.sphere[radius_key] <
+                                           self.nsc_radius)[0]
 
     def create_axis_ratios(self):
         """Creates the axis ratios object. """
@@ -668,6 +687,21 @@ class Galaxy(object):
         _write_single_item(file_obj, self.disk_nsc._norm_vec, "disk_kde_normal",
                            multiple=True)
 
+        # NSC indexes, which take a while to build in the first place, so it's
+        # better to write them to file now
+        _write_single_item(file_obj, self.nsc_idx_sphere, "nsc_idx_sphere",
+                           multiple=True)
+        _write_single_item(file_obj, self.nsc_idx_disk_nsc, "nsc_idx_disk_nsc",
+                           multiple=True)
+        _write_single_item(file_obj, self.nsc_idx_disk_kde, "nsc_idx_disk_kde",
+                           multiple=True)
+
+        # same with the rotational stuff, which requires access to the disk obj
+        _write_single_item(file_obj, self.mean_rot_vel, "mean_rot_vel",
+                           multiple=False, units=True)
+        _write_single_item(file_obj, self.nsc_3d_sigma, "nsc_3d_sigma",
+                           multiple=False, units=True)
+
         # then all we need are the KDE values
         for key in self.radii:
             _write_single_item(file_obj, self.radii[key],
@@ -676,25 +710,24 @@ class Galaxy(object):
                               "density_{}".format(key), multiple=True)
         file_obj.write("end_of_galaxy\n")  # tag so later read-in is easier
 
-    def check_containment(self, other_gal):
+    def contains(self, other_gal):
         """
-        Checks whether this galaxy is entirely contained within the virial
-        radius of another.
+        Checks whether this galaxy entirely contains another.
 
         A galaxy cannot contain itself.
 
-        :param other_gal: Other galaxy that will be used to see if self is
-                          contained within this one.
+        :param other_gal: Other galaxy that will be used to see if this gal is
+                          contained within self.
         :return: Whether or not this galaxy is contained within the other.
         :rtype: bool
         """
         # to use the comparison in the utils file, everything has to be in the
         # same units.
-        cen_1 = self.center.in_units("kpc").value
-        cen_2 = other_gal.center.in_units("kpc").value
+        cen_1 = other_gal.center.in_units("kpc").value
+        cen_2 = self.center.in_units("kpc").value
 
-        radius_1 = self.radius.in_units("kpc").value
-        radius_2 = other_gal.radius.in_units("kpc").value
+        radius_1 = other_gal.radius.in_units("kpc").value
+        radius_2 = self.radius.in_units("kpc").value
 
         return utils.sphere_containment(cen_1, cen_2, radius_1, radius_2)
 

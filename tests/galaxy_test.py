@@ -318,6 +318,13 @@ def test_reading_writing(read_in_gal):
                        new_gal.disk_nsc._norm_vec)
     assert read_in_gal.disk_nsc.height == new_gal.disk_nsc.height
 
+    # NSC indexes should be the same
+    assert np.array_equal(read_in_gal.nsc_idx_sphere, new_gal.nsc_idx_sphere)
+    assert np.array_equal(read_in_gal.nsc_idx_disk_nsc,
+                          new_gal.nsc_idx_disk_nsc)
+    assert np.array_equal(read_in_gal.nsc_idx_disk_kde,
+                          new_gal.nsc_idx_disk_kde)
+
     # KDE profiles should be the same too.
     assert len(read_in_gal.radii) > 0  # should have multiple keys
     assert len(new_gal.radii) > 0  # should have multiple keys
@@ -373,8 +380,8 @@ def test_reading_writing(read_in_gal):
 def test_containment(read_in_gal, gal):
     """Both galaxies are at the same spot, but read_in_gal has a much larger
     radius, so gal should be contained in read_in_gal."""
-    assert gal.check_containment(read_in_gal)
-    assert not read_in_gal.check_containment(gal)
+    assert read_in_gal.contains(gal)
+    assert not gal.contains(read_in_gal)
     # galaxy can't contain itself.
-    assert not gal.check_containment(gal)
-    assert not read_in_gal.check_containment(gal)
+    assert not gal.contains(gal)
+    assert not read_in_gal.contains(read_in_gal)
