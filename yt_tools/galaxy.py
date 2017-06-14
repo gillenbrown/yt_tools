@@ -177,8 +177,11 @@ def read_gal(ds, file_obj):
     # specifying the normal vector. This saves computation time.
     gal.add_disk(disk_radius=disk_kde_radius, disk_height=disk_kde_height,
                  normal=disk_kde_normal)
-    gal.add_disk(disk_radius=disk_nsc_radius, disk_height=disk_nsc_height,
-                 normal=disk_nsc_normal, disk_type="nsc")
+    if disk_nsc_radius is not None:
+        gal.add_disk(disk_radius=disk_nsc_radius, disk_height=disk_nsc_height,
+                     normal=disk_nsc_normal, disk_type="nsc")
+    else:
+        gal.disk_nsc = None
 
     # assign the NSC indices and velocity stuff
     gal.nsc_idx_sphere = nsc_idx_sphere
@@ -693,12 +696,17 @@ class Galaxy(object):
                            "disk_kde_height", units=True)
         _write_single_item(file_obj, self.disk_kde._norm_vec, "disk_kde_normal",
                            multiple=True)
-        _write_single_item(file_obj, self.disk_nsc.radius.in_units("pc"),
-                           "disk_nsc_radius", units=True)
-        _write_single_item(file_obj, self.disk_nsc.height.in_units("pc"),
-                           "disk_nsc_height", units=True)
-        _write_single_item(file_obj, self.disk_nsc._norm_vec, "disk_kde_normal",
-                           multiple=True)
+        if self.disk_nsc is not None:
+            _write_single_item(file_obj, self.disk_nsc.radius.in_units("pc"),
+                               "disk_nsc_radius", units=True)
+            _write_single_item(file_obj, self.disk_nsc.height.in_units("pc"),
+                               "disk_nsc_height", units=True)
+            _write_single_item(file_obj, self.disk_nsc._norm_vec,
+                               "disk_kde_normal", multiple=True)
+        else:
+            _write_single_item(file_obj, None, "disk_nsc_radius")
+            _write_single_item(file_obj, None, "disk_nsc_height")
+            _write_single_item(file_obj, None, "disk_kde_normal")
 
         # NSC indexes, which take a while to build in the first place, so it's
         # better to write them to file now
