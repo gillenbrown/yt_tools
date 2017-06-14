@@ -103,7 +103,19 @@ class NscStructure(object):
         # first we create the fitting object and use it to get the basic
         # structural parameters that will be used later
         self.fitting = Fitting(radii, densities)
-        self.fitting.fit()
+        try:
+            self.fitting.fit()
+        except RuntimeError:  # number of iterations was exceeded, fit not found
+            self.radii = radii
+            self.densities = densities
+            self.nsc_radius = None
+            self.M_c_parametric = None
+            self.M_d_parametric = None
+            self.a_c_parametric = None
+            self.a_d_parametric = None
+            self.r_half_parametric = None
+            self._cluster_mass()
+            self._half_mass()
 
         # that does error checking too
         self.radii = radii

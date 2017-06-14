@@ -575,6 +575,10 @@ class Galaxy(object):
             self.nsc_idx_sphere = np.where(self.sphere[radius_key] <
                                            self.nsc_radius)[0]
 
+        # then check that there are actually stars in the NSC
+        if len(self.nsc_idx_sphere) == 0 or len(self.nsc_idx_disk_nsc) == 0:
+            self.nsc_radius = None
+
     def create_axis_ratios(self):
         """Creates the axis ratios object. """
         self._check_nsc_existence()

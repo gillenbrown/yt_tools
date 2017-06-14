@@ -1,5 +1,4 @@
 from yt_tools import galaxy
-from yt_tools import kde
 from yt_tools import utils
 
 import pytest

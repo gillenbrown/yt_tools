@@ -245,6 +245,8 @@ def test_grid_resolution_steps():
                        np.array([100, 10, 1]))
     assert np.allclose(kde.grid_resolution_steps(2, 1),
                        np.array([2, 1]))
+    assert np.allclose(kde.grid_resolution_steps(1.0001, 1),
+                       np.array([1.0001, 1]))
     assert np.allclose(kde.grid_resolution_steps(5000, 50),
                        np.array([5000., 500., 50.]))
     assert np.allclose(kde.grid_resolution_steps(50, 1),
