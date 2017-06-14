@@ -30,6 +30,11 @@ def _write_single_item(file_obj, item, name, units=False, multiple=False):
 
     """
     file_obj.write("{}:\t".format(name))
+    # check for a None type
+    if item is None:
+        file_obj.write("None\n")
+        return
+
     # when there are multiple items we have to parse them individually
     if multiple:
         for i in item:
@@ -65,6 +70,10 @@ def _parse_line(line, multiple=False, units=False, new_type=float):
                      if there are no units.
     """
     split_line = line.split()  # get the components
+    # check for a None type
+    if split_line[-1] == "None":
+        return None
+    # otherwise we can do our thing.
     if units:
         unit = split_line[-1]  # unit will be the last thing
         if multiple:
