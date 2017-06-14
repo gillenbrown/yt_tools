@@ -1,56 +1,7 @@
+from __future__ import division
 import numpy as np
 
-def _gaussian_error_checking(radius, sigma):
-    """Checks that both the standard deviation and radius are positive"""
-
-    # Error checking: standard deviation must be positive;
-    if sigma <= 0:
-        raise ValueError("The standard deviation must be positive.")
-    # the radius must be positive too, but we need to check that for both
-    # arrays and for single values.
-    try:
-        if radius < 0:  # will work if a single value
-            raise RuntimeError("The radius must be nonnegative")
-    except(ValueError): # will happen if we pass in an array
-        if any(radius < 0):
-            raise RuntimeError("The radius must be nonnegative")
-
-def gaussian_3d_radial(radius, sigma):
-    """This is a simplified Gaussian for use here.
-
-    This is a radial Gaussian in 3 dimensions. """
-    
-    _gaussian_error_checking(radius, sigma)
-
-    # then we can calculate the Gaussian function
-    exponent = (-1) * radius**2 / (2 * sigma**2)
-    coefficient = 1.0 / (sigma**3 * (2 * np.pi)**(1.5))
-    return coefficient * np.exp(exponent)
-
-def gaussian_2d_radial(radius, sigma):
-    """This is a simplified Gaussian for use here.
-
-    This is a radial Gaussian in 2 dimensions. """
-
-    _gaussian_error_checking(radius, sigma)
-
-    exponent = (-1) * radius**2 / (2 * sigma**2)
-    coefficient = 1.0 / (sigma**2 * 2 * np.pi)
-    return coefficient * np.exp(exponent)
-
-def distance(x1, x2, y1=0, y2=0, z1=0, z2=0):
-    """ Calculates a distance between two points using the Pythagorean theorem.
-
-    Note: This does not support lists, since they aren't vectorized.
-    """
-    try:
-        x_dist = x1 - x2
-        y_dist = y1 - y2
-        z_dist = z1 - z2
-    except(TypeError):
-        raise TypeError("This function does not support lists. Try np.array.")
-
-    return np.sqrt(x_dist**2 + y_dist**2 + z_dist**2)
+from . import utils
 
 def grid_resolution_steps(initial_resolution, final_resolution):
     # we will use increasingly smaller grid size as we get closer to the
@@ -93,7 +44,7 @@ def max_in_pairs(values, labels):
     return labels[max_idx]
 
 
-class kde(object):
+class KDE(object):
     """Class used for doing kernel density estimation in multiple dimensions"""
     def __init__(self, locations, values=None):
         """ Initialize the KDE object.
@@ -139,14 +90,14 @@ class kde(object):
             self.y = locations[1]
             self.z = locations[2]
             # we can keep track of which smoothing function to use. 
-            self.smoothing_function = gaussian_3d_radial
+            self.smoothing_function = utils.gaussian_3d_radial
             # check that all are the right size
             if not len(self.values) == len(self.x) == len(self.y) == len(self.z):
                 raise ValueError("X,Y,Z, and values need to be the same size.")
         elif self.dimension == 2:
             self.x = locations[0]
             self.y = locations[1]
-            self.smoothing_function = gaussian_2d_radial
+            self.smoothing_function = utils.gaussian_2d_radial
             # check that all are the right size
             if not len(self.values) == len(self.x) == len(self.y):
                 raise ValueError("X, Y, and values need to be the same size.")
@@ -169,9 +120,9 @@ class kde(object):
         # get the distances from the location the user passed in to the
         # location of all the points
         if self.dimension == 2:
-            distances = distance(self.x, x, self.y, y)
+            distances = utils.distance(self.x, x, self.y, y)
         elif self.dimension == 3:
-            distances = distance(self.x, x, self.y, y, self.z, z)
+            distances = utils.distance(self.x, x, self.y, y, self.z, z)
 
         # then we can calculate the Gaussian density at these distances
         densities = self.smoothing_function(distances, kernel_size)
@@ -190,14 +141,10 @@ class kde(object):
         else:
             return max([x_size, y_size]) / 10.0
 
-
-        
-
-    
-
     def centering(self, kernel_size, accuracy):
         """ Determines the location of the densest place in the KDE region
 
+        :param kernel_size: Size of the smoothing kernel.
         :param accuracy: value of how precisely to determine the center. The 
                          center determined will be such that
                          abs(true_center - found_center) < accuracy
@@ -249,6 +196,51 @@ class kde(object):
             self.location_max_x = x
             self.location_max_y = y
             self.location_max_z = z
+
+
+    def radial_profile(self, kernel_size, radii, center):
+        """Create a radial KDE profile.
+        
+        :param kernel_size: Size of the smoothing kernel.
+        :param radii: List of radii at which the density will be calculated.
+                      Since KDE binning doesn't make sense, this will work by 
+                      randomly distributing a point over the sphere with a given
+                      radius for each radius in this list. Because of this 
+                      sparse sampling, it makes sense to have much denser 
+                      spacing of radial values then you would when doing a 
+                      binned profile.
+        :param center: location around which the profile will be calculated.
+        :returns: List of densities corresponding to the radii passed in.
+        """
+        # check that the length of the center matches the dimensions we have
+        if len(center) != self.dimension:
+            raise ValueError("The center must be of the same dimension as the "
+                             "data")
+
+        # get those locations we want to sample the density at. These are
+        # relative to the center for now.
+        if self.dimension == 3:
+            rel_locs = utils.get_3d_sperical_points(radii)
+        elif self.dimension == 2:
+            rel_locs = utils.get_2d_polar_points(radii)
+        else:
+            raise ValueError("Only 2 or 3D for now.")
+
+        # then turn these into real space locations by adding the galaxy
+        # center to the relative locations.
+        individual_locs = [rel_locs[i] + center[i] for i in range(len(center))]
+        # ^ that is a two/three element list where each element is an array of
+        # x/y/z values
+        # then turn those into a list of tuples where each point is a single
+        # (x, y, [z]) tuple
+        locations = zip(*individual_locs)
+        # these locations will still be sorted in order of increasing radius,
+        # so they are easy to use. We still have to iterate, and can't do it
+        # in a vectorized way, unfortunately.
+        return np.array([self.density(kernel_size, *loc) for loc in locations])
+
+
+
         
 
     
