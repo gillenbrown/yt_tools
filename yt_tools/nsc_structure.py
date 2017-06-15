@@ -116,6 +116,7 @@ class NscStructure(object):
             self.r_half_parametric = None
             self._cluster_mass()
             self._half_mass()
+            return
 
         # that does error checking too
         self.radii = radii
