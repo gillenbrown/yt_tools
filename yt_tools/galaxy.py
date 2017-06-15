@@ -208,9 +208,12 @@ def read_gal(ds, file_obj):
     # then we can do the fun stuff where we calculate everythign of interest.
     # this should all be pretty quick, since the KDE process has already been
     # read in and doesn't need to be repeated.
-    gal.find_nsc_radius()
-    gal.create_axis_ratios()
-    gal.create_abundances()
+    try:
+        gal.find_nsc_radius()
+        gal.create_axis_ratios()
+        gal.create_abundances()
+    except AttributeError:  # will happen if no NSC
+        pass
 
     return gal
 
