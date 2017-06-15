@@ -703,25 +703,29 @@ class Galaxy(object):
                                "disk_nsc_height", units=True)
             _write_single_item(file_obj, self.disk_nsc._norm_vec,
                                "disk_kde_normal", multiple=True)
+            # NSC indexes, which take a while to build in the first place, so it's
+            # better to write them to file now
+            _write_single_item(file_obj, self.nsc_idx_sphere, "nsc_idx_sphere",
+                               multiple=True)
+            _write_single_item(file_obj, self.nsc_idx_disk_nsc,
+                               "nsc_idx_disk_nsc", multiple=True)
+            _write_single_item(file_obj, self.nsc_idx_disk_kde,
+                               "nsc_idx_disk_kde", multiple=True)
+            # same with the rotational stuff, which requires access to the disk obj
+            _write_single_item(file_obj, self.mean_rot_vel, "mean_rot_vel",
+                               multiple=False, units=True)
+            _write_single_item(file_obj, self.nsc_3d_sigma, "nsc_3d_sigma",
+                               multiple=False, units=True)
         else:
             _write_single_item(file_obj, None, "disk_nsc_radius")
             _write_single_item(file_obj, None, "disk_nsc_height")
             _write_single_item(file_obj, None, "disk_kde_normal")
+            _write_single_item(file_obj, None, "nsc_idx_sphere")
+            _write_single_item(file_obj, None, "nsc_idx_disk_nsc")
+            _write_single_item(file_obj, None, "nsc_idx_disk_kde")
+            _write_single_item(file_obj, None, "mean_rot_vel")
+            _write_single_item(file_obj, None, "nsc_3d_sigma")
 
-        # NSC indexes, which take a while to build in the first place, so it's
-        # better to write them to file now
-        _write_single_item(file_obj, self.nsc_idx_sphere, "nsc_idx_sphere",
-                           multiple=True)
-        _write_single_item(file_obj, self.nsc_idx_disk_nsc, "nsc_idx_disk_nsc",
-                           multiple=True)
-        _write_single_item(file_obj, self.nsc_idx_disk_kde, "nsc_idx_disk_kde",
-                           multiple=True)
-
-        # same with the rotational stuff, which requires access to the disk obj
-        _write_single_item(file_obj, self.mean_rot_vel, "mean_rot_vel",
-                           multiple=False, units=True)
-        _write_single_item(file_obj, self.nsc_3d_sigma, "nsc_3d_sigma",
-                           multiple=False, units=True)
 
         # then all we need are the KDE values
         for key in self.radii:

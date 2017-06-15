@@ -173,7 +173,7 @@ class KDE(object):
             # we use whichever is bigger of the kernel_size the user specified
             # or three times the grid size. We choose three times the grid size 
             # because we don't want to under-sample the grid.
-            kernel_size = max(kernel_size, 3 * grid_resolution)
+            this_kernel_size = max(kernel_size, 3 * grid_resolution)
 
             # then get the places to calculate the density
             locations = construct_grid(grid_resolution, *best_location,
@@ -183,7 +183,8 @@ class KDE(object):
             # we have to do this iteratively at each location, since the 
             # calculation at each location is vectorized over each data point
             # in the KDE class
-            densities = [self.density(kernel_size, *loc) for loc in locations]
+            densities = [self.density(this_kernel_size, *loc)
+                         for loc in locations]
             densities = np.array(densities)
 
             # then get the maximum density and the location of that max value

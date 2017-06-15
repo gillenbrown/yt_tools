@@ -322,6 +322,20 @@ def test_centering_single_point_3d(single_point_at_zero_3d_weighted):
     assert np.isclose(kde_obj.location_max_z, 5, 
                       rtol=0, atol=accuracy)
 
+def test_centering_many_points_3d():
+    """Creates a Gaussian distribution of many points, and this should
+    recover the center"""
+    xs = np.random.normal(3, 1, 10000)
+    ys = np.random.normal(4, 1, 10000)
+    zs = np.random.normal(-2, 1, 10000)
+
+    this_kde = kde.KDE([xs, ys, zs])
+    this_kde.centering(0.2, 0.01)
+    assert np.isclose(this_kde.location_max_x, 3.0, atol=0.2)
+    assert np.isclose(this_kde.location_max_y, 4.0, atol=0.2)
+    assert np.isclose(this_kde.location_max_z, -2.0, atol=0.2)
+
+
 @pytest.fixture
 def two_points_3d():
     """ Returns two points, one at (0, 0, 0), the other at (1, 1, 1) with 
