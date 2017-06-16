@@ -1,5 +1,6 @@
 from __future__ import division
 import numpy as np
+import math
 
 from . import utils
 
@@ -9,13 +10,19 @@ def grid_resolution_steps(initial_resolution, final_resolution):
     # space.
     # the final grid resolution will be the accuracy the user requests
 
-    # in each step, we want to decrease by roughly a factor of 10 in size.
-    # so we take the log of the ratio of the max and min cell size to get
-    # the number of factors of 10. Then we take the ceiling to turn that 
+    # in each step, we want to decrease by no more than a factor of 3 in size.
+    # so we take the log base 3 of the ratio of the max and min cell size to get
+    # the number of factors of 3. Then we take the ceiling to turn that
     # into an integer. We then add 1 to this, to account for the fact that
-    # we want steps at the beginning AND end. 
+    # we want steps at the beginning AND end.
+
+    # The factor of three was chosen becuase we want to include plenty on either
+    # side of the chosen best location each time to allow us to fix issues
+    # caused by undersampling the grid. If we choose too large of a step, then
+    # we may run into issues if the center isn't right on one of the grid
+    # points chosen in a previous step. We always want to allow wiggle room.
     size_ratio = initial_resolution / final_resolution
-    num_steps = np.ceil(np.log10(size_ratio)) + 1
+    num_steps = np.ceil(math.log(size_ratio, 3.0)) + 1
     # I then evenly space in log space.
     return np.logspace(np.log10(initial_resolution),
                        np.log10(final_resolution), 
@@ -171,9 +178,9 @@ class KDE(object):
         initial_size = self._initial_cell_size()
         for grid_resolution in grid_resolution_steps(initial_size, accuracy):
             # we use whichever is bigger of the kernel_size the user specified
-            # or three times the grid size. We choose three times the grid size 
+            # or the grid size. We choose the grid size
             # because we don't want to under-sample the grid.
-            this_kernel_size = max(kernel_size, 3 * grid_resolution)
+            this_kernel_size = max(kernel_size, grid_resolution)
 
             # then get the places to calculate the density
             locations = construct_grid(grid_resolution, *best_location,

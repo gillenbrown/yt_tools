@@ -273,7 +273,8 @@ class Galaxy(object):
         self.nsc = None  # used for NSC analysis
         self.nsc_radius = None  # used for NSC analysis
         self.nsc_idx_sphere = None  # used for NSC analysis
-        self.nsc_idx_disk = None  # used for NSC analysis
+        self.nsc_idx_disk_kde = None  # used for NSC analysis
+        self.nsc_idx_disk_nsc = None  # used for NSC analysis
         self.nsc_axis_ratios = None  # used for rotation analysis
         self.mean_rot_vel = None  # used for rotation analysis
         self.nsc_3d_sigma = None  # used for rotation analysis

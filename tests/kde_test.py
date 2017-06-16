@@ -238,19 +238,31 @@ def test_initial_cell_size_2d():
     assert kde_obj._initial_cell_size() == 4.9
 
 
-def test_grid_resolution_steps():
+def test_grid_resolution_steps_examples():
     """Test the process that creates the grid resolution. I will only test
     the simple cases where I know what I want."""
-    assert np.allclose(kde.grid_resolution_steps(100, 1),
-                       np.array([100, 10, 1]))
+    assert np.allclose(kde.grid_resolution_steps(81, 1),
+                       np.array([81, 27, 9, 3, 1]))
     assert np.allclose(kde.grid_resolution_steps(2, 1),
                        np.array([2, 1]))
     assert np.allclose(kde.grid_resolution_steps(1.0001, 1),
                        np.array([1.0001, 1]))
-    assert np.allclose(kde.grid_resolution_steps(5000, 50),
-                       np.array([5000., 500., 50.]))
-    assert np.allclose(kde.grid_resolution_steps(50, 1),
-                       np.logspace(np.log10(50), 0, 3))
+    assert np.allclose(kde.grid_resolution_steps(4050, 50),
+                       np.array([4050, 1350, 450, 150, 50]))
+
+
+def test_grid_resolution_steps_lengths():
+    # then check the length of a couple of examples.
+    l_82 = len(kde.grid_resolution_steps(82, 1))
+    l_81 = len(kde.grid_resolution_steps(81, 1))
+    l_80 = len(kde.grid_resolution_steps(80, 1))
+    l_28 = len(kde.grid_resolution_steps(28, 1))
+    l_27 = len(kde.grid_resolution_steps(27, 1))
+    assert l_82 != l_81
+    assert l_81 == l_80
+    assert l_80 == l_28
+    assert l_28 != l_27
+
 
 def test_constructing_grid_3d():
     """ See if the creation of the grid is correct"""
