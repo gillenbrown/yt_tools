@@ -146,6 +146,7 @@ def read_gal(ds, file_obj):
 
     # we are now at the right spot. Each line following this is a single
     # known value that is easy to grab.
+    id = _parse_line(file_obj.readline(), multiple=False, units=False)
     center = _parse_line(file_obj.readline(), multiple=True, units=True)
     radius = _parse_line(file_obj.readline(), multiple=False, units=True)
     disk_kde_radius = _parse_line(file_obj.readline(),
@@ -172,7 +173,7 @@ def read_gal(ds, file_obj):
     nsc_3d_sigma = _parse_line(file_obj.readline(), multiple=False, units=True)
 
     # we can create the galaxy at this point
-    gal = Galaxy(ds, center, radius)
+    gal = Galaxy(ds, center, radius, id)
     # we then add the disk without calculating angular momentum by
     # specifying the normal vector. This saves computation time.
     gal.add_disk(disk_radius=disk_kde_radius, disk_height=disk_kde_height,
@@ -219,8 +220,8 @@ def read_gal(ds, file_obj):
 
 
 class Galaxy(object):
-    def __init__(self, dataset, center, radius, j_radius=None, disk_radius=None,
-                 disk_height=None):
+    def __init__(self, dataset, center, radius, id, j_radius=None,
+                 disk_radius=None, disk_height=None):
         """Create a galaxy object at the specified location with the 
         given size. 
         
@@ -229,11 +230,13 @@ class Galaxy(object):
                        units.
         :param radius: Radius that will be used to create the sphere object.
                        Must also have units.
+        :param id: identification number for this galaxy. Can be arbitrary.
         :params j_radius, disk_radius, disk_height: used for the creation of
                 the disk. See the _add_disk functionality for detailed
                 explanation. If these are left blank no disk will be
                 created.
         """
+        self.id = id
 
         # Check that the dataset is actually a datset, then assign
         if not isinstance(dataset, yt.data_objects.static_output.Dataset):
@@ -689,6 +692,7 @@ class Galaxy(object):
         # write essential data first.
         file_obj.write("\n")
         file_obj.write("new_galaxy_here\n")  # tag so later read-in is easier
+        _write_single_item(file_obj, self.id, "id", units=False, multiple=False)
         _write_single_item(file_obj, self.center.in_units("pc"), "center",
                            units=True, multiple=True)
         _write_single_item(file_obj, self.radius.in_units("pc"), "radius",

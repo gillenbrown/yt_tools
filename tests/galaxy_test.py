@@ -296,6 +296,7 @@ def test_reading_writing(read_in_gal):
     new_gal = galaxy.read_gal(ds, file)
 
     # then compare things. First basic stuff:
+    assert read_in_gal.id == new_gal.id
     assert np.allclose(read_in_gal.center.in_units("pc").value,
                        new_gal.center.in_units("pc").value)
     # ^ the .value is needed to make yt arrays play nice with allclose
@@ -347,7 +348,10 @@ def test_reading_writing(read_in_gal):
     assert read_in_gal.nsc_axis_ratios.c_over_b == new_gal.nsc_axis_ratios.c_over_b
     assert read_in_gal.nsc_radius == new_gal.nsc_radius
     assert np.array_equal(read_in_gal.nsc_idx_sphere, new_gal.nsc_idx_sphere)
-    assert np.array_equal(read_in_gal.nsc_idx_disk, new_gal.nsc_idx_disk)
+    assert np.array_equal(read_in_gal.nsc_idx_disk_kde,
+                          new_gal.nsc_idx_disk_kde)
+    assert np.array_equal(read_in_gal.nsc_idx_disk_nsc,
+                          new_gal.nsc_idx_disk_nsc)
     assert np.isclose(read_in_gal.mean_rot_vel.in_units("km/s").value,
                       new_gal.mean_rot_vel.in_units("km/s").value)
     assert np.isclose(read_in_gal.nsc_3d_sigma.in_units("km/s").value,
