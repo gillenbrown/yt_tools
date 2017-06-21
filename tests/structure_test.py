@@ -47,14 +47,14 @@ def test_fitting_results_plummer():
     fit.fit()
     assert np.isclose(fit.M_c, M_c)
     assert np.isclose(fit.a_c, a_c)
-    assert np.isclose(fit.M_d, 0)
+    assert np.isclose(fit.M_d, 0, atol=2)
 
 def test_fitting_results_disk():
     fit = nsc_structure.Fitting(radii, disk)
     fit.fit()
     assert np.isclose(fit.M_d, M_d)
     assert np.isclose(fit.a_d, a_d)
-    assert np.isclose(fit.M_c, 0)
+    assert np.isclose(fit.M_c, 0, atol=2)
 
 def test_fitting_results_total():
     fit = nsc_structure.Fitting(radii, plummer + disk)
@@ -64,6 +64,25 @@ def test_fitting_results_total():
     assert np.isclose(fit.M_d, M_d, atol=0.01)
     assert np.isclose(fit.a_d, a_d, atol=0.01)
 
+# -----------------------------------------------------------------------------
+
+# test the transformation of errors. This is used in the log mass calculations
+
+# -----------------------------------------------------------------------------
+
+def test_error_transform_error_checking():
+    with pytest.raises(ValueError):
+        nsc_structure.error_transform(0, -1)
+
+def test_error_transform_results():
+    assert np.allclose(nsc_structure.error_transform(1, 0.1),
+                       (2.056717653, 2.589254118))
+    assert np.allclose(nsc_structure.error_transform(5.5, 0.5),
+                       (216227.766, 683772.234))
+    assert np.allclose(nsc_structure.error_transform(4.0, 1.0),
+                       (9e3, 9e4))
+    assert np.allclose(nsc_structure.error_transform(-3.0, 1.0),
+                       (9e-4, 9e-3))
 # -----------------------------------------------------------------------------
 
 # test the creation of the structure class.
@@ -86,12 +105,12 @@ def struct_total():
 def test_init_nsc_plummer(struct_plummer):
     assert np.isclose(struct_plummer.M_c_parametric, M_c)
     assert np.isclose(struct_plummer.a_c_parametric, a_c)
-    assert np.isclose(struct_plummer.M_d_parametric, 0)
+    assert np.isclose(struct_plummer.M_d_parametric, 0, atol=2)
 
 def test_init_nsc_disk(struct_disk):
     assert np.isclose(struct_disk.M_d_parametric, M_d)
     assert np.isclose(struct_disk.a_d_parametric, a_d)
-    assert np.isclose(struct_disk.M_c_parametric, 0)
+    assert np.isclose(struct_disk.M_c_parametric, 0, atol=2)
 
 def test_equality_radius_results(struct_total):
     eq_rad = struct_total.nsc_radius

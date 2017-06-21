@@ -23,6 +23,23 @@ def log_plummer_disk(r, M_c, M_d, a_c, a_d):
     total = cluster_component + disk_component
     return np.log10(total)
 
+def error_transform(log_X, log_X_err):
+    """
+    Transform errors in log(X) into an asymmetric error interval in X.
+
+    :param log_M: The best fit value of log_10(X)
+    :param log_M_err: The error on the best fit value of log_10(X)
+    :return: The asymmetric error interval for the best fit on X. This is a
+             tuple with lower, then upper error ranges.
+    """
+    # error must be positive
+    if log_X_err < 0:
+        raise ValueError("Errors must be positive.")
+
+    lower_error = 10**log_X - 10**(log_X - log_X_err)
+    upper_error = 10**(log_X + log_X_err) - 10**log_X
+    return lower_error, upper_error
+
 class Fitting(object):
     """Performs the fitting to determine where the NSC is. """
     # set the bounds for the fitting and the initial guess
@@ -57,22 +74,20 @@ class Fitting(object):
 
     def fit(self):
         """Performs the fit and stores the parameters."""
-        params, errs =  optimize.curve_fit(log_plummer_disk, self.radii_logsafe,
-                                           self.log_densities,
-                                           bounds=self.bounds, p0=self.guess)
-        self.M_c, self.M_d, self.a_c, self.a_d = params
+        params, cov =  optimize.curve_fit(log_plummer_disk, self.radii_logsafe,
+                                          self.log_densities,
+                                          bounds=self.bounds, p0=self.guess)
+        self.cov = cov
+        M_c_log, M_d_log, self.a_c, self.a_d = params
+        errors = np.sqrt(np.diag(cov))
+        M_c_log_err, M_d_log_err, self.a_c_err, self.a_d_err = errors
 
-        # if the masses are close to zero, put them exactly there. Otherwise,
-        # put the values back into real space, not log space
-        if np.isclose(self.M_c, self.bounds[0][0], atol=0.02):
-            self.M_c = 0
-        else:
-            self.M_c = 10 ** self.M_c
+        # put the masses back into log space
+        self.M_c = 10 ** M_c_log
+        self.M_c_err = error_transform(M_c_log, M_c_log_err)
 
-        if np.isclose(self.M_d, self.bounds[0][1], atol=0.02):
-            self.M_d = 0
-        else:
-            self.M_d = 10 ** self.M_d
+        self.M_d = 10 ** M_d_log
+        self.M_d_err = error_transform(M_d_log, M_d_log_err)
 
     def _create_log_densities(self):
         # we want to do the fitting in log space, but need to be careful of
@@ -127,6 +142,10 @@ class NscStructure(object):
         self.M_d_parametric = self.fitting.M_d
         self.a_c_parametric = self.fitting.a_c
         self.a_d_parametric = self.fitting.a_d
+        self.M_c_err_parametric = self.fitting.M_c_err
+        self.M_d_err_parametric = self.fitting.M_d_err
+        self.a_c_err_parametric = self.fitting.a_c_err
+        self.a_d_err_parametric = self.fitting.a_d_err
         self.r_half_parametric = profiles.plummer_2d_half_mass(self.fitting.a_c)
 
         # then we can use that to find the equality radius

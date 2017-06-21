@@ -218,9 +218,14 @@ def read_gal(ds, file_obj):
 
     return gal
 
+id_start = 100
+def _assign_id():
+    global id_start
+    id_start += 1
+    return id_start
 
 class Galaxy(object):
-    def __init__(self, dataset, center, radius, id, j_radius=None,
+    def __init__(self, dataset, center, radius, id=None, j_radius=None,
                  disk_radius=None, disk_height=None):
         """Create a galaxy object at the specified location with the 
         given size. 
@@ -236,7 +241,10 @@ class Galaxy(object):
                 explanation. If these are left blank no disk will be
                 created.
         """
-        self.id = id
+        if id is not None:
+            self.id = id
+        else:
+            self.id = _assign_id()
 
         # Check that the dataset is actually a datset, then assign
         if not isinstance(dataset, yt.data_objects.static_output.Dataset):

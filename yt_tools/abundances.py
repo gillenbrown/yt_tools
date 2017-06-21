@@ -3,6 +3,7 @@ import os
 import numpy as np
 
 import yields
+import utils
 
 # need to get the solar abundances
 def create_solar_metal_fractions():
@@ -73,8 +74,9 @@ class Abundances(object):
         self.yields_Ia = yields.Yields("iwamoto_99_Ia_W7")
         self.yields_II = yields.Yields("nomoto_06_II_imf_ave")
 
-    def z_on_h(self):
-        """Calculate the Z on H value for this collection of stars.
+    def z_on_h_total(self):
+        """Calculate the Z on H value for this collection of stars, by
+        dividing the total Z by the total H.
 
         This is calculated in the following way. The derivation for this is
         in my notebook, but here is the important equation.
@@ -98,7 +100,7 @@ class Abundances(object):
 
         return np.log10(star_frac * sun_frac)
 
-    def x_on_h(self, element):
+    def x_on_h_total(self, element):
         """Calculate the [X/H] value for this collection of stars.
 
         This is calculated in the following way.
@@ -134,7 +136,46 @@ class Abundances(object):
 
         return np.log10(star_frac * sun_frac)
 
-    def x_on_fe(self, element):
+    def x_on_h_average(self, element):
+        """
+        Calculate the [X/H] value for this collection of stars, but calculating
+        a weighted average of the [X/H] of each star particle.
+
+        This returns the weighted average and the weighted variance of the
+        [Fe/H] values of the star particles.
+
+        This is calculated in the following way.
+
+        .. math::
+            [X/Fe] = \log_{10} \left[ \frac{Z_\star^{Ia}f_X^{Ia} +
+            Z_\star^{II} f_X^{II}}{Z_{tot \odot} f_{Fe \odot}}
+            \frac{1 - Z_{tot \odot}}{1 - Z_{tot \star}} \right]
+
+        Where f is the fraction of the total metals element x takes up for
+        either the type Ia or II yields.
+
+        :param element: Element to be used in place of X.
+        :type element: str
+        :returns: Mean value of [X/H] for the given element.
+        :rtype: float
+        :returns: Variance of [X/H] for the given element.
+        :rtype: float
+        """
+        f_Ia = self.yields_Ia.mass_fraction(element, self.Z_Ia)
+        f_II = self.yields_II.mass_fraction(element, self.Z_II)
+        star_num = self.Z_Ia * f_Ia + self.Z_II * f_II
+        star_denom = self.one_minus_Z_tot
+        star_frac = star_num / star_denom
+
+        sun_num = 1.0 - self.z_sun
+        sun_denom = self.z_sun * self.solar_metal_fractions[element]
+        sun_frac = sun_num / sun_denom
+
+        star_x_on_h = np.log10(star_frac * sun_frac)
+        return (utils.weighted_mean(star_x_on_h, self.mass),
+                utils.weighted_variance(star_x_on_h, self.mass))
+
+    def x_on_fe_total(self, element):
         """Calculate the [X/Fe] value for this collection of stars.
 
         This is calculated in the following way.
@@ -173,7 +214,49 @@ class Abundances(object):
 
         return np.log10(star_frac * sun_frac)
 
-    def log_z_over_z_sun(self):
+    def x_on_fe_average(self, element):
+        """
+        Calculate the [X/Fe] value for this collection of stars, but calculating
+        a weighted average of the [X/Fe] of each star particle.
+
+        This returns the weighted average and the weighted variance of the
+        [Fe/H] values of the star particles.
+
+        This is calculated in the following way.
+
+        .. math::
+            [X/Fe] = \log_{10} \left[ \frac{Z_\star^{Ia}f_X^{Ia} + Z_\star^{II}
+            f_X^{II}}{Z_\star^{Ia}f_{Fe}^{Ia} + Z_\star^{II}
+            f_{Fe}^{II}}\frac{f_{Fe \odot}}{f_{X \odot}} \right]
+
+        Where f is the fraction of the total metals element x takes up for
+        either the type Ia or II yields.
+
+        :param element: Element to be used in place of X.
+        :type element: str
+        :returns: Mean value of [X/Fe] for the given element.
+        :rtype: float
+        :returns: Variance of [X/Fe] for the given element.
+        :rtype: float
+        """
+        f_Ia_x = self.yields_Ia.mass_fraction(element, self.Z_Ia)
+        f_II_x = self.yields_II.mass_fraction(element, self.Z_II)
+        f_Ia_Fe = self.yields_Ia.mass_fraction("Fe", self.Z_Ia)
+        f_II_Fe = self.yields_II.mass_fraction("Fe", self.Z_II)
+
+        star_num   = self.Z_Ia * f_Ia_x  + self.Z_II * f_II_x
+        star_denom = self.Z_Ia * f_Ia_Fe + self.Z_II * f_II_Fe
+        star_frac = star_num / star_denom
+
+        sun_num = self.solar_metal_fractions["Fe"]
+        sun_denom = self.solar_metal_fractions[element]
+        sun_frac = sun_num / sun_denom
+
+        star_fe_on_h = np.log10(star_frac * sun_frac)
+        return (utils.weighted_mean(star_fe_on_h, self.mass),
+                utils.weighted_variance(star_fe_on_h, self.mass))
+
+    def log_z_over_z_sun_total(self):
         """Returns the value of log(Z/Z_sun).
 
         This is a pretty straightforward calculation. We just take the total

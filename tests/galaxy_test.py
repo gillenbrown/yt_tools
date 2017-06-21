@@ -18,6 +18,16 @@ ds = yt.load(file_loc)
 # then find the densest region, just to have a real galaxy somewhere
 best_loc = yt.YTArray(ds.all_data().argmax("density"))
 
+def test_gal_id_generator():
+    """This has to be run first, since it depends on the initial state of
+    the id counter. """
+    gal_0 = galaxy.Galaxy(ds, best_loc, 10*kpc)
+    assert gal_0.id == 101
+    gal_1 = galaxy.Galaxy(ds, best_loc, 10 * kpc)
+    assert gal_1.id == 102
+    gal_id = galaxy.Galaxy(ds, best_loc, 10 * kpc, 314)
+    assert gal_id.id == 314
+
 def test_gal_dataset_typing():
     with pytest.raises(TypeError):
         galaxy.Galaxy(None, [1, 2, 3] * kpc, 10 * kpc)
@@ -264,20 +274,20 @@ def test_nsc_rotation_units(read_in_gal):
 
 def test_nsc_abundances(read_in_gal):
     # then check that the abundances exist and are not identical with each other
-    assert -5 < read_in_gal.nsc_abundances.z_on_h() < 5
-    assert -5 < read_in_gal.gal_abundances.z_on_h() < 5
-    assert -5 < read_in_gal.nsc_abundances.x_on_h("Fe") < 5
-    assert -5 < read_in_gal.gal_abundances.x_on_h("Fe") < 5
-    assert np.isclose(read_in_gal.nsc_abundances.x_on_fe("Fe"), 0)
-    assert np.isclose(read_in_gal.gal_abundances.x_on_fe("Fe"), 0)
-    assert -5 < read_in_gal.nsc_abundances.x_on_fe("Na") < 5
-    assert -5 < read_in_gal.gal_abundances.x_on_fe("Na") < 5
-    assert not np.isclose(read_in_gal.nsc_abundances.z_on_h(),
-                          read_in_gal.gal_abundances.z_on_h())
-    assert not np.isclose(read_in_gal.nsc_abundances.x_on_h("Na"),
-                          read_in_gal.gal_abundances.x_on_h("Na"))
-    assert not np.isclose(read_in_gal.nsc_abundances.x_on_fe("Na"),
-                          read_in_gal.gal_abundances.x_on_fe("Na"))
+    assert -5 < read_in_gal.nsc_abundances.z_on_h_total() < 5
+    assert -5 < read_in_gal.gal_abundances.z_on_h_total() < 5
+    assert -5 < read_in_gal.nsc_abundances.x_on_h_total("Fe") < 5
+    assert -5 < read_in_gal.gal_abundances.x_on_h_total("Fe") < 5
+    assert np.isclose(read_in_gal.nsc_abundances.x_on_fe_total("Fe"), 0)
+    assert np.isclose(read_in_gal.gal_abundances.x_on_fe_total("Fe"), 0)
+    assert -5 < read_in_gal.nsc_abundances.x_on_fe_total("Na") < 5
+    assert -5 < read_in_gal.gal_abundances.x_on_fe_total("Na") < 5
+    assert not np.isclose(read_in_gal.nsc_abundances.z_on_h_total(),
+                          read_in_gal.gal_abundances.z_on_h_total())
+    assert not np.isclose(read_in_gal.nsc_abundances.x_on_h_total("Na"),
+                          read_in_gal.gal_abundances.x_on_h_total("Na"))
+    assert not np.isclose(read_in_gal.nsc_abundances.x_on_fe_total("Na"),
+                          read_in_gal.gal_abundances.x_on_fe_total("Na"))
 
 # -----------------------------------------------------------------------------
 #
@@ -356,22 +366,22 @@ def test_reading_writing(read_in_gal):
                       new_gal.mean_rot_vel.in_units("km/s").value)
     assert np.isclose(read_in_gal.nsc_3d_sigma.in_units("km/s").value,
                       new_gal.nsc_3d_sigma.in_units("km/s").value)
-    assert np.isclose(read_in_gal.nsc_abundances.x_on_fe("N"),
-                      new_gal.nsc_abundances.x_on_fe("N"))
-    assert np.isclose(read_in_gal.nsc_abundances.x_on_h("Ca"),
-                      new_gal.nsc_abundances.x_on_h("Ca"))
-    assert np.isclose(read_in_gal.nsc_abundances.log_z_over_z_sun(),
-                      new_gal.nsc_abundances.log_z_over_z_sun())
-    assert np.isclose(read_in_gal.nsc_abundances.z_on_h(),
-                      new_gal.nsc_abundances.z_on_h())
-    assert np.isclose(read_in_gal.gal_abundances.x_on_fe("N"),
-                      new_gal.gal_abundances.x_on_fe("N"))
-    assert np.isclose(read_in_gal.gal_abundances.x_on_h("Ca"),
-                      new_gal.gal_abundances.x_on_h("Ca"))
-    assert np.isclose(read_in_gal.gal_abundances.z_on_h(),
-                      new_gal.gal_abundances.z_on_h())
-    assert np.isclose(read_in_gal.gal_abundances.log_z_over_z_sun(),
-                      new_gal.gal_abundances.log_z_over_z_sun())
+    assert np.isclose(read_in_gal.nsc_abundances.x_on_fe_total("N"),
+                      new_gal.nsc_abundances.x_on_fe_total("N"))
+    assert np.isclose(read_in_gal.nsc_abundances.x_on_h_total("Ca"),
+                      new_gal.nsc_abundances.x_on_h_total("Ca"))
+    assert np.isclose(read_in_gal.nsc_abundances.log_z_over_z_sun_total(),
+                      new_gal.nsc_abundances.log_z_over_z_sun_total())
+    assert np.isclose(read_in_gal.nsc_abundances.z_on_h_total(),
+                      new_gal.nsc_abundances.z_on_h_total())
+    assert np.isclose(read_in_gal.gal_abundances.x_on_fe_total("N"),
+                      new_gal.gal_abundances.x_on_fe_total("N"))
+    assert np.isclose(read_in_gal.gal_abundances.x_on_h_total("Ca"),
+                      new_gal.gal_abundances.x_on_h_total("Ca"))
+    assert np.isclose(read_in_gal.gal_abundances.z_on_h_total(),
+                      new_gal.gal_abundances.z_on_h_total())
+    assert np.isclose(read_in_gal.gal_abundances.log_z_over_z_sun_total(),
+                      new_gal.gal_abundances.log_z_over_z_sun_total())
 
 
 # -----------------------------------------------------------------------------

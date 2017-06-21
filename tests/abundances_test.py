@@ -94,29 +94,29 @@ def two_star_different_z():
 
 def test_z_on_h_calculation_single_zero(single_mass_zero):
     """For z zero metallicity object we should have negative infinity. """
-    assert np.isneginf(single_mass_zero.z_on_h())
+    assert np.isneginf(single_mass_zero.z_on_h_total())
 
 def test_z_on_h_calculation_single_one_Ia(single_mass_one_Ia):
     """For an object of metallicity one, we will get an infinite value, since
     we will be dividing by zero. """
-    assert np.isposinf(single_mass_one_Ia.z_on_h())
+    assert np.isposinf(single_mass_one_Ia.z_on_h_total())
 
 def test_z_on_h_calculation_single_one_II(single_mass_one_II):
     """For an object of metallicity one, we will get an infinite value, since
     we will be dividing by zero. """
-    assert np.isposinf(single_mass_one_II.z_on_h())
+    assert np.isposinf(single_mass_one_II.z_on_h_total())
 
 def test_z_on_h_calculation_single_solar_Ia(single_mass_solar_Ia):
     """For a solar metallicity object we should get zero. """
-    assert np.isclose(single_mass_solar_Ia.z_on_h(), 0)
+    assert np.isclose(single_mass_solar_Ia.z_on_h_total(), 0)
 
 def test_z_on_h_calculation_single_solar_II(single_mass_solar_II):
     """For a solar metallicity object we should get zero. """
-    assert np.isclose(single_mass_solar_II.z_on_h(), 0)
+    assert np.isclose(single_mass_solar_II.z_on_h_total(), 0)
 
 def test_z_on_h_calculation_not_simple(two_star_different_z):
     """This calculation was done by hand. """
-    assert np.isclose(two_star_different_z.z_on_h(), 0.225411791, atol=0)
+    assert np.isclose(two_star_different_z.z_on_h_total(), 0.225411791, atol=0)
 
 # -----------------------------------------------------------
 
@@ -124,33 +124,60 @@ def test_z_on_h_calculation_not_simple(two_star_different_z):
 
 # -----------------------------------------------------------
 
-def test_fe_on_h_calculation_single_zero(single_mass_zero):
+def test_fe_on_h_calculation_single_zero_total(single_mass_zero):
     """For z zero metallicity object we should have negative infinity. """
-    assert np.isneginf(single_mass_zero.x_on_h("Fe"))
+    assert np.isneginf(single_mass_zero.x_on_h_total("Fe"))
 
-def test_fe_on_h_calculation_single_one_Ia(single_mass_one_Ia):
+def test_fe_on_h_calculation_single_zero_average(single_mass_zero):
+    """For z zero metallicity object we should have negative infinity. """
+    assert np.isneginf(single_mass_zero.x_on_h_average("Fe")[0])
+
+def test_fe_on_h_calculation_single_one_Ia_total(single_mass_one_Ia):
     """For an object of metallicity one, we will get an infinite value, since
     we will be dividing by zero. """
-    assert np.isposinf(single_mass_one_Ia.x_on_h("Fe"))
+    assert np.isposinf(single_mass_one_Ia.x_on_h_total("Fe"))
 
-def test_fe_on_h_calculation_single_one_II(single_mass_one_II):
+def test_fe_on_h_calculation_single_one_Ia_average(single_mass_one_Ia):
     """For an object of metallicity one, we will get an infinite value, since
     we will be dividing by zero. """
-    assert np.isposinf(single_mass_one_II.x_on_h("Fe"))
+    assert np.isposinf(single_mass_one_Ia.x_on_h_average("Fe")[0])
 
-def test_fe_on_h_calculation_single_solar_Ia(single_mass_solar_Ia):
+def test_fe_on_h_calculation_single_one_II_total(single_mass_one_II):
+    """For an object of metallicity one, we will get an infinite value, since
+    we will be dividing by zero. """
+    assert np.isposinf(single_mass_one_II.x_on_h_total("Fe"))
+
+def test_fe_on_h_calculation_single_one_II_average(single_mass_one_II):
+    """For an object of metallicity one, we will get an infinite value, since
+    we will be dividing by zero. """
+    assert np.isposinf(single_mass_one_II.x_on_h_average("Fe")[0])
+
+def test_fe_on_h_calculation_single_solar_Ia_total(single_mass_solar_Ia):
     """For a solar metallicity object we have to manually calculate it using
      the actual yield object. """
-    assert np.isclose(single_mass_solar_Ia.x_on_h("Fe"), 0.858336, atol=0)
+    assert np.isclose(single_mass_solar_Ia.x_on_h_total("Fe"), 0.858336, atol=0)
 
-def test_fe_on_h_calculation_single_solar_II(single_mass_solar_II):
+def test_fe_on_h_calculation_single_solar_Ia_average(single_mass_solar_Ia):
     """For a solar metallicity object we have to manually calculate it using
      the actual yield object. """
-    assert np.isclose(single_mass_solar_II.x_on_h("Fe"), -0.2740616354, atol=0)
+    assert np.allclose(single_mass_solar_Ia.x_on_h_average("Fe"), (0.858336, 0))
 
-def test_fe_on_h_calculation_not_simple(two_star_different_z):
+def test_fe_on_h_calculation_single_solar_II_total(single_mass_solar_II):
+    """For a solar metallicity object we have to manually calculate it using
+     the actual yield object. """
+    assert np.isclose(single_mass_solar_II.x_on_h_total("Fe"), -0.2740616354)
+
+def test_fe_on_h_calculation_single_solar_II_average(single_mass_solar_II):
+    """For a solar metallicity object we have to manually calculate it using
+     the actual yield object. """
+    assert np.allclose(single_mass_solar_II.x_on_h_average("Fe"),
+                       (-0.2740616354, 0))
+
+def test_fe_on_h_calculation_not_simple_total(two_star_different_z):
     """This calculation was done by hand. """
-    assert np.isclose(two_star_different_z.x_on_h("Fe"), 0.8775378801, atol=0)
+    assert np.isclose(two_star_different_z.x_on_h_total("Fe"),
+                      0.8775378801, atol=0)
+
 
 # -----------------------------------------------------------
 
@@ -158,33 +185,61 @@ def test_fe_on_h_calculation_not_simple(two_star_different_z):
 
 # -----------------------------------------------------------
 
-def test_na_on_h_calculation_single_zero(single_mass_zero):
+def test_na_on_h_calculation_single_zero_total(single_mass_zero):
     """For z zero metallicity object we should have negative infinity. """
-    assert np.isneginf(single_mass_zero.x_on_h("Na"))
+    assert np.isneginf(single_mass_zero.x_on_h_total("Na"))
 
-def test_na_on_h_calculation_single_one_Ia(single_mass_one_Ia):
+def test_na_on_h_calculation_single_zero_average(single_mass_zero):
+    """For z zero metallicity object we should have negative infinity. """
+    assert np.isneginf(single_mass_zero.x_on_h_average("Na")[0])
+
+def test_na_on_h_calculation_single_one_Ia_total(single_mass_one_Ia):
     """For an object of metallicity one, we will get an infinite value, since
     we will be dividing by zero. """
-    assert np.isposinf(single_mass_one_Ia.x_on_h("Na"))
+    assert np.isposinf(single_mass_one_Ia.x_on_h_total("Na"))
 
-def test_na_on_h_calculation_single_one_II(single_mass_one_II):
+def test_na_on_h_calculation_single_one_Ia_average(single_mass_one_Ia):
     """For an object of metallicity one, we will get an infinite value, since
     we will be dividing by zero. """
-    assert np.isposinf(single_mass_one_II.x_on_h("Na"))
+    assert np.isposinf(single_mass_one_Ia.x_on_h_average("Na")[0])
 
-def test_na_on_h_calculation_single_solar_Ia(single_mass_solar_Ia):
+def test_na_on_h_calculation_single_one_II_total(single_mass_one_II):
+    """For an object of metallicity one, we will get an infinite value, since
+    we will be dividing by zero. """
+    assert np.isposinf(single_mass_one_II.x_on_h_total("Na"))
+
+def test_na_on_h_calculation_single_one_II_average(single_mass_one_II):
+    """For an object of metallicity one, we will get an infinite value, since
+    we will be dividing by zero. """
+    assert np.isposinf(single_mass_one_II.x_on_h_average("Na")[0])
+
+def test_na_on_h_calculation_single_solar_Ia_total(single_mass_solar_Ia):
     """For a solar metallicity object we have to manually calculate it using
      the actual yield object. """
-    assert np.isclose(single_mass_solar_Ia.x_on_h("Na"), -1.66083, atol=0)
+    assert np.isclose(single_mass_solar_Ia.x_on_h_total("Na"), -1.66083)
 
-def test_na_on_h_calculation_single_solar_II(single_mass_solar_II):
+def test_na_on_h_calculation_single_solar_Ia_average(single_mass_solar_Ia):
     """For a solar metallicity object we have to manually calculate it using
      the actual yield object. """
-    assert np.isclose(single_mass_solar_II.x_on_h("Na"), 0.3078305, atol=0)
+    assert np.allclose(single_mass_solar_Ia.x_on_h_average("Na"),
+                       (-1.66083, 0))
 
-def test_na_on_h_calculation_not_simple(two_star_different_z):
+def test_na_on_h_calculation_single_solar_II_total(single_mass_solar_II):
+    """For a solar metallicity object we have to manually calculate it using
+     the actual yield object. """
+    assert np.isclose(single_mass_solar_II.x_on_h_total("Na"),
+                      0.3078305, atol=0)
+
+def test_na_on_h_calculation_single_solar_II_average(single_mass_solar_II):
+    """For a solar metallicity object we have to manually calculate it using
+     the actual yield object. """
+    assert np.allclose(single_mass_solar_II.x_on_h_average("Na"),
+                       (0.3078305, 0))
+
+def test_na_on_h_calculation_not_simple_total(two_star_different_z):
     """This calculation was done by hand. """
-    assert np.isclose(two_star_different_z.x_on_h("Na"), 0.0998201197, atol=0)
+    assert np.isclose(two_star_different_z.x_on_h_total("Na"),
+                      0.0998201197, atol=0)
 
 # -----------------------------------------------------------
 
@@ -192,30 +247,55 @@ def test_na_on_h_calculation_not_simple(two_star_different_z):
 
 # -----------------------------------------------------------
 
-def test_fe_on_fe_calculation_single_zero(single_mass_zero):
+def test_fe_on_fe_calculation_single_zero_total(single_mass_zero):
     """For z zero metallicity object we should get some kind of error.
     We are taking a log of 0/0, which apparently give a nan. """
-    assert np.isnan(single_mass_zero.x_on_fe("Fe"))
+    assert np.isnan(single_mass_zero.x_on_fe_total("Fe"))
 
-def test_fe_on_fe_calculation_single_one_Ia(single_mass_one_Ia):
+def test_fe_on_fe_calculation_single_zero_average(single_mass_zero):
+    """For z zero metallicity object we should get some kind of error.
+    We are taking a log of 0/0, which apparently give a nan. """
+    assert np.isnan(single_mass_zero.x_on_fe_average("Fe")[0])
+
+def test_fe_on_fe_calculation_single_one_Ia_total(single_mass_one_Ia):
     """For an object of metallicity one, we will get zero"""
-    assert np.isclose(single_mass_one_Ia.x_on_fe("Fe"), 0)
+    assert np.isclose(single_mass_one_Ia.x_on_fe_total("Fe"), 0)
 
-def test_fe_on_fe_calculation_single_one_II(single_mass_one_II):
+def test_fe_on_fe_calculation_single_one_Ia_average(single_mass_one_Ia):
+    """For an object of metallicity one, we will get zero"""
+    assert np.allclose(single_mass_one_Ia.x_on_fe_average("Fe"), (0, 0))
+
+def test_fe_on_fe_calculation_single_one_II_total(single_mass_one_II):
     """For an object of metallicity one, we will get zero """
-    assert np.isclose(single_mass_one_II.x_on_fe("Fe"), 0)
+    assert np.isclose(single_mass_one_II.x_on_fe_total("Fe"), 0)
 
-def test_fe_on_fe_calculation_single_solar_Ia(single_mass_solar_Ia):
+def test_fe_on_fe_calculation_single_one_II_average(single_mass_one_II):
+    """For an object of metallicity one, we will get zero """
+    assert np.allclose(single_mass_one_II.x_on_fe_average("Fe"), (0, 0))
+
+def test_fe_on_fe_calculation_single_solar_Ia_total(single_mass_solar_Ia):
     """For a solar metallicity object we get zero.  """
-    assert np.isclose(single_mass_solar_Ia.x_on_fe("Fe"), 0)
+    assert np.isclose(single_mass_solar_Ia.x_on_fe_total("Fe"), 0)
 
-def test_fe_on_fe_calculation_single_solar_II(single_mass_solar_II):
+def test_fe_on_fe_calculation_single_solar_Ia_average(single_mass_solar_Ia):
     """For a solar metallicity object we get zero.  """
-    assert np.isclose(single_mass_solar_II.x_on_fe("Fe"), 0)
+    assert np.allclose(single_mass_solar_Ia.x_on_fe_average("Fe"), (0, 0))
 
-def test_fe_on_fe_calculation_not_simple(two_star_different_z):
+def test_fe_on_fe_calculation_single_solar_II_total(single_mass_solar_II):
+    """For a solar metallicity object we get zero.  """
+    assert np.isclose(single_mass_solar_II.x_on_fe_total("Fe"), 0)
+
+def test_fe_on_fe_calculation_single_solar_II_average(single_mass_solar_II):
+    """For a solar metallicity object we get zero.  """
+    assert np.allclose(single_mass_solar_II.x_on_fe_average("Fe"), (0, 0))
+
+def test_fe_on_fe_calculation_not_simple_total(two_star_different_z):
     """We always get zero """
-    assert np.isclose(two_star_different_z.x_on_fe("Fe"), 0)
+    assert np.isclose(two_star_different_z.x_on_fe_total("Fe"), 0)
+
+def test_fe_on_fe_calculation_not_simple_average(two_star_different_z):
+    """We always get zero """
+    assert np.allclose(two_star_different_z.x_on_fe_average("Fe"), (0, 0))
 
 
 # -----------------------------------------------------------
@@ -226,22 +306,40 @@ def test_fe_on_fe_calculation_not_simple(two_star_different_z):
 
 # -----------------------------------------------------------
 
-def test_o_on_fe_calculation_single_zero(single_mass_zero):
+def test_o_on_fe_calculation_single_zero_total(single_mass_zero):
     """For z zero metallicity object we should get some kind of infinity.
     We are taking a log of 0/0, so who knows what that will give. """
-    assert np.isnan(single_mass_zero.x_on_fe("O"))
+    assert np.isnan(single_mass_zero.x_on_fe_total("O"))
 
-def test_o_on_fe_calculation_single_solar_Ia(single_mass_solar_Ia):
-    """Calculated by hand.  """
-    assert np.isclose(single_mass_solar_Ia.x_on_fe("O"), -1.507779731, atol=0)
+def test_o_on_fe_calculation_single_zero_average(single_mass_zero):
+    """For z zero metallicity object we should get some kind of infinity.
+    We are taking a log of 0/0, so who knows what that will give. """
+    assert np.isnan(single_mass_zero.x_on_fe_average("O")[0])
 
-def test_o_on_fe_calculation_single_solar_II(single_mass_solar_II):
+def test_o_on_fe_calculation_single_solar_Ia_total(single_mass_solar_Ia):
     """Calculated by hand.  """
-    assert np.isclose(single_mass_solar_II.x_on_fe("O"), 0.3533312216, atol=0)
+    assert np.isclose(single_mass_solar_Ia.x_on_fe_total("O"),
+                      -1.507779731, atol=0)
 
-def test_o_on_fe_calculation_not_simple(two_star_different_z):
+def test_o_on_fe_calculation_single_solar_Ia_average(single_mass_solar_Ia):
     """Calculated by hand.  """
-    assert np.isclose(two_star_different_z.x_on_fe("O"), -0.8538614906, atol=0)
+    assert np.allclose(single_mass_solar_Ia.x_on_fe_average("O"),
+                       (-1.507779731, 0))
+
+def test_o_on_fe_calculation_single_solar_II_total(single_mass_solar_II):
+    """Calculated by hand.  """
+    assert np.isclose(single_mass_solar_II.x_on_fe_total("O"),
+                      0.3533312216, atol=0)
+
+def test_o_on_fe_calculation_single_solar_II_average(single_mass_solar_II):
+    """Calculated by hand.  """
+    assert np.allclose(single_mass_solar_II.x_on_fe_average("O"),
+                       (0.3533312216, 0))
+
+def test_o_on_fe_calculation_not_simple_total(two_star_different_z):
+    """Calculated by hand.  """
+    assert np.isclose(two_star_different_z.x_on_fe_total("O"),
+                      -0.8538614906, atol=0)
 
 # -----------------------------------------------------------
 
@@ -251,26 +349,26 @@ def test_o_on_fe_calculation_not_simple(two_star_different_z):
 
 def test_log_z_z_sun_single_zero(single_mass_zero):
     """For a zero metallicity object we should get a negative infinity."""
-    assert np.isneginf(single_mass_zero.log_z_over_z_sun())
+    assert np.isneginf(single_mass_zero.log_z_over_z_sun_total())
 
 def test_log_z_z_sun_single_solar_Ia(single_mass_solar_Ia):
     """For solar we should get zero."""
-    assert np.isclose(single_mass_solar_Ia.log_z_over_z_sun(), 0)
+    assert np.isclose(single_mass_solar_Ia.log_z_over_z_sun_total(), 0)
 
 def test_log_z_z_sun_single_solar_II(single_mass_solar_II):
     """For solar we should get zero."""
-    assert np.isclose(single_mass_solar_II.log_z_over_z_sun(), 0)
+    assert np.isclose(single_mass_solar_II.log_z_over_z_sun_total(), 0)
 
 def test_log_z_z_sun_single_one_Ia(single_mass_one_Ia):
     """For solar we should get the log of the ratio of 1 and z_sun.
     This was calculated by hand."""
-    assert np.isclose(single_mass_one_Ia.log_z_over_z_sun(), 1.789274018)
+    assert np.isclose(single_mass_one_Ia.log_z_over_z_sun_total(), 1.789274018)
 
 def test_log_z_z_sun_single_one_II(single_mass_one_II):
     """For solar we should get the log of the ratio of 1 and z_sun.
     This was calculated by hand."""
-    assert np.isclose(single_mass_one_II.log_z_over_z_sun(), 1.789274018)
+    assert np.isclose(single_mass_one_II.log_z_over_z_sun_total(), 1.789274018)
 
 def test_log_z_not_simple(two_star_different_z):
     """Calculated by hand. """
-    assert np.isclose(two_star_different_z.log_z_over_z_sun(), 0.2206377821)
+    assert np.isclose(two_star_different_z.log_z_over_z_sun_total(), 0.2206377821)
