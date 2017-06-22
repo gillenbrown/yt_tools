@@ -673,7 +673,7 @@ class Galaxy(object):
         # we need masses, Z_Ia, and Z_II. I can convert these to arrays to
         # help speed, since the units don't matter in the metallicity
         # calculations. As long as the masses are relative it will still work.
-        masses = np.array(self.sphere[('STAR', 'MASS')])
+        masses = np.array(self.sphere[('STAR', 'MASS')].in_units("msun"))
         z_Ia = np.array(self.sphere[('STAR', 'METALLICITY_SNIa')])
         z_II = np.array(self.sphere[('STAR', 'METALLICITY_SNII')])
 
