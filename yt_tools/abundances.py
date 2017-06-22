@@ -272,3 +272,18 @@ class Abundances(object):
         total_mass = np.sum(self.mass)
         metallicity = total_metals / total_mass
         return np.log10(metallicity / self.z_sun)
+
+    def log_z_over_z_sun_average(self):
+        """Returns the mean and variance of log(Z/Z_sun).
+
+        Unlike z_over_z_sun_total, here we take the weighted mean of all the
+        individual values of log(Z/Z_sun). This will slightly different results,
+        but is a way to get the variance of this population.
+
+        :returns: mean and variance of log(Z/Z_sun)
+        """
+
+        z_over_z_sun = self.Z_tot / self.z_sun
+        log_z = np.log10(z_over_z_sun)
+        return (utils.weighted_mean(log_z, self.mass),
+                utils.weighted_variance(log_z, self.mass))
