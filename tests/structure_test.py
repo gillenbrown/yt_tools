@@ -101,6 +101,10 @@ def struct_disk():
 def struct_total():
     return nsc_structure.NscStructure(radii, plummer + disk)
 
+@pytest.fixture
+def struct_total_error():
+    return nsc_structure.NscStructure(radii, (plummer + disk) * np.random.normal(1, 0.1, len(radii)))
+
 
 def test_init_nsc_plummer(struct_plummer):
     assert np.isclose(struct_plummer.M_c_parametric, M_c)
@@ -122,29 +126,65 @@ def test_equality_radius_results(struct_total):
 
 def test_equality_radius_plummer(struct_plummer):
     assert struct_plummer.nsc_radius is None
+    assert struct_plummer.nsc_radius_err is None
 
 def test_equality_radius_disk(struct_disk):
     assert struct_disk.nsc_radius is None
+    assert struct_disk.nsc_radius_err is None
+
+def test_equality_radius_total(struct_total):
+    assert struct_total.nsc_radius is not None
+    assert struct_total.nsc_radius_err is not None
+    assert struct_total.nsc_radius > 0
 
 def test_non_parametric_mass_plummer(struct_plummer):
     assert struct_plummer.M_c_non_parametric is None
+    assert struct_plummer.M_c_non_parametric_err is None
 
 def test_non_parametric_mass_disk(struct_disk):
     assert struct_disk.M_c_non_parametric is None
+    assert struct_disk.M_c_non_parametric_err is None
 
 def test_non_parametric_mass_total(struct_total):
-    assert 0 < struct_total.M_c_non_parametric
+    assert struct_total.M_c_non_parametric > 0
+    assert np.allclose(struct_total.M_c_non_parametric_err, (0, 0))
     assert struct_total.M_c_non_parametric is not None
+    assert struct_total.M_c_non_parametric_err is not None
 
 def test_non_parametric_half_mass_plummer(struct_plummer):
     assert struct_plummer.r_half_non_parametric is None
+    assert struct_plummer.r_half_non_parametric_err is None
 
 def test_non_parametric_half_mass_disk(struct_disk):
     assert struct_disk.r_half_non_parametric is None
+    assert struct_disk.r_half_non_parametric_err is None
 
 def test_non_parametric_half_mass_total(struct_total):
     assert struct_total.r_half_non_parametric is not None
+    assert struct_total.r_half_non_parametric_err is not None
     assert struct_total.r_half_non_parametric > 0
+    assert np.allclose(struct_total.r_half_non_parametric_err, (0, 0))
+
+def test_errors(struct_total_error):
+    assert struct_total_error.nsc_radius is not None
+    assert struct_total_error.nsc_radius > 0
+    assert struct_total_error.nsc_radius_err is not None
+    assert not np.isclose(struct_total_error.nsc_radius_err[0], 0)
+    assert not np.isclose(struct_total_error.nsc_radius_err[1], 0)
+
+    assert struct_total_error.M_c_non_parametric is not None
+    assert struct_total_error.M_c_non_parametric > 0
+    assert struct_total_error.M_c_non_parametric_err is not None
+    assert not np.isclose(struct_total_error.M_c_non_parametric_err[0], 0)
+    assert not np.isclose(struct_total_error.M_c_non_parametric_err[1], 0)
+
+    assert struct_total_error.r_half_non_parametric is not None
+    assert struct_total_error.r_half_non_parametric > 0
+    assert struct_total_error.r_half_non_parametric_err is not None
+    # assert not np.isclose(struct_total_error.r_half_non_parametric_err[0], 0)
+    # assert not np.isclose(struct_total_error.r_half_non_parametric_err[1], 0)
+
+
 
 # -----------------------------------------------------------------------------
 

@@ -129,8 +129,9 @@ class NscStructure(object):
             self.a_c_parametric = None
             self.a_d_parametric = None
             self.r_half_parametric = None
-            self._cluster_mass()
-            self._half_mass()
+            self.nsc_radius_and_errors()
+            self.cluster_mass_and_errors()
+            self.half_mass_radii_and_errors()
             return
 
         # that does error checking too
@@ -149,13 +150,13 @@ class NscStructure(object):
         self.r_half_parametric = profiles.plummer_2d_half_mass(self.fitting.a_c)
 
         # then we can use that to find the equality radius
-        self._find_equality_radius()
+        self.nsc_radius_and_errors()
         # and the non parametric cluster mass
-        self._cluster_mass()
+        self.cluster_mass_and_errors()
         # and the non parametric half mass radii
-        self._half_mass()
+        self.half_mass_radii_and_errors()
 
-    def _find_equality_radius(self):
+    def _find_equality_radius(self, M_c, M_d, a_c, a_d):
         """Finds the radius at which the disk and cluster components have 
         equal density. This radius will be defined as the radius of the NSC 
         """
@@ -165,38 +166,42 @@ class NscStructure(object):
         # enough step this will be the same as the radius at which they are
         # equal-ish.
         for r in np.arange(0, max(self.radii), 0.1):
-            cluster = profiles.plummer_2d(r, self.M_c_parametric,
-                                          self.a_c_parametric)
-            disk = profiles.exp_disk(r, self.M_d_parametric,
-                                     self.a_d_parametric)
+            cluster = profiles.plummer_2d(r, M_c, a_c)
+            disk = profiles.exp_disk(r, M_d, a_d)
 
             if disk > cluster:
                 # here is the place where the disk takes over, so we define it
                 # to be the bound of the NSC, except if this happens at zero
                 # radius, which happens when the disk always dominates.
                 if r == 0:
-                    self.nsc_radius = None
+                    return None
                 else:
-                    self.nsc_radius = r
-                return
+                    return r
         # if we got here we didn't find a radius.
-        self.nsc_radius = None
+        return None
 
-    def _cluster_mass(self):
+    def _cluster_mass(self, nsc_radius):
         """Calculates a non-parametric mass for the cluster by integrating the
         density profile out to the radius of equaltiy.
         
         This assumes we calculated everything with a two dimensional profile, 
-        which is safe becuase that's what we did above. 
+        which is safe becuase that's what we did above.
+
+        :param nsc_radius: radius of the NSC. To get the best fit value, pass
+                           in self.nsc_radius. Since we use this to determine
+                           errors on the cluster mass, I want this to be a
+                           parameter.
         """
         # first do error checking
-        if self.nsc_radius is None:
-            self.M_c_non_parametric = None
-            return
+        if nsc_radius is None:
+            return None
 
         # first have to get the densities that are in the cluster
         rad_dens_pairs = [(r, rho) for r, rho in zip(self.radii, self.densities)
-                          if r < self.nsc_radius]
+                          if r < nsc_radius]
+        # if there are no radii less than that, know the mass well
+        if len(rad_dens_pairs) == 0:
+            return 0
 
         # We then have to turn those back into two lists
         radii, densities = [], []
@@ -206,11 +211,9 @@ class NscStructure(object):
 
         # then we can integrate
         integrand_values = [d * 2 * np.pi * r for r, d in zip(radii, densities)]
-        mass = integrate.simps(integrand_values, radii)
-        # then assign the values
-        self.M_c_non_parametric = mass
+        return integrate.simps(integrand_values, radii)
 
-    def _half_mass(self):
+    def _half_mass(self, cluster_mass):
         """Calculate the half mass radius for the cluster non-parametrically.
         
         This assumes a 2 dimensional integrand, which is safe because that's 
@@ -219,11 +222,14 @@ class NscStructure(object):
         This is done by gradually increasing the bounds of integration for the
         density profile (like what was done for the cluster mass), and finding
         the radius that just barely gives us half of the mass (similar to what
-        was done for the equality radius). """
+        was done for the equality radius).
 
-        if self.nsc_radius is None:
-            self.r_half_non_parametric = None
-            return
+        :param cluster_mass: Mass of the cluster. To find the best fit value
+                             for this, pass in self.M_c_non_parametric
+        """
+
+        if cluster_mass is None:
+            return None
 
         new_radii = []
         integrand_values = []
@@ -237,9 +243,109 @@ class NscStructure(object):
             # do the integration
             this_mass = integrate.simps(integrand_values, new_radii)
             # then see if it is slightly larger than half.
-            if this_mass > (self.M_c_non_parametric / 2.0):
-                self.r_half_non_parametric = radius
-                return
+            if this_mass > (cluster_mass / 2.0):
+                return radius
+
+    def nsc_radius_and_errors(self):
+        """
+        Find the NSC radius and it's error.
+
+        The best fit value finds the radius at which the cluster and disk
+        components are equal.
+
+        Error is done by moving the cluster and disk components both up down
+        by one sigma in mass. Then the NSC radius is determined on each of those
+        perturbations, and the one sigma error is determined by the range of
+        these perturbed NSC radii. The error interval is asymmetric.
+
+        """
+        # get the parameters to make my life easier
+        M_c = self.M_c_parametric
+        M_d = self.M_d_parametric
+        a_c = self.a_c_parametric
+        a_d = self.a_d_parametric
+        M_c_dn, M_c_up = self.M_c_err_parametric
+        M_d_dn, M_d_up = self.M_d_err_parametric
+
+        # get the NSC radius for the best fit values
+        self.nsc_radius = self._find_equality_radius(M_c, M_d, a_c, a_d)
+        # do a check for a None value
+        if self.nsc_radius is None:
+            self.nsc_radius_err = None
+            return
+
+        # Find the NSC radius when we perturb the best fit by one sigma in all
+        # possible combinations.
+        nsc_1 = self._find_equality_radius(M_c + M_c_up, M_d + M_d_up, a_c, a_d)
+        nsc_2 = self._find_equality_radius(M_c - M_c_dn, M_d + M_d_up, a_c, a_d)
+        nsc_3 = self._find_equality_radius(M_c + M_c_up, M_d - M_d_dn, a_c, a_d)
+        nsc_4 = self._find_equality_radius(M_c - M_c_dn, M_d - M_d_dn, a_c, a_d)
+
+        # then get the maximum and minimum NSC radii of those
+        nsc_radii = [nsc_1, nsc_2, nsc_3, nsc_4]
+        min_nsc_rad = min(nsc_radii)
+        max_nsc_rad = max(nsc_radii)
+
+        # a None value indicates that there is no NSC
+        if min_nsc_rad is None:
+            min_nsc_rad = 0
+        if max_nsc_rad is None:
+            max_nsc_rad = np.inf
+
+        # then the error is just the distance from the best fit value
+        self.nsc_radius_err = (self.nsc_radius - min_nsc_rad,
+                               max_nsc_rad - self.nsc_radius)
+
+
+    def cluster_mass_and_errors(self):
+        """
+        Find the non parametric cluster mass and it's errors.
+
+        The best fit cluster mass is found by integrating the density
+        distribution inside the best fit NSC radius. The errors on that
+        are found by doing the same with the radii corresponding to the
+        one sigma errors on the NSC radius.
+        """
+        # first check that we have an NSC
+        if self.nsc_radius is None:
+            self.M_c_non_parametric = None
+            self.M_c_non_parametric_err = None
+            return
+
+        # get the best fit value
+        self.M_c_non_parametric = self._cluster_mass(self.nsc_radius)
+
+        # then perturb by one sigme errors
+        M_c_up = self._cluster_mass(self.nsc_radius + self.nsc_radius_err[1])
+        M_c_down = self._cluster_mass(self.nsc_radius - self.nsc_radius_err[0])
+        # then errors are the differences between that and the best fit value
+        self.M_c_non_parametric_err = (self.M_c_non_parametric - M_c_down,
+                                       M_c_up - self.M_c_non_parametric)
+
+    def half_mass_radii_and_errors(self):
+        """
+        Like the other two functions, this calculates the best fit and errors
+        for the half mass radii. This is done using a similar procedure as the
+        other two, and uses the _half_mass function to do the heavy lifting.
+
+        """
+        # first check that we have an NSC
+        if self.nsc_radius is None:
+            self.r_half_non_parametric = None
+            self.r_half_non_parametric_err = None
+            return
+
+        self.r_half_non_parametric = self._half_mass(self.M_c_non_parametric)
+
+        # then perturb
+        r_up = self._half_mass(self.M_c_non_parametric +
+                               self.M_c_non_parametric_err[1])
+        r_down = self._half_mass(self.M_c_non_parametric -
+                                 self.M_c_non_parametric_err[0])
+
+        # then turn that into an error
+        self.r_half_non_parametric_err = (self.r_half_non_parametric - r_down,
+                                          r_up - self.r_half_non_parametric)
 
 
 class AxisRatios(object):

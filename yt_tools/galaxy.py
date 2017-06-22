@@ -451,7 +451,7 @@ class Galaxy(object):
         if quantity.lower() not in ["mass", "z"]:
             raise ValueError("Only mass and Z are supported. ")
 
-    def stellar_mass(self, nsc=False):
+    def stellar_mass(self, radius_cut=None):
         """Calculate the total stellar mass in this galaxy. 
         
         This sums the masses of the star particles that are inside the radius 
@@ -460,9 +460,13 @@ class Galaxy(object):
         """
 
         masses = self.sphere[('STAR', "MASS")].in_units("msun")
-        if nsc:
-            self._check_nsc_existence()  # will raise error if no NSC
-            return np.sum(masses[self.nsc_idx_sphere])
+        if radius_cut is not None:
+            # check for units
+            utils.test_for_units(radius_cut, "radius_cut")
+            # get the mass within this radius.
+            radius_key = ('STAR', 'particle_position_spherical_radius')
+            idx = np.where(self.sphere[radius_key] < radius_cut)[0]
+            return np.sum(masses[idx])
 
         else:  # whole galaxy
             return np.sum(masses)
@@ -584,6 +588,7 @@ class Galaxy(object):
             return
         # if not none we continue
         self.nsc_radius = self.nsc.nsc_radius * yt.units.pc
+        self.nsc_radius_err = self.nsc.nsc_radius_err * yt.units.pc
 
         # then create a new disk object that entirely contains the NSC. I choose
         # twoce the radius so that we are sure to include everything inside,
