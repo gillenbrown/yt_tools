@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import optimize
+from scipy import interpolate
 from scipy import integrate
 
 from . import profiles
@@ -231,10 +232,19 @@ class NscStructure(object):
         if cluster_mass is None:
             return None
 
+        # since the binning in the center is too big to do provide totally
+        # accurate answers here, we will interpolate between them. I do this
+        # rather than to just pass in all the values to reduce noise. The
+        # binning averages lots of things together, so the interpolation will
+        # be a less noisy operation than using all points
+        dens_interp = interpolate.interp1d(self.radii, self.densities,
+                                           kind="linear")
+
         new_radii = []
         integrand_values = []
         # iterate through the values.
-        for radius, density in zip(self.radii, self.densities):
+        for radius in np.arange(min(self.radii), max(self.radii), 0.01):
+            density = dens_interp(radius)
             new_radii.append(radius)
             integrand_values.append(density * 2 * np.pi * radius)
             # can't integrate when there's nothing

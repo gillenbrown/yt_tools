@@ -181,8 +181,8 @@ def test_errors(struct_total_error):
     assert struct_total_error.r_half_non_parametric is not None
     assert struct_total_error.r_half_non_parametric > 0
     assert struct_total_error.r_half_non_parametric_err is not None
-    # assert not np.isclose(struct_total_error.r_half_non_parametric_err[0], 0)
-    # assert not np.isclose(struct_total_error.r_half_non_parametric_err[1], 0)
+    assert not np.isclose(struct_total_error.r_half_non_parametric_err[0], 0)
+    assert not np.isclose(struct_total_error.r_half_non_parametric_err[1], 0)
 
 
 
