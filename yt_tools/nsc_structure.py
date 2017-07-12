@@ -129,6 +129,10 @@ class NscStructure(object):
             self.M_d_parametric = None
             self.a_c_parametric = None
             self.a_d_parametric = None
+            self.M_c_err_parametric = None
+            self.M_d_err_parametric = None
+            self.a_c_err_parametric = None
+            self.a_d_err_parametric = None
             self.r_half_parametric = None
             self.nsc_radius_and_errors()
             self.cluster_mass_and_errors()
@@ -269,6 +273,11 @@ class NscStructure(object):
         these perturbed NSC radii. The error interval is asymmetric.
 
         """
+        # do a check for a None value
+        if self.M_c_parametric is None:
+            self.nsc_radius_err = None
+            return
+
         # get the parameters to make my life easier
         M_c = self.M_c_parametric
         M_d = self.M_d_parametric
@@ -279,10 +288,6 @@ class NscStructure(object):
 
         # get the NSC radius for the best fit values
         self.nsc_radius = self._find_equality_radius(M_c, M_d, a_c, a_d)
-        # do a check for a None value
-        if self.nsc_radius is None:
-            self.nsc_radius_err = None
-            return
 
         # Find the NSC radius when we perturb the best fit by one sigma in all
         # possible combinations.
