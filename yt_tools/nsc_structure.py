@@ -288,6 +288,10 @@ class NscStructure(object):
 
         # get the NSC radius for the best fit values
         self.nsc_radius = self._find_equality_radius(M_c, M_d, a_c, a_d)
+        # do a check for a None value
+        if self.nsc_radius is None:
+            self.nsc_radius_err = None
+            return
 
         # Find the NSC radius when we perturb the best fit by one sigma in all
         # possible combinations.
