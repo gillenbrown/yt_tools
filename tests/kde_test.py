@@ -335,17 +335,35 @@ def test_centering_single_point_3d(single_point_at_zero_3d_weighted):
                       rtol=0, atol=accuracy)
 
 def test_centering_many_points_3d():
-    """Creates a Gaussian distribution of many points, and this should
-    recover the center"""
-    xs = np.random.normal(3, 1, 10000)
-    ys = np.random.normal(4, 1, 10000)
-    zs = np.random.normal(-2, 1, 10000)
+    """I originally wanted to create a Gaussian distrubition of many points,
+    then find the center of that. The randomness in creating that distribution
+    make the process not work well. So instead I create a grid of points that
+    are weighted by the appropriate value for a 3D Gaussian. Then the code
+    can find the weighted center of those points."""
+    cen_x = 3.0
+    cen_y = 4.0
+    cen_z = -2.0
+    # use the centering code's guts to create a grid of points
+    locations = kde.construct_grid(cell_size=0.2, center_x=cen_x,
+                                   center_y=cen_y, center_z=cen_z,
+                                   points_per_side=10)
+    # then weight them according to their Gaussian distance from the center.
+    weights = []
+    xs, ys, zs = [], [], []
+    for loc in locations:
+        x, y, z = loc
+        distance = utils.distance(x, cen_x, y, cen_y, z, cen_z)
+        weights.append(utils.gaussian_3d_radial(distance, 1.0))
+        xs.append(x)
+        ys.append(y)
+        zs.append(z)
 
-    this_kde = kde.KDE([xs, ys, zs])
-    this_kde.centering(0.2, 0.01)
-    assert np.isclose(this_kde.location_max_x, 3.0, atol=0.2)
-    assert np.isclose(this_kde.location_max_y, 4.0, atol=0.2)
-    assert np.isclose(this_kde.location_max_z, -2.0, atol=0.2)
+    # then we can do the centering process, and it should work great.
+    this_kde = kde.KDE([xs, ys, zs], values=weights)
+    this_kde.centering(0.4, 0.01)
+    assert np.isclose(this_kde.location_max_x, cen_x, atol=0.01)
+    assert np.isclose(this_kde.location_max_y, cen_y, atol=0.01)
+    assert np.isclose(this_kde.location_max_z, cen_z, atol=0.01)
 
 
 @pytest.fixture

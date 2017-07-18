@@ -242,8 +242,8 @@ def test_real_nsc_disk_attributes(read_in_gal):
 
 def test_real_nsc_stellar_mass(read_in_gal):
     # Test that the NSC mass is less than the total galaxy mass
-    assert read_in_gal.stellar_mass(nsc=False) > \
-           read_in_gal.stellar_mass(nsc=True)
+    assert read_in_gal.stellar_mass(radius_cut=None) > \
+           read_in_gal.stellar_mass(radius_cut=read_in_gal.nsc_radius)
 
 def test_real_nsc_radius_cut(read_in_gal):
     # test that the NSC indices actually pick up the right objects
