@@ -287,3 +287,18 @@ class Abundances(object):
         log_z = np.log10(z_over_z_sun)
         return (utils.weighted_mean(log_z, self.mass),
                 utils.weighted_variance(log_z, self.mass))
+
+    # def x_on_h_dist(self, element):
+    #
+    #     f_Ia = self.yields_Ia.mass_fraction(element, self.Z_Ia)
+    #     f_II = self.yields_II.mass_fraction(element, self.Z_II)
+    #     star_num = self.Z_Ia * f_Ia + self.Z_II * f_II
+    #     star_denom = self.one_minus_Z_tot
+    #     star_frac = star_num / star_denom
+    #
+    #     sun_num = 1.0 - self.z_sun
+    #     sun_denom = self.z_sun * self.solar_metal_fractions[element]
+    #     sun_frac = sun_num / sun_denom
+    #
+    #     star_x_on_h = np.log10(star_frac * sun_frac)
+    #     return star_x_on_h, self.mass

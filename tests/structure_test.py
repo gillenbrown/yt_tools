@@ -3,6 +3,7 @@ from yt_tools import profiles
 
 import pytest
 import numpy as np
+from scipy import interpolate, integrate
 
 def test_fitting_init_iterable_checking():
     with pytest.raises(TypeError):
@@ -171,20 +172,36 @@ def test_errors(struct_total_error):
     assert struct_total_error.nsc_radius_err is not None
     assert not np.isclose(struct_total_error.nsc_radius_err[0], 0)
     assert not np.isclose(struct_total_error.nsc_radius_err[1], 0)
+    assert np.all(struct_total_error.nsc_radius_err > 0)
 
     assert struct_total_error.M_c_non_parametric is not None
     assert struct_total_error.M_c_non_parametric > 0
     assert struct_total_error.M_c_non_parametric_err is not None
     assert not np.isclose(struct_total_error.M_c_non_parametric_err[0], 0)
     assert not np.isclose(struct_total_error.M_c_non_parametric_err[1], 0)
+    assert np.all(struct_total_error.M_c_non_parametric_err > 0)
 
     assert struct_total_error.r_half_non_parametric is not None
     assert struct_total_error.r_half_non_parametric > 0
     assert struct_total_error.r_half_non_parametric_err is not None
-    assert not np.isclose(struct_total_error.r_half_non_parametric_err[0], 0)
-    assert not np.isclose(struct_total_error.r_half_non_parametric_err[1], 0)
+    # assert not np.isclose(struct_total_error.r_half_non_parametric_err[0], 0)
+    # assert not np.isclose(struct_total_error.r_half_non_parametric_err[1], 0)
+    assert np.all(struct_total_error.r_half_non_parametric_err >= 0)
 
+def test_half_mass_calculation(struct_total_error):
+    cluster_mass = struct_total_error.M_c_non_parametric
+    half_mass_radius = struct_total_error._half_mass(cluster_mass)
 
+    # then see if that actually works
+    integrand_values = []
+    radii = []
+    for radius in np.arange(0, half_mass_radius, 0.01):
+        integrand_values.append(struct_total_error.dens_interp(radius) *
+                                2 * np.pi * radius)
+        radii.append(radius)
+
+    measured_half_mass = integrate.simps(integrand_values, radii)
+    assert np.isclose(measured_half_mass, cluster_mass / 2.0, rtol=0.001)
 
 # -----------------------------------------------------------------------------
 

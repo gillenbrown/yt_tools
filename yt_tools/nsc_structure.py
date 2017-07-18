@@ -143,6 +143,14 @@ class NscStructure(object):
         self.radii = radii
         self.densities = densities
 
+        # since the binning in the center is too big to do provide totally
+        # accurate answers here, we will interpolate between them. I do this
+        # rather than to just pass in all the values to reduce noise. The
+        # binning averages lots of things together, so the interpolation will
+        # be a less noisy operation than using all points
+        self.dens_interp = interpolate.interp1d(self.radii, self.densities,
+                                                kind="linear")
+
         # we can then assign these parametric params straight out of here
         self.M_c_parametric = self.fitting.M_c
         self.M_d_parametric = self.fitting.M_d
@@ -204,6 +212,8 @@ class NscStructure(object):
         # first have to get the densities that are in the cluster
         rad_dens_pairs = [(r, rho) for r, rho in zip(self.radii, self.densities)
                           if r < nsc_radius]
+        # then append the one that is right on the nsc radius
+        rad_dens_pairs.append((nsc_radius, self.dens_interp(nsc_radius)))
         # if there are no radii less than that, know the mass well
         if len(rad_dens_pairs) == 0:
             return 0
@@ -216,7 +226,10 @@ class NscStructure(object):
 
         # then we can integrate
         integrand_values = [d * 2 * np.pi * r for r, d in zip(radii, densities)]
-        return integrate.simps(integrand_values, radii)
+        return integrate.simps(integrand_values, radii, even="first")
+        # I used first there because it uses the trapezoidal rule on the last
+        # interval, which is less important than the first interval, since
+        # there is more mass in this first interval.
 
     def _half_mass(self, cluster_mass):
         """Calculate the half mass radius for the cluster non-parametrically.
@@ -236,28 +249,17 @@ class NscStructure(object):
         if cluster_mass is None:
             return None
 
-        # since the binning in the center is too big to do provide totally
-        # accurate answers here, we will interpolate between them. I do this
-        # rather than to just pass in all the values to reduce noise. The
-        # binning averages lots of things together, so the interpolation will
-        # be a less noisy operation than using all points
-        dens_interp = interpolate.interp1d(self.radii, self.densities,
-                                           kind="linear")
-
-        new_radii = []
-        integrand_values = []
-        # iterate through the values.
-        for radius in np.arange(min(self.radii), max(self.radii), 0.01):
-            density = dens_interp(radius)
-            new_radii.append(radius)
-            integrand_values.append(density * 2 * np.pi * radius)
-            # can't integrate when there's nothing
-            if len(integrand_values) <= 2:
-                continue
+        cumulative_integral = 0
+        # iterate through the values. I start at half a bin width to the right
+        # so that I can use the midpoint method for calculating the integral.
+        bin_width = 0.01
+        for radius in np.arange(min(self.radii) + 0.5 * bin_width,
+                                max(self.radii), bin_width):
+            integrand_here = self.dens_interp(radius) * 2 * np.pi * radius
             # do the integration
-            this_mass = integrate.simps(integrand_values, new_radii)
+            cumulative_integral += integrand_here * bin_width
             # then see if it is slightly larger than half.
-            if this_mass > (cluster_mass / 2.0):
+            if cumulative_integral > (cluster_mass / 2.0):
                 return radius
 
     def nsc_radius_and_errors(self):
