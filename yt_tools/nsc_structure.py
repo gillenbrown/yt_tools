@@ -149,7 +149,10 @@ class NscStructure(object):
         # binning averages lots of things together, so the interpolation will
         # be a less noisy operation than using all points
         self.dens_interp = interpolate.interp1d(self.radii, self.densities,
-                                                kind="linear")
+                                                kind="linear",
+                                                bounds_error=False,
+                                                fill_value=(min(self.radii),
+                                                            max(self.radii)))
 
         # we can then assign these parametric params straight out of here
         self.M_c_parametric = self.fitting.M_c
@@ -213,7 +216,8 @@ class NscStructure(object):
         rad_dens_pairs = [(r, rho) for r, rho in zip(self.radii, self.densities)
                           if r < nsc_radius]
         # then append the one that is right on the nsc radius
-        rad_dens_pairs.append((nsc_radius, self.dens_interp(nsc_radius)))
+        if np.isfinite(nsc_radius):
+            rad_dens_pairs.append((nsc_radius, self.dens_interp(nsc_radius)))
         # if there are no radii less than that, know the mass well
         if len(rad_dens_pairs) == 0:
             return 0
@@ -250,11 +254,12 @@ class NscStructure(object):
             return None
 
         cumulative_integral = 0
-        # iterate through the values. I start at half a bin width to the right
-        # so that I can use the midpoint method for calculating the integral.
+        # iterate through the values. The radii were created by binning a bunch
+        # of KDE values, so they are already in the center of a bin. Therefore
+        # I can just use these values as my radii for integration, and we will
+        # be using the center of each bin, which is the best.
         bin_width = 0.01
-        for radius in np.arange(min(self.radii) + 0.5 * bin_width,
-                                max(self.radii), bin_width):
+        for radius in np.arange(min(self.radii), max(self.radii), bin_width):
             integrand_here = self.dens_interp(radius) * 2 * np.pi * radius
             # do the integration
             cumulative_integral += integrand_here * bin_width
