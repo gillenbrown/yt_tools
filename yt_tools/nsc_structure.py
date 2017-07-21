@@ -151,8 +151,8 @@ class NscStructure(object):
         self.dens_interp = interpolate.interp1d(self.radii, self.densities,
                                                 kind="linear",
                                                 bounds_error=False,
-                                                fill_value=(min(self.radii),
-                                                            max(self.radii)))
+                                                fill_value=(self.densities[0],
+                                                            self.densities[-1]))
 
         # we can then assign these parametric params straight out of here
         self.M_c_parametric = self.fitting.M_c
