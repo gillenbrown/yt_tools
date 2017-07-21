@@ -268,6 +268,9 @@ class Galaxy(object):
 
         # and find the smallest cell size (used for KDE)
         self.min_dx = np.min(self.sphere[('index', 'dx')])
+        # the kernel we will use should be half of the width of the cell, so
+        # that the full 1-sigma width will span the size of the cell.
+        self.kernel_size = self.min_dx / 2.0
 
         # then there are several quantities we initialize to zero or blank, but
         # will be filled in future analyses
@@ -413,10 +416,9 @@ class Galaxy(object):
          
          This is done by using the KDE class. """
 
-        # Our kernel size will be the size of the smallest cell in the sphere,
-        # in parsecs. It needs to be in parsecs, since the x, y, and z values
+        # Our kernel needs to be in parsecs, since the x, y, and z values
         # are in parsecs (see this class's __init__).
-        kernel_size = self.min_dx.in_units("pc").value
+        kernel_size = self.kernel_size.in_units("pc").value
 
         # we can then go ahead with the centering, using the user's desired
         # accuracy
@@ -539,9 +541,9 @@ class Galaxy(object):
         # then create the radii
         radii = np.arange(0, outer_radius, spacing)
 
-        # the smoothing kernel we will use in the KDE process is the size of
-        # the smallest cell in the sphere
-        kernel_size = self.min_dx.in_units("pc").value
+        # the smoothing kernel we will use in the KDE process is half the size
+        # of the smallest cell in the sphere
+        kernel_size = self.kernel_size.in_units("pc").value
 
         # we are then able to do the actual profiles
         if quantity.lower() == "mass":
