@@ -259,12 +259,12 @@ class NscStructure(object):
         # I can just use these values as my radii for integration, and we will
         # be using the center of each bin, which is the best.
         bin_width = 0.01
-        for radius in np.arange(min(self.radii), max(self.radii), bin_width):
+        for radius in np.arange(0, max(self.radii), bin_width):
             integrand_here = self.dens_interp(radius) * 2 * np.pi * radius
             # do the integration
             cumulative_integral += integrand_here * bin_width
             # then see if it is slightly larger than half.
-            if cumulative_integral > (cluster_mass / 2.0):
+            if cumulative_integral >= (cluster_mass / 2.0):
                 return radius
 
     def nsc_radius_and_errors(self):
