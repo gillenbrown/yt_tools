@@ -201,7 +201,7 @@ def test_half_mass_calculation(struct_total_error):
         radii.append(radius)
 
     measured_half_mass = integrate.simps(integrand_values, radii)
-    assert np.isclose(measured_half_mass, cluster_mass / 2.0, rtol=0.001)
+    assert np.isclose(measured_half_mass, cluster_mass / 2.0, rtol=0.002)
 
 # -----------------------------------------------------------------------------
 

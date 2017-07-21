@@ -180,7 +180,7 @@ class KDE(object):
             # we use whichever is bigger of the kernel_size the user specified
             # or the grid size. We choose the grid size
             # because we don't want to under-sample the grid.
-            this_kernel_size = max(kernel_size, grid_resolution)
+            this_kernel_size = max(kernel_size, 2 * grid_resolution)
 
             # then get the places to calculate the density
             locations = construct_grid(grid_resolution, *best_location,
