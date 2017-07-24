@@ -26,7 +26,7 @@ class Abundances(object):
     """Holds infomation about the abundances of an object. """
     # get some of the solar information
     z_sun, solar_metal_fractions = create_solar_metal_fractions()
-    def __init__(self, masses, Z_Ia, Z_II):
+    def __init__(self, masses, Z_Ia, Z_II, II_type="nomoto"):
         """Create an abundance object.
 
         :param masses: The masses of the star partices.
@@ -37,6 +37,9 @@ class Abundances(object):
         :param Z_II: Values for the metallicity from Type II supernovae of the
                      star particles. Must have the same length as `masses`.
         :type Z_II: np.ndarray
+        :param II_type: Which model of Type Ia supernovae to use. Either
+                        "nomtoto" or "ww".
+        :type II_type: str
         :returns: None, but sets attributes.
         """
         # convert to numpy arrays if needed
@@ -72,7 +75,10 @@ class Abundances(object):
 
         # create the yield objects that will be used to calculate the SN yields
         self.yields_Ia = yields.Yields("iwamoto_99_Ia_W7")
-        self.yields_II = yields.Yields("nomoto_06_II_imf_ave")
+        if II_type == "nomoto":
+            self.yields_II = yields.Yields("nomoto_06_II_imf_ave")
+        elif II_type == "ww":
+            self.yields_II = yields.Yields("ww_95_imf_ave")
 
     def z_on_h_total(self):
         """Calculate the Z on H value for this collection of stars, by

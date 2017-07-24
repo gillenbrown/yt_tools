@@ -83,7 +83,7 @@ class Fitting(object):
         errors = np.sqrt(np.diag(cov))
         M_c_log_err, M_d_log_err, self.a_c_err, self.a_d_err = errors
 
-        # put the masses back into log space
+        # put the masses back into real space
         self.M_c = 10 ** M_c_log
         self.M_c_err = error_transform(M_c_log, M_c_log_err)
 
