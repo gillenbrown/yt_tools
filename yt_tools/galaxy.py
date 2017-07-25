@@ -268,9 +268,9 @@ class Galaxy(object):
 
         # and find the smallest cell size (used for KDE)
         self.min_dx = np.min(self.sphere[('index', 'dx')])
-        # the kernel we will use should be half of the width of the cell, so
-        # that the full 1-sigma width will span the size of the cell.
-        self.kernel_size = self.min_dx / 2.0
+        # the kernel we will use should be the width of the cell, to match the
+        # smoothing length of the simulation.
+        self.kernel_size = self.min_dx
 
         # then there are several quantities we initialize to zero or blank, but
         # will be filled in future analyses
