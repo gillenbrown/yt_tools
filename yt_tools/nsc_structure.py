@@ -436,6 +436,18 @@ class AxisRatios(object):
         """Does the work of getting the axis rations. These are simple the 
         ratios of the equare toors of the eigenvalues. (see discussion after 
         equation 10 in Zemp et al 2011). """
+        # check for few values, in which case the intertia tensor won't tell us
+        # anything
+        if len(self.x) <= 2:
+            self.a_over_b = 0
+            self.b_over_a = 0
+            self.a_over_c = 0
+            self.c_over_a = 0
+            self.b_over_c = 0
+            self.c_over_b = 0
+            self.ellipticity = 0
+            return
+
         eigenvalues = np.linalg.eigvals(self.inertia_tensor)
         c, b, a = sorted(eigenvalues) # sort goes from small to big
 
