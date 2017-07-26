@@ -180,21 +180,23 @@ class NscStructure(object):
         # dominates the density at the center. Then we walk outwards at return
         # the radius at which the disk first becomes greater. If we have a fine
         # enough step this will be the same as the radius at which they are
-        # equal-ish.
-        for r in np.arange(0, max(self.radii), 0.1):
-            cluster = profiles.plummer_2d(r, M_c, a_c)
-            disk = profiles.exp_disk(r, M_d, a_d)
+        # equal-ish. I do this in a vectorized fashion, but the algorithm is
+        # the same.
+        radii = np.arange(0, max(self.radii), 0.1)
+        cluster = profiles.plummer_2d(radii, M_c, a_c)
+        disk = profiles.exp_disk(radii, M_d, a_d)
 
-            if disk > cluster:
-                # here is the place where the disk takes over, so we define it
-                # to be the bound of the NSC, except if this happens at zero
-                # radius, which happens when the disk always dominates.
-                if r == 0:
-                    return None
-                else:
-                    return r
-        # if we got here we didn't find a radius.
-        return None
+        outer_regions = disk > cluster  # is an array of bools
+        # then get the indices where the disk is greater than the cluster
+        disk_bigger_idx = np.nonzero(outer_regions)[0]
+        # check if the disk was never greater than the cluster. We define this
+        # to be an infinite NSC
+        if len(disk_bigger_idx) == 0:
+            return np.inf
+        else:  # otherwise we use the index of the first one to be true.
+            nsc_idx = disk_bigger_idx[0]
+            return radii[nsc_idx]
+
 
     def _cluster_mass(self, nsc_radius):
         """Calculates a non-parametric mass for the cluster by integrating the
@@ -290,37 +292,38 @@ class NscStructure(object):
         M_d = self.M_d_parametric
         a_c = self.a_c_parametric
         a_d = self.a_d_parametric
-        M_c_dn, M_c_up = self.M_c_err_parametric
-        M_d_dn, M_d_up = self.M_d_err_parametric
 
         # get the NSC radius for the best fit values
         self.nsc_radius = self._find_equality_radius(M_c, M_d, a_c, a_d)
         # do a check for a None value
-        if self.nsc_radius is None:
+        if self.nsc_radius == 0 or np.isinf(self.nsc_radius):
+            self.nsc_radius = None
             self.nsc_radius_err = None
             return
 
-        # Find the NSC radius when we perturb the best fit by one sigma in all
-        # possible combinations.
-        nsc_1 = self._find_equality_radius(M_c + M_c_up, M_d + M_d_up, a_c, a_d)
-        nsc_2 = self._find_equality_radius(M_c - M_c_dn, M_d + M_d_up, a_c, a_d)
-        nsc_3 = self._find_equality_radius(M_c + M_c_up, M_d - M_d_dn, a_c, a_d)
-        nsc_4 = self._find_equality_radius(M_c - M_c_dn, M_d - M_d_dn, a_c, a_d)
+        # use the fitting covariance to create many random samples of the
+        # parameters
+        params_sample = np.random.multivariate_normal([M_c, M_d, a_c, a_d],
+                                                      cov=self.fitting.cov,
+                                                      size=1000)
+        # this is a 1000x4 array
+        # we can then find the NSC radius for each of these realizations
+        all_nsc_radii = [self._find_equality_radius(*params)
+                         for params in params_sample]
 
-        # then get the maximum and minimum NSC radii of those
-        nsc_radii = [nsc_1, nsc_2, nsc_3, nsc_4]
-        min_nsc_rad = min(nsc_radii)
-        max_nsc_rad = max(nsc_radii)
-
-        # a None value indicates that there is no NSC
-        if min_nsc_rad is None:
-            min_nsc_rad = 0
-        if max_nsc_rad is None:
-            max_nsc_rad = np.inf
+        # I want the one sigma interval, which will be half a sigma from the
+        # mean. The numpy quartile function uses a range from 0-100, so I want
+        # the percentiles for those upper and lower levels.
+        one_sigma = 68.27
+        lower_level = 50 - 0.5 * one_sigma
+        upper_level = 50 + 0.5 * one_sigma
+        # then get the radii that correspond to those levels.
+        lower_nsc = np.percentile(all_nsc_radii, lower_level)
+        upper_nsc = np.percentile(all_nsc_radii, upper_level)
 
         # then the error is just the distance from the best fit value
-        self.nsc_radius_err = (self.nsc_radius - min_nsc_rad,
-                               max_nsc_rad - self.nsc_radius)
+        self.nsc_radius_err = (self.nsc_radius - lower_nsc,
+                               upper_nsc - self.nsc_radius)
 
 
     def cluster_mass_and_errors(self):
