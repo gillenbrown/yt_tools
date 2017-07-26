@@ -424,7 +424,14 @@ class Galaxy(object):
         # accuracy
         if self._star_kde_mass_3d is None:
             self._star_kde_mass_3d = self._create_kde_object(3, "mass")
-        self._star_kde_mass_3d.centering(kernel_size, accuracy)
+
+        # we will start the centering at the center of mass of the galaxy
+        # and will only search a 1 kpc region around this center
+        com = self.sphere.quantities.center_of_mass(use_particles=True)
+        com = np.array(com.in_units("pc"))
+        self._star_kde_mass_3d.centering(kernel_size, accuracy,
+                                         initial_guess=com,
+                                         search_region_size=1000*yt.units.pc)
 
         # then get the values
         cen_x = self._star_kde_mass_3d.location_max_x

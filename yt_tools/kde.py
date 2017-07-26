@@ -148,7 +148,8 @@ class KDE(object):
         else:
             return max([x_size, y_size]) / 10.0
 
-    def centering(self, kernel_size, accuracy):
+    def centering(self, kernel_size, accuracy, initial_guess=None,
+                  search_region_size=None):
         """ Determines the location of the densest place in the KDE region
 
         :param kernel_size: Size of the smoothing kernel.
@@ -156,26 +157,40 @@ class KDE(object):
                          center determined will be such that
                          abs(true_center - found_center) < accuracy
         :type accuracy: float
+        :param initial_guess: A guess for the center. Will be used as the center
+                              at the beginning, and the same process will be
+                              done around it.
+        :param search_region_size: How big of a box to search within to find
+                                   the maximum stellar density. The region
+                                   will be centered on initial_guess (if there
+                                   is one) and will have a length of
+                                   search_region_size
 
         The algorithm to do this will be to determine the density in a grid of
         points, then gradually refine this down by choosing a smaller and 
         smaller grid centered on the location of the maximum in the larger grid 
         until we get to the accuracy requested.
         """
-        # specify the initial values to be in the middle of the values
-        initial_x = (min(self.x) + max(self.x)) / 2.0
-        initial_y = (min(self.y) + max(self.y)) / 2.0
-        if self.dimension == 3:
-            initial_z = (min(self.z) + max(self.z)) / 2.0
-
-        # then actually use these values to initialize it.
-        if self.dimension == 2:
-            best_location = (initial_x, initial_y)
-        elif self.dimension == 3:
-            best_location = (initial_x, initial_y, initial_z)
+        # specify the initial values to be in the middle of the values if one
+        # wasn't passed in.
+        if initial_guess is None:
+            initial_x = (min(self.x) + max(self.x)) / 2.0
+            initial_y = (min(self.y) + max(self.y)) / 2.0
+            if self.dimension == 2:
+                best_location = (initial_x, initial_y)
+            elif self.dimension == 3:
+                initial_z = (min(self.z) + max(self.z)) / 2.0
+                best_location = (initial_x, initial_y, initial_z)
+        else:
+            best_location = initial_guess
 
         # we need to iterate through the grid sizes
-        initial_size = self._initial_cell_size()
+        if search_region_size is None:
+            initial_size = self._initial_cell_size()
+        else:
+            initial_size = search_region_size / 10.0
+            # divide by 10 since this parameter is the cell size, not box size
+
         for grid_resolution in grid_resolution_steps(initial_size, accuracy):
             # we use whichever is bigger of the kernel_size the user specified
             # or the grid size. We choose the grid size
