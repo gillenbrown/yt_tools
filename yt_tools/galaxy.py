@@ -427,11 +427,19 @@ class Galaxy(object):
 
         # we will start the centering at the center of mass of the galaxy
         # and will only search a 1 kpc region around this center
-        com = self.sphere.quantities.center_of_mass(use_particles=True)
-        com = np.array(com.in_units("pc"))
+        # com_yt = self.sphere.quantities.center_of_mass(use_particles=True,
+        #                                                use_gas=False)
+        # com_yt = np.array(com_yt.in_units("pc"))
+        com_x = utils.weighted_mean(self._star_kde_mass_3d.x,
+                                    self._star_kde_mass_3d.values)
+        com_y = utils.weighted_mean(self._star_kde_mass_3d.y,
+                                    self._star_kde_mass_3d.values)
+        com_z = utils.weighted_mean(self._star_kde_mass_3d.z,
+                                    self._star_kde_mass_3d.values)
+        com = [com_x, com_y, com_z] # parsecs are already assumed.
         self._star_kde_mass_3d.centering(kernel_size, accuracy,
                                          initial_guess=com,
-                                         search_region_size=1000*yt.units.pc)
+                                         search_region_size=1000) # parsecs
 
         # then get the values
         cen_x = self._star_kde_mass_3d.location_max_x

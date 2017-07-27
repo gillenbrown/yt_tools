@@ -121,7 +121,7 @@ class NscStructure(object):
         self.fitting = Fitting(radii, densities)
         try:
             self.fitting.fit()
-        except RuntimeError:  # number of iterations was exceeded, fit not found
+        except (RuntimeError, ValueError):  # number of iterations was exceeded, fit not found
             self.radii = radii
             self.densities = densities
             self.nsc_radius = None
