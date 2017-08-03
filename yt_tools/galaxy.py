@@ -488,6 +488,28 @@ class Galaxy(object):
         else:  # whole galaxy
             return np.sum(masses)
 
+    def nsc_mass_and_errs(self):
+        """Calculates the mass of the NSC and the errors on that.
+
+        The mass of the NSC is determined by the sum of the mass of all the star
+        particles that are inside the NSC radius. Then the errors are the errors
+        that come from increasing the NSC radius by its errors. This is the
+        same way that the errors are calculated in the NscStructure module for
+        the smoothed profiles. """
+
+        # get the upper and lower limits on the NSC radius
+        nsc_low = self.nsc_radius - self.nsc_radius_err[0]
+        nsc_high = self.nsc_radius + self.nsc_radius_err[1]
+
+        this_nsc_mass = self.stellar_mass(radius_cut=self.nsc_radius)
+        this_nsc_low_mass = self.stellar_mass(radius_cut=nsc_low)
+        this_nsc_high_mass = self.stellar_mass(radius_cut=nsc_high)
+
+        errors = (this_nsc_mass - this_nsc_low_mass,
+                  this_nsc_high_mass - this_nsc_mass)
+        return this_nsc_mass, errors
+
+
     def kde_profile(self, quantity="MASS", dimension=2, spacing=None,
                     outer_radius=None):
         """
