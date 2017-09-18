@@ -365,6 +365,42 @@ def test_centering_many_points_3d():
     assert np.isclose(this_kde.location_max_y, cen_y, atol=0.01)
     assert np.isclose(this_kde.location_max_z, cen_z, atol=0.01)
 
+def test_centering_3d_few():
+    """Create a situation with a few points all at one spot."""
+    xs = [0, 1, 1, 1, 2]
+    ys = xs
+    zs = xs
+    this_kde = kde.KDE([xs, ys, zs])
+    this_kde.centering(0.2, 0.01)
+    assert np.isclose(this_kde.location_max_x, 1, atol=0.01)
+    assert np.isclose(this_kde.location_max_y, 1, atol=0.01)
+    assert np.isclose(this_kde.location_max_z, 1, atol=0.01)
+
+def test_centering_bimodal_2d():
+    xs = [0, 1, 1, 1, 2, 3, 3, 4]
+    ys = xs
+    this_kde = kde.KDE([xs, ys])
+    this_kde.centering(0.2, 0.01)
+    assert np.isclose(this_kde.location_max_x, 1, atol=0.01)
+    assert np.isclose(this_kde.location_max_y, 1, atol=0.01)
+
+def test_centering_bimodal_2d_large_range():
+    xs = [-100, 0, 1, 1, 1, 2, 3, 3, 4, 100]
+    ys = xs
+    this_kde = kde.KDE([xs, ys])
+    this_kde.centering(0.2, 0.01)
+    assert np.isclose(this_kde.location_max_x, 1, atol=0.01)
+    assert np.isclose(this_kde.location_max_y, 1, atol=0.01)
+
+def test_centering_bimodal_different_sizes_large_range():
+    xs = [-100, 100, # for edes
+          1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  # real peak
+          20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25] # false peak
+    ys = xs
+    this_kde = kde.KDE([xs, ys])
+    this_kde.centering(0.2, 0.01)
+    assert np.isclose(this_kde.location_max_x, 1, atol=0.01)
+    assert np.isclose(this_kde.location_max_y, 1, atol=0.01)
 
 @pytest.fixture
 def two_points_3d():

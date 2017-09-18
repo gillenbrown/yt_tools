@@ -439,7 +439,7 @@ class Galaxy(object):
         com = [com_x, com_y, com_z] # parsecs are already assumed.
         self._star_kde_mass_3d.centering(kernel_size, accuracy,
                                          initial_guess=com,
-                                         search_region_size=1000) # parsecs
+                                         search_region_size=10000) # parsecs
 
         # then get the values
         cen_x = self._star_kde_mass_3d.location_max_x

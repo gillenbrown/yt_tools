@@ -182,7 +182,8 @@ class KDE(object):
                 initial_z = (min(self.z) + max(self.z)) / 2.0
                 best_location = (initial_x, initial_y, initial_z)
         else:
-            best_location = initial_guess
+            best_location = tuple(initial_guess)  # best location will be a
+                                                  # tuple at the end.
 
         # we need to iterate through the grid sizes
         if search_region_size is None:
