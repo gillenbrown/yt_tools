@@ -393,14 +393,17 @@ def test_centering_bimodal_2d_large_range():
     assert np.isclose(this_kde.location_max_y, 1, atol=0.01)
 
 def test_centering_bimodal_different_sizes_large_range():
+    """This test shows the bug/feature of my code. It will ignore peaks that are
+    "higher", but that have less mass. The advantage of doing this is that the
+    center it finds is likely to be near the center of mass of the galaxy."""
     xs = [-100, 100, # for edes
-          1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  # real peak
-          20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25] # false peak
+          1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  # false peak
+          20, 20, 21, 21, 22, 22, 23, 23, 23, 24, 24, 25, 25] # real peak
     ys = xs
     this_kde = kde.KDE([xs, ys])
     this_kde.centering(0.2, 0.01)
-    assert np.isclose(this_kde.location_max_x, 1, atol=0.01)
-    assert np.isclose(this_kde.location_max_y, 1, atol=0.01)
+    assert np.isclose(this_kde.location_max_x, 23, atol=0.01)
+    assert np.isclose(this_kde.location_max_y, 23, atol=0.01)
 
 @pytest.fixture
 def two_points_3d():
