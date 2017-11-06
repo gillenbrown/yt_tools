@@ -270,7 +270,7 @@ class Galaxy(object):
         self.min_dx = np.min(self.sphere[('index', 'dx')])
         # the kernel we will use should be the width of the cell, to match the
         # smoothing length of the simulation.
-        self.kernel_size = 6 * yt.units.pc
+        self.kernel_size = 3 * yt.units.pc
 
         # then there are several quantities we initialize to zero or blank, but
         # will be filled in future analyses
@@ -390,9 +390,10 @@ class Galaxy(object):
 
         if normal is None:
             # then we can go ahead and do things. First create the new sphere
-            j_vec_sphere = self.ds.sphere(center=self.center, radius=j_radius)
+            j_sp = self.ds.sphere(center=self.center, radius=j_radius)
             # find its angular momentum
-            normal = j_vec_sphere.quantities.angular_momentum_vector()
+            normal = j_sp.quantities.angular_momentum_vector(use_gas=True,
+                                                             use_particles=True)
         # then create the disk
         disk = self.ds.disk(center=self.center, normal=normal,
                             height=disk_height, radius=disk_radius)
@@ -617,7 +618,7 @@ class Galaxy(object):
 
         # first need to to the KDE fitting procedure, possibly.
         if "mass_kde_2D" not in self.radii:
-            self.kde_profile("MASS", spacing=0.05 * yt.units.pc,
+            self.kde_profile("MASS", dimension=2, spacing=0.05 * yt.units.pc,
                              outer_radius=1000 * yt.units.pc)
         self.nsc = nsc_structure.NscStructure(self.binned_radii["mass_kde_2D"],
                                               self.binned_densities["mass_kde_2D"])
