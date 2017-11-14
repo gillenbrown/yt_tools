@@ -201,10 +201,13 @@ def read_gal(ds, file_obj):
         # then assign the values to the correct dictionary
         if data_type == "radii":
             gal.radii[key] = values
-            gal.binned_radii[key] = utils.bin_values(values, 100)
+            means, _ = utils.bin_mean_and_spread(values, 100)
+            gal.binned_radii[key] = means
         else:  # densities
             gal.densities[key] = values
-            gal.binned_densities[key] = utils.bin_values(values, 100)
+            means, stds = utils.bin_mean_and_spread(values, 100)
+            gal.binned_densities[key] = means
+            gal.binned_densities_std[key] = stds
 
     # then we can do the fun stuff where we calculate everythign of interest.
     # this should all be pretty quick, since the KDE process has already been
@@ -282,6 +285,7 @@ class Galaxy(object):
         self.densities = dict()  # used for radial profiles
         self.binned_radii = dict()  # used for radial profiles
         self.binned_densities = dict()  # used for radial profiles
+        self.binned_densities_std = dict()  # used for radial profiles
         self.disk_kde = None  # used for cylindrical plots
         self.disk_nsc = None  # used for cylindrical plots
         self.nsc = None  # used for NSC analysis
@@ -511,8 +515,7 @@ class Galaxy(object):
         return this_nsc_mass, errors
 
 
-    def kde_profile(self, quantity="MASS", dimension=2, spacing=None,
-                    outer_radius=None):
+    def kde_profile(self, quantity="MASS", dimension=2, outer_radius=None):
         """
         Create a radial profile of a given quantity of the stars, typicall mass.
 
@@ -537,18 +540,14 @@ class Galaxy(object):
         """
         if outer_radius is None:
             outer_radius = self.radius
-        if spacing is None:
-            spacing = outer_radius / 100.0
         # test that both outer_radius and spacing have units
         utils.test_for_units(outer_radius, "outer_radius")
-        utils.test_for_units(spacing, "spacing")
 
         # do the KDE error checking
         self._kde_profile_error_checking(quantity, dimension)
 
         # All the KDE stuff is in parsecs, so convert those to parsecs
         outer_radius = outer_radius.in_units("pc").value
-        spacing = spacing.in_units("pc").value
         center = self.center.in_units("pc").value
 
         # the KDE objects that we want to use depend on the coordinate system,
@@ -577,36 +576,50 @@ class Galaxy(object):
                 metals_kde = self._star_kde_metals_3d
 
         # then create the radii
-        radii = np.arange(0, outer_radius, spacing)
+        # we will do linear spacing within 100 pc, then log spacing outside
+        # of that.
+        inner_radii = np.arange(0, 100, 1)
+        outer_radii = np.logspace(2, np.log10(outer_radius), 100)
+        radii = np.concatenate([inner_radii, outer_radii])
 
         # the smoothing kernel we will use in the KDE process is half the size
         # of the smallest cell in the sphere
         kernel_size = self.kernel_size.in_units("pc").value
 
         # we are then able to do the actual profiles
+        num_azimuthal = 100
         if quantity.lower() == "mass":
             # use the mass KDE object that's already set up
-            final_densities = mass_kde.radial_profile(kernel_size, radii,
-                                                      center)
+            profile = mass_kde.radial_profile(kernel_size, radii,
+                                              num_azimuthal, center)
+            full_radii, final_densities = profile
         elif quantity == "Z":
             # for metallicity we have to calculate the mass in metals, and
             # divide it by the mass in stars
-            metal_densities = metals_kde.radial_profile(kernel_size, radii,
-                                                        center)
-            mass_densities = mass_kde.radial_profile(kernel_size, radii,
-                                                     center)
+            metal_profile = metals_kde.radial_profile(kernel_size, radii,
+                                                      num_azimuthal, center)
+            full_radii, metal_densities = metal_profile
+
+            mass_profile = mass_kde.radial_profile(kernel_size, radii,
+                                                     num_azimuthal, center)
+            full_radii, mass_densities = mass_profile
+
             final_densities = metal_densities / mass_densities  # Z
         else:
             raise ValueError("{} is not implemented yet.".format(quantity))
 
         # then set the attributes. The key used to store the data is needed
         key = "{}_kde_{}D".format(quantity.lower(), dimension)
-        self.radii[key] = radii
+        self.radii[key] = full_radii
         self.densities[key] = final_densities
 
         # store the binned radii too, since I will be using those
-        self.binned_radii[key] = utils.bin_values(radii, 100)
-        self.binned_densities[key] = utils.bin_values(final_densities, 100)
+        bin_radii, _ = utils.bin_mean_and_spread(full_radii, num_azimuthal)
+        bin_density, bin_density_sd = utils.bin_mean_and_spread(final_densities,
+                                                              num_azimuthal)
+        self.binned_radii[key] = bin_radii
+        self.binned_densities[key] = bin_density
+        self.binned_densities_std[key] = bin_density_sd
 
     def find_nsc_radius(self):
         """
@@ -618,10 +631,11 @@ class Galaxy(object):
 
         # first need to to the KDE fitting procedure, possibly.
         if "mass_kde_2D" not in self.radii:
-            self.kde_profile("MASS", dimension=2, spacing=0.05 * yt.units.pc,
+            self.kde_profile("MASS", dimension=2,
                              outer_radius=1000 * yt.units.pc)
         self.nsc = nsc_structure.NscStructure(self.binned_radii["mass_kde_2D"],
-                                              self.binned_densities["mass_kde_2D"])
+                                              self.binned_densities["mass_kde_2D"],
+                                              self.binned_densities_std["mass_kde_2D"])
 
         if self.nsc.nsc_radius is None:
             self.nsc_radius = None
