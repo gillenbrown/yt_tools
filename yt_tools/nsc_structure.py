@@ -47,36 +47,44 @@ class Fitting(object):
     bounds = [[0.01, 0.01, 0.01, 0.01], [15, 15, 500, 5000]]
     guess = [6, 6, 10, 400]
 
-    def __init__(self, radii, densities):
+    def __init__(self, radii, densities, log_errors):
         """Create the Fitting object
         
         :param radii: list of radii at which the densities were calculated.
         :param densities: list of densities, corresponding to the radii.
+        :param errors: errors on the log density.
         
         """
-        # test that both are iterable
+        # test that all are iterable
         utils.test_iterable(radii, "radii")
         utils.test_iterable(densities, "densities")
+        utils.test_iterable(log_errors, "errors")
 
         # convert to numpy arrays
         if not isinstance(radii, np.ndarray):
             radii = np.array(radii)
         if not isinstance(densities, np.ndarray):
             densities = np.array(densities)
+        if not isinstance(log_errors, np.ndarray):
+            log_errors = np.array(log_errors)
 
         # test that they are the same
-        if len(radii) != len(densities):
-            raise ValueError("Radiii and densities need to be the same length.")
+        if len(radii) != len(densities) or len(radii) != len(log_errors):
+            raise ValueError("Radii, densities, and errors"
+                             " need to be the same length.")
 
         self.radii = radii
         self.densities = densities
+        self.log_errors_original = log_errors
 
         self._create_log_densities()
 
     def fit(self):
         """Performs the fit and stores the parameters."""
-        params, cov =  optimize.curve_fit(log_plummer_disk, self.radii_logsafe,
-                                          self.log_densities,
+        params, cov =  optimize.curve_fit(f=log_plummer_disk,
+                                          xdata=self.radii_logsafe,
+                                          ydata=self.log_densities,
+                                          sigma=self.errors_logsafe,
                                           bounds=self.bounds, p0=self.guess)
         self.cov = cov
         M_c_log, M_d_log, self.a_c, self.a_d = params
@@ -100,6 +108,7 @@ class Fitting(object):
         # then save the values at those radii
         self.radii_logsafe = self.radii[good_idx]
         self.log_densities = log_densities[good_idx]
+        self.errors_logsafe = self.log_errors_original[good_idx]
 
 
 
@@ -108,17 +117,18 @@ class NscStructure(object):
     
     This includes the mass and half mass radii primarily, in both a parameteric 
     and non parametric way. """
-    def __init__(self, radii, densities):
+    def __init__(self, radii, densities, log_errors):
         """Create the structure object
 
         :param radii: list of radii at which the densities were calculated.
         :param densities: list of densities, corresponding to the radii.
+        :param log_errors: spreads in the log_density values to use.
 
         """
 
         # first we create the fitting object and use it to get the basic
         # structural parameters that will be used later
-        self.fitting = Fitting(radii, densities)
+        self.fitting = Fitting(radii, densities, log_errors)
         try:
             self.fitting.fit()
         except (RuntimeError, ValueError):  # number of iterations was exceeded, fit not found

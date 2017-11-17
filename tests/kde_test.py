@@ -472,42 +472,65 @@ def test_two_points_small_kernel_2d(two_points_2d_weighted):
                       rtol=0, atol=accuracy)
     assert two_points_2d_weighted.location_max_z == None
 
+# def test_radial_profile_3d_single_point(single_point_at_zero_3d):
+    # radii = np.arange(0, 100, 0.5)
+    # sigma = 2.0
+    # true_densities = utils.gaussian_3d_radial(radii, sigma)
+    # assert np.allclose(single_point_at_zero_3d.radial_profile(sigma, radii, 1,
+    #                                                           [0, 0, 0]),
+    #                    true_densities)
+
 def test_radial_profile_error_checking(single_point_at_zero_2d):
     radii = np.linspace(0, 1, 5)
     kernels = np.linspace(1, 2, 4)
     with pytest.raises(ValueError):
-        single_point_at_zero_2d.radial_profile(1.0, radii, kernels)
-
-def test_radial_profile_3d_single_point(single_point_at_zero_3d):
-    radii = np.arange(0, 100, 0.5)
-    sigma = 2.0
-    true_densities = utils.gaussian_3d_radial(radii, sigma)
-    assert np.allclose(single_point_at_zero_3d.radial_profile(sigma, radii,
-                                                              [0, 0, 0]),
-                       true_densities)
-
+        single_point_at_zero_2d.radial_profile(kernels, radii, 1, [0, 0])
+        
 def test_radial_profile_2d_single_point(single_point_at_zero_2d):
     radii = np.arange(0, 100, 0.5)
     sigma = 2.0
     true_densities = utils.gaussian_2d_radial(radii, sigma)
-    assert np.allclose(single_point_at_zero_2d.radial_profile(sigma, radii,
-                                                              [0, 0]),
-                       true_densities)
+    func_out = single_point_at_zero_2d.radial_profile(sigma, radii, 1, [0, 0])
+    new_radii, new_densities = func_out
+    assert np.allclose(true_densities, new_densities)
+    assert np.allclose(radii, new_radii)
+
+def test_radial_profile_2d_length_of_arrays(single_point_at_zero_2d):
+    num_radii = 123
+    radii = np.linspace(0, 100,num_radii)
+    num_each = 23
+    new_rad, dens = single_point_at_zero_2d.radial_profile(1, radii, num_each,
+                                                           [0, 0])
+    assert len(new_rad) == len(dens)
+    assert len(new_rad) == num_radii * num_each
+
+def test_radial_profile_2d_multiple_at_each(single_point_at_zero_2d):
+    sigma = 2.0
+    num_each = 2
+    true_densities = [utils.gaussian_2d_radial(0, sigma),
+                      utils.gaussian_2d_radial(0, sigma),
+                      utils.gaussian_2d_radial(1, sigma),
+                      utils.gaussian_2d_radial(1, sigma),
+                      utils.gaussian_2d_radial(2, sigma),
+                      utils.gaussian_2d_radial(2, sigma)]
+    func_out = single_point_at_zero_2d.radial_profile(sigma, [0, 1, 2],
+                                                      num_each, [0, 0])
+    new_radii, new_densities = func_out
+    assert np.allclose(true_densities, new_densities)
+    assert np.allclose([0, 0, 1, 1, 2, 2], new_radii)
+
 
 def test_radial_profile_error_checking_2D(single_point_at_zero_2d):
     with pytest.raises(ValueError):
-        single_point_at_zero_2d.radial_profile(1, np.arange(0, 10), [1, 1, 1])
-
-def test_radial_profile_error_checking_3D(single_point_at_zero_3d):
-    with pytest.raises(ValueError):
-        single_point_at_zero_3d.radial_profile(1, np.arange(0, 10),
-                                               [1, 1])
-
+        single_point_at_zero_2d.radial_profile(1, np.arange(0, 10), 1,
+                                               [1, 1, 1])
+        
 def test_radial_profile_multiple_kernel_sizes(single_point_at_zero_2d):
     radii = [1, 2, 3]
     kernels = [0.5, 0.6, 0.7]
     true_densities = [utils.gaussian_2d_radial(r, s)
                       for r, s in zip(radii, kernels)]
-    test_densities = single_point_at_zero_2d.radial_profile(kernels, radii,
+    test_densities = single_point_at_zero_2d.radial_profile(kernels, radii, 1
                                                             [0, 0])
     assert np.allclose(true_densities, test_densities)
+

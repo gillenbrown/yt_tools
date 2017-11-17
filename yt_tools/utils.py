@@ -128,23 +128,28 @@ def convert_spherical_to_cartesian(r, theta, phi):
 
     return x, y, z
 
-def get_2d_polar_points(radii):
+def get_2d_polar_points(radii, num_each):
     """Generates points in 2D, such that each each radius there will be a point
     at a random azimuthal coordinate. 
     
     :param radii: list of radii
+    :param num_each: number of points to put at each radius. These will be
+                     equally spaced in the azimuthal direction.
     :returns x: list of x values, as described above.
     :returns y: list of y values, as described above.
     """
-    phi = np.random.uniform(0, 2 * np.pi, len(radii))
-    return convert_polar_to_cartesian(radii, phi)
+    spacing = 2 * np.pi / num_each
+    phi = np.arange(0, 2 * np.pi, spacing)
+    repeated_phi = np.tile(phi, len(radii))
+    repeated_radii = np.repeat(radii, num_each)
+    return convert_polar_to_cartesian(repeated_radii, repeated_phi)
 
 def get_3d_sperical_points(radii):
-    """Gets points in 3D. At each radius given, a point will be placed at a 
+    """Gets points in 3D. At each radius given, a point will be placed at a
     random location on a sphere of that radius.
     
     :param radii: list of radii
-    :returns: three lists of x, y, and z values generated according to the 
+    :returns: three lists of x, y, and z values generated according to the
               rules outlined above.
     """
     theta, phi = generate_random_theta_phi(len(radii))
@@ -246,12 +251,14 @@ def sum_in_quadrature(*args):
     return np.sqrt(sum([x**2 for x in args]))
 
 
-def bin_values(values, bin_size=100):
+def bin_mean_and_spread(values, bin_size=100):
     """
-    Bins values together, returning the average in each bin. Does not
-    return any information about the bin edges or anything else. This does
-    binning where there are an equal amount of data points in each bin, and
-    the bins are done in the order the data was passed in.
+    Bins values together, returning the average in each bin and the spread
+    in log of that value. Does not return any information about the bin edges
+    or anything else. This does binning where there are an equal amount of data
+    points in each bin, and the bins are done in the order the data was
+    passed in. The spread is defined as the standard deviation of the log base
+    10 of the points passed in.
 
     When bin_size doesn't evenly divide the size of the dataset passed in, the
     last bin will be larger than the others.
@@ -270,12 +277,14 @@ def bin_values(values, bin_size=100):
                      bins except the last one, which could have a larger
                      amount of data points if bin_size does not evenly divide
                      the length of the dataset.
-    :return: array of values that is the average of the values in each bin. This
-             will be of size len(values) // bin_size
+    :return: array of values that is the average of the values in each bin,
+             plus an array of the spread in each bin. These will be of
+             size len(values) // bin_size
     :rtype: np.ndarray
     """
 
     binned_values = []
+    binned_spreads = []
 
     # we want to iterate with constant bin size. If we have
     # a length that isn't divisible by bin_size, the extra stuff
@@ -294,8 +303,10 @@ def bin_values(values, bin_size=100):
 
         # then keep the mean.
         binned_values.append(np.mean(these_values))
+        binned_spreads.append(np.std(np.log10(these_values)))
 
-    return np.array(binned_values)
+
+    return np.array(binned_values), np.array(binned_spreads)
 
 def sphere_intersection(r1, r2, separation):
     """Determines whether two spheres are in contact with each other.

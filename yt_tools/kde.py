@@ -222,7 +222,7 @@ class KDE(object):
             self.location_max_z = z
 
 
-    def radial_profile(self, kernel_sizes, radii, center):
+    def radial_profile(self, kernel_sizes, radii, num_each, center):
         """Create a radial KDE profile.
         
         :param kernel_size: Size of the smoothing kernel. Can be either a scalar
@@ -231,13 +231,13 @@ class KDE(object):
                             corresponding size will be used.
         :param radii: List of radii at which the density will be calculated.
                       Since KDE binning doesn't make sense, this will work by 
-                      randomly distributing a point over the sphere with a given
-                      radius for each radius in this list. Because of this 
-                      sparse sampling, it makes sense to have much denser 
-                      spacing of radial values then you would when doing a 
-                      binned profile.
+                      putting `num_each` points at each radius, evenly
+                      distributed over azimuth. You can then bin these if you
+                      like later.
+        :param num_each: How many azimuthal points to put at each of the
+                         specified radii.
         :param center: location around which the profile will be calculated.
-        :returns: List of densities corresponding to the radii passed in.
+        :returns: List of radii and densities corresponding to those radii.
         """
         # check that the length of the center matches the dimensions we have
         if len(center) != self.dimension:
@@ -256,12 +256,13 @@ class KDE(object):
 
         # get those locations we want to sample the density at. These are
         # relative to the center for now.
-        if self.dimension == 3:
-            rel_locs = utils.get_3d_sperical_points(radii)
-        elif self.dimension == 2:
-            rel_locs = utils.get_2d_polar_points(radii)
+        # if self.dimension == 3:
+        #     rel_locs = utils.get_3d_sperical_points(radii)
+        if self.dimension == 2:
+            rel_locs = utils.get_2d_polar_points(radii, num_each)
+            repeated_radii = np.repeat(radii, num_each)
         else:
-            raise ValueError("Only 2 or 3D for now.")
+            raise ValueError("Only 2D for now.")
 
         # then turn these into real space locations by adding the galaxy
         # center to the relative locations.
@@ -274,11 +275,9 @@ class KDE(object):
         # these locations will still be sorted in order of increasing radius,
         # so they are easy to use. We still have to iterate, and can't do it
         # in a vectorized way, unfortunately.
-        return np.array([self.density(kernel, *loc)
-                         for loc, kernel in zip(locations, kernel_sizes)])
 
-
-
-        
+        return repeated_radii, np.array([self.density(kernel, *loc)
+                                          for loc, kernel 
+                                          in zip(locations, kernel_sizes)])
 
     

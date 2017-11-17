@@ -145,6 +145,32 @@ def test_polar_to_cartesian():
     assert np.allclose(utils.convert_polar_to_cartesian(5, np.pi / 4.0),
                        (5.0 / np.sqrt(2), 5.0 / np.sqrt(2)))
 
+def test_2d_polar_points_single_direction():
+    """Get the polar points for one direction, which will be the x direction"""
+    x_func, y_func = utils.get_2d_polar_points([1, 2], 1)
+    x_real, y_real = [1, 2], [0, 0]
+    assert np.allclose(x_func, x_real)
+    assert np.allclose(y_func, y_real)
+
+def test_2d_polar_points_4_directions():
+    """This will put points on all 4 axis directions.
+    They need to be ordered in terms of increasing radii, with all points with
+    the same radius next to each other."""
+    x_func, y_func = utils.get_2d_polar_points([1, 2], 4)
+    x_real = [1, 0, -1, 0, 2, 0, -2, 0]
+    y_real = [0, 1, 0, -1, 0, 2, 0, -2]
+    assert np.allclose(x_func, x_real)
+    assert np.allclose(y_func, y_real)
+
+def test_2d_polar_points_many_directions_lengths():
+    """Sees if the points have the right amount."""
+    num_radii = 234
+    radii = np.linspace(0, 100, num_radii)
+    num_angles = 634
+    x, y = utils.get_2d_polar_points(radii, num_angles)
+    assert len(x) == num_radii * num_angles
+    assert len(y) == num_radii * num_angles
+
 
 # -----------------------------------------------------------------------------
 
@@ -288,27 +314,64 @@ def test_sum_in_quadrature_array():
 
 # -----------------------------------------------------------------------------
 
-def test_binning_single_values():
-    assert np.allclose(utils.bin_values([1, 1], bin_size=1), [1, 1])
-    assert np.allclose(utils.bin_values([4.5, 2.3], bin_size=1), [4.5, 2.3])
+def test_binning_single_values_a():
+    means, stds = utils.bin_mean_and_spread([1, 1], bin_size=1)
+    assert np.allclose(means, [1, 1])
+    assert np.allclose(stds, [0, 0])
 
-def test_binning_even_bin_size():
-    assert np.allclose(utils.bin_values([1, 1, 2, 2, 3, 3], 2), [1, 2, 3])
-    assert np.allclose(utils.bin_values([1, 2, 3, 4, 5, 6, 7, 8, 9], 3),
-                       [2, 5, 8])
-    assert np.allclose(utils.bin_values([1, 2, 3, 4, 5, 6, 7, 8], 2),
-                       [1.5, 3.5, 5.5, 7.5])
+def test_binning_single_values_b():
+    means, stds = utils.bin_mean_and_spread([4.5, 2.3], bin_size=1)
+    assert np.allclose(means, [4.5, 2.3])
+    assert np.allclose(stds, [0, 0])
 
-def test_binning_not_even_bins():
-    assert np.allclose(utils.bin_values([1, 2, 3], 2), [2])
-    assert np.allclose(utils.bin_values([1, 2, 3, 4, 5], 2), [1.5, 4])
-    assert np.allclose(utils.bin_values([1, 2, 3, 4, 5, 6, 7, 8], 3),
-                       [2, 6])
+def test_binning_even_bin_size_a():
+    means, stds = utils.bin_mean_and_spread([1, 1, 2, 2, 3, 3], 2)
+    assert np.allclose(means, [1, 2, 3])
+    assert np.allclose(stds, [0, 0, 0])
 
-def test_binning_length_size():
-    assert len(utils.bin_values(np.arange(100), 10)) == 10
-    assert len(utils.bin_values(np.arange(101), 10)) == 10
-    assert len(utils.bin_values(np.arange(109), 10)) == 10
+def test_binning_even_bin_size_b():
+    means, stds = utils.bin_mean_and_spread([1, 2, 3, 4, 5, 6, 7, 8, 9], 3)
+    assert np.allclose(means, [2, 5, 8])
+    assert np.allclose(stds, [np.std(np.log10([1, 2, 3])),
+                              np.std(np.log10([4, 5, 6])),
+                              np.std(np.log10([7, 8, 9]))])
+
+def test_binning_even_bin_size_c():
+    means, stds = utils.bin_mean_and_spread([1, 2, 3, 4, 5, 6, 7, 8], 2)
+    assert np.allclose(means, [1.5, 3.5, 5.5, 7.5])
+    assert np.allclose(stds, [np.std(np.log10([1, 2])),
+                              np.std(np.log10([3, 4])),
+                              np.std(np.log10([5, 6])),
+                              np.std(np.log10([7, 8]))])
+
+def test_binning_not_even_bins_a():
+    means, stds = utils.bin_mean_and_spread([1, 2, 3], 2)
+    assert np.allclose(means, [2])
+    assert np.allclose(stds, [np.std(np.log10([1, 2, 3]))])
+
+def test_binning_not_even_bins_b():
+    means, stds = utils.bin_mean_and_spread([1, 2, 3, 4, 5], 2)
+    assert np.allclose(means, [1.5, 4])
+    assert np.allclose(stds, [np.std(np.log10([1, 2])),
+                              np.std(np.log10([3, 4, 5]))])
+
+def test_binning_not_even_bins_c():
+    means, stds = utils.bin_mean_and_spread([1, 2, 3, 4, 5, 6, 7, 8], 3)
+    assert np.allclose(means, [2, 6])
+    assert np.allclose(stds, [np.std(np.log10([1, 2, 3])),
+                              np.std(np.log10([4, 5, 6, 7, 8]))])
+
+@pytest.mark.parametrize("length,bin_size,bins", [
+    (99,  10, 9 ),
+    (100, 10, 10),
+    (101, 10, 10),
+    (109, 10, 10),
+    (110, 10, 11)
+])
+def test_binning_length_size(length, bin_size, bins):
+    means, stds = utils.bin_mean_and_spread(np.arange(length), bin_size)
+    assert len(means) == len(stds)
+    assert len(means) == bins
 
 def test_intersection_error_checking():
     with pytest.raises(ValueError):

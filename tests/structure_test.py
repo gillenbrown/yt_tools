@@ -7,29 +7,35 @@ from scipy import interpolate, integrate
 
 def test_fitting_init_iterable_checking():
     with pytest.raises(TypeError):
-        nsc_structure.Fitting(0, 0)
+        nsc_structure.Fitting(0, 0, 0)
     with pytest.raises(TypeError):
-        nsc_structure.Fitting([0], 0)
+        nsc_structure.Fitting([0], 0, [0])
     with pytest.raises(TypeError):
-        nsc_structure.Fitting(0, [0])
-    nsc_structure.Fitting([0], [0])  # no error
+        nsc_structure.Fitting(0, [0], [0])
+    with pytest.raises(TypeError):
+        nsc_structure.Fitting([0], [0], 0)
+    nsc_structure.Fitting([0], [0], [0])  # no error
 
 def test_fitting_init_same_size():
     with pytest.raises(ValueError):
-        nsc_structure.Fitting([0], [0, 1])  # not same size
+        nsc_structure.Fitting([0], [0, 1], [0])  # not same size
     with pytest.raises(ValueError):
-        nsc_structure.Fitting([0, 1, 2], [0, 1])  # not same size
-    nsc_structure.Fitting([1, 2, 3], [1, 2, 3])  # no error
+        nsc_structure.Fitting([0, 1, 2], [0, 1], [0, 1])  # not same size
+    with pytest.raises(ValueError):
+        nsc_structure.Fitting([0, 1], [0, 1], [0, 1, 2])  # not same size
+    nsc_structure.Fitting([1, 2, 3], [1, 2, 3], [1, 2, 3])  # no error
 
 def test_fitting_log_safety():
     # test the removal of log(0) values
-    fit = nsc_structure.Fitting([1, 2, 3], [0, 1, 2])
+    fit = nsc_structure.Fitting([1, 2, 3], [0, 1, 2], [1, 2, 3])
     assert np.allclose(fit.radii_logsafe, [2, 3])
     assert np.allclose(fit.log_densities, [0, 0.30103])
+    assert np.allclose(fit.errors_logsafe, [2, 3])
 
-    fit = nsc_structure.Fitting([1, 2, 3], [1, 2, 3])
+    fit = nsc_structure.Fitting([1, 2, 3], [1, 2, 3], [1, 2, 3])
     assert np.allclose(fit.radii_logsafe, [1, 2, 3])
     assert np.allclose(fit.log_densities, [0, 0.30103, 0.4771212547])
+    assert np.allclose(fit.errors_logsafe, [1, 2, 3])
 # -----------------------------------------------------------------------------
 
 # test the fitting process against some simple cases.
@@ -42,23 +48,24 @@ a_d = 675.3
 radii = np.arange(0, 5000)
 plummer = profiles.plummer_2d(radii, M_c, a_c)
 disk = profiles.exp_disk(radii, M_d, a_d)
+log_errors = np.ones(radii.size)
 
 def test_fitting_results_plummer():
-    fit = nsc_structure.Fitting(radii, plummer)
+    fit = nsc_structure.Fitting(radii, plummer, log_errors)
     fit.fit()
     assert np.isclose(fit.M_c, M_c)
     assert np.isclose(fit.a_c, a_c)
     assert np.isclose(fit.M_d, 0, atol=2)
 
 def test_fitting_results_disk():
-    fit = nsc_structure.Fitting(radii, disk)
+    fit = nsc_structure.Fitting(radii, disk, log_errors)
     fit.fit()
     assert np.isclose(fit.M_d, M_d)
     assert np.isclose(fit.a_d, a_d)
     assert np.isclose(fit.M_c, 0, atol=2)
 
 def test_fitting_results_total():
-    fit = nsc_structure.Fitting(radii, plummer + disk)
+    fit = nsc_structure.Fitting(radii, plummer + disk, log_errors)
     fit.fit()
     assert np.isclose(fit.M_c, M_c, atol=0.01)
     assert np.isclose(fit.a_c, a_c, atol=0.01)
@@ -92,19 +99,21 @@ def test_error_transform_results():
 
 @pytest.fixture
 def struct_plummer():
-    return nsc_structure.NscStructure(radii, plummer)
+    return nsc_structure.NscStructure(radii, plummer, log_errors)
 
 @pytest.fixture
 def struct_disk():
-    return nsc_structure.NscStructure(radii, disk)
+    return nsc_structure.NscStructure(radii, disk, log_errors)
 
 @pytest.fixture
 def struct_total():
-    return nsc_structure.NscStructure(radii, plummer + disk)
+    return nsc_structure.NscStructure(radii, plummer + disk, log_errors)
 
 @pytest.fixture
 def struct_total_error():
-    return nsc_structure.NscStructure(radii, (plummer + disk) * np.random.normal(1, 0.1, len(radii)))
+    perturbations = np.random.normal(1, 0.1, len(radii))
+    return nsc_structure.NscStructure(radii, (plummer + disk) * perturbations,
+                                      log_errors)
 
 
 def test_init_nsc_plummer(struct_plummer):

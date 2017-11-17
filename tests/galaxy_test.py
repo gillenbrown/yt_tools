@@ -102,11 +102,9 @@ def test_kde_creation_dimensions(gal):
 
 def test_kde_profile_units(gal):
     with pytest.raises(TypeError):
-        gal.kde_profile(spacing=0.5, outer_radius=100 * kpc, dimension=3)
-    with pytest.raises(TypeError):
-        gal.kde_profile(spacing=0.5 * kpc, outer_radius=100, dimension=3)
-    gal.kde_profile(spacing=0.5 * kpc, outer_radius=100 * kpc,
-                    dimension=3)  # no error
+        gal.kde_profile(outer_radius=100, dimension=2)
+    gal.add_disk()
+    gal.kde_profile(outer_radius=100 * kpc, dimension=2)  # no error
 
 def test_kde_profile_coords_error_checking(gal):
     with pytest.raises(ValueError):
@@ -115,63 +113,72 @@ def test_kde_profile_coords_error_checking(gal):
         gal.kde_profile(dimension=2)
     gal.add_disk()
     gal.kde_profile(dimension=2)  # no error now.
-    gal.kde_profile(dimension=3)  # no error
+    # gal.kde_profile(dimension=3)  # no error
     gal.kde_profile()  # no error
 
 def test_kde_profile_quantity_check(gal):
     # we need spherical on all of this to avoid runtime errors from no disk
-    gal.kde_profile(dimension=3)
-    gal.kde_profile("MASS", dimension=3)
-    gal.kde_profile("Mass", dimension=3)
-    gal.kde_profile("mass", dimension=3)
-    gal.kde_profile("Z", dimension=3)
+    gal.add_disk()
+    gal.kde_profile(dimension=2)
+    gal.kde_profile("MASS", dimension=2)
+    gal.kde_profile("Mass", dimension=2)
+    gal.kde_profile("mass", dimension=2)
+    gal.kde_profile("Z", dimension=2)
     with pytest.raises(ValueError):
-        gal.kde_profile("test", dimension=3)
+        gal.kde_profile("test", dimension=2)
 
-def test_kde_profile_results_exist_and_right_length(gal):
-    """Check whether the results exist where they should and have right size."""
-    # we need spherical on all of this to avoid runtime errors from no disk.
-    gal.kde_profile("MASS", dimension=3,
-                    spacing=1.0 * pc, outer_radius=2.0 * pc)
-    gal.kde_profile("Z", dimension=3,
-                    spacing=1.0 * pc, outer_radius=2.0 * pc)
-    gal.add_disk()
-    gal.kde_profile("MASS", dimension=2,
-                    spacing=1.0 * pc, outer_radius=2.0 * pc)
-    gal.kde_profile("Z", dimension=2,
-                    spacing=1.0 * pc, outer_radius=2.0 * pc)
-    assert len(gal.densities["mass_kde_3D"]) == 2
-    assert len(gal.densities["mass_kde_2D"]) == 2
-    assert len(gal.densities["z_kde_3D"]) == 2
-    assert len(gal.densities["z_kde_2D"]) == 2
+# def test_kde_profile_results_exist_and_right_length(gal):
+#     """Check whether the results exist where they should and have right size."""
+#     # we need spherical on all of this to avoid runtime errors from no disk.
+#     # gal.kde_profile("MASS", dimension=3, outer_radius=2.0 * pc)
+#     # gal.kde_profile("Z", dimension=3, outer_radius=2.0 * pc)
+#     gal.add_disk()
+#     gal.kde_profile("MASS", dimension=2, outer_radius=2.0 * pc)
+#     gal.kde_profile("Z", dimension=2, outer_radius=2.0 * pc)
+#     # assert len(gal.densities["mass_kde_3D"]) == 2
+#     assert len(gal.densities["mass_kde_2D"]) == 2
+#     # assert len(gal.densities["z_kde_3D"]) == 2
+#     assert len(gal.densities["z_kde_2D"]) == 2
 
-def test_kde_profile_results_reasonable(gal):
-    """Check whether the results have roughtly correct values."""
-    # we need spherical on all of this to avoid runtime errors from no disk.
-    gal.kde_profile("MASS", dimension=3,
-                    spacing=40.0 * pc, outer_radius=50.0 * pc)
-    gal.kde_profile("Z", dimension=3,
-                    spacing=40.0 * pc, outer_radius=50.0 * pc)
+def test_kde_profile_radii_values(gal):
     gal.add_disk()
-    gal.kde_profile("MASS", dimension=2,
-                    spacing=40.0 * pc, outer_radius=50.0 * pc)
-    gal.kde_profile("Z", dimension=2,
-                    spacing=40.0 * pc, outer_radius=50.0 * pc)
-    # there should be high density at the center here
-    assert gal.densities["mass_kde_3D"][0] > 10**3
-    assert gal.densities["mass_kde_2D"][0] > 10**5
-    # the cylindrical should be a higher value than the spherical, since it
-    # only is in 2D, not three
-    assert gal.densities["mass_kde_2D"][0] > \
-           gal.densities["mass_kde_3D"][0]
-    # the stellar density should decrease outwards
-    assert gal.densities["mass_kde_3D"][0] > \
-           gal.densities["mass_kde_3D"][1]
-    assert gal.densities["mass_kde_2D"][0] > \
-           gal.densities["mass_kde_2D"][1]
-    # metallicity should be between zero and one
-    assert 0 < gal.densities["z_kde_3D"][0] < 1
-    assert 0 < gal.densities["z_kde_2D"][0] < 1
+    gal.kde_profile("MASS", dimension=2, outer_radius=1000 * pc)
+    assert np.allclose(gal.radii["mass_kde_2D"][::100],
+                       gal.binned_radii["mass_kde_2D"])
+    assert np.isclose(gal.binned_radii["mass_kde_2D"][0], 0.0)
+    assert np.isclose(gal.binned_radii["mass_kde_2D"][1], 1.0)
+    assert len(gal.radii["mass_kde_2D"]) == \
+           100 * len(gal.binned_radii["mass_kde_2D"])
+    assert len(gal.densities["mass_kde_2D"]) == \
+           100 * len(gal.binned_densities["mass_kde_2D"])
+
+# def test_kde_profile_results_reasonable(gal):
+#     """Check whether the results have roughtly correct values."""
+#     # we need spherical on all of this to avoid runtime errors from no disk.
+#     gal.kde_profile("MASS", dimension=3,
+#                     spacing=40.0 * pc, outer_radius=50.0 * pc)
+#     gal.kde_profile("Z", dimension=3,
+#                     spacing=40.0 * pc, outer_radius=50.0 * pc)
+#     gal.add_disk()
+#     gal.kde_profile("MASS", dimension=2,
+#                     spacing=40.0 * pc, outer_radius=50.0 * pc)
+#     gal.kde_profile("Z", dimension=2,
+#                     spacing=40.0 * pc, outer_radius=50.0 * pc)
+#     # there should be high density at the center here
+#     assert gal.densities["mass_kde_3D"][0] > 10**3
+#     assert gal.densities["mass_kde_2D"][0] > 10**5
+#     # the cylindrical should be a higher value than the spherical, since it
+#     # only is in 2D, not three
+#     assert gal.densities["mass_kde_2D"][0] > \
+#            gal.densities["mass_kde_3D"][0]
+#     # the stellar density should decrease outwards
+#     assert gal.densities["mass_kde_3D"][0] > \
+#            gal.densities["mass_kde_3D"][1]
+#     assert gal.densities["mass_kde_2D"][0] > \
+#            gal.densities["mass_kde_2D"][1]
+#     # metallicity should be between zero and one
+#     assert 0 < gal.densities["z_kde_3D"][0] < 1
+#     assert 0 < gal.densities["z_kde_2D"][0] < 1
 
 # -----------------------------------------------------------------------------
 
