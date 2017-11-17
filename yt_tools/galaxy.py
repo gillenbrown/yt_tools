@@ -583,27 +583,34 @@ class Galaxy(object):
         radii = np.concatenate([inner_radii, outer_radii])
 
         # the smoothing kernel we will use in the KDE process is half the size
-        # of the smallest cell in the sphere
-        kernel_size = self.kernel_size.in_units("pc").value
+        # of the smallest cell in the sphere when we are inside 12pc, but
+        # twice this when outside of that distance.
+        base_kernel_size = self.kernel_size.in_units("pc").value
+        kernels = []
+        for r in radii:
+            if r <= 12.0:
+                kernels.append(base_kernel_size)
+            else:
+                kernels.append(2 * base_kernel_size)
+        kernels = np.array(kernels)
 
         # we are then able to do the actual profiles
         num_azimuthal = 100
         if quantity.lower() == "mass":
             # use the mass KDE object that's already set up
-            profile = mass_kde.radial_profile(kernel_size, radii,
+            profile = mass_kde.radial_profile(kernels, radii,
                                               num_azimuthal, center)
             full_radii, final_densities = profile
         elif quantity == "Z":
             # for metallicity we have to calculate the mass in metals, and
             # divide it by the mass in stars
-            metal_profile = metals_kde.radial_profile(kernel_size, radii,
+            metal_profile = metals_kde.radial_profile(kernels, radii,
                                                       num_azimuthal, center)
             full_radii, metal_densities = metal_profile
 
-            mass_profile = mass_kde.radial_profile(kernel_size, radii,
-                                                     num_azimuthal, center)
+            mass_profile = mass_kde.radial_profile(kernels, radii,
+                                                   num_azimuthal, center)
             full_radii, mass_densities = mass_profile
-
             final_densities = metal_densities / mass_densities  # Z
         else:
             raise ValueError("{} is not implemented yet.".format(quantity))

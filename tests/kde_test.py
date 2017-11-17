@@ -480,6 +480,12 @@ def test_two_points_small_kernel_2d(two_points_2d_weighted):
     #                                                           [0, 0, 0]),
     #                    true_densities)
 
+def test_radial_profile_error_checking(single_point_at_zero_2d):
+    radii = np.linspace(0, 1, 5)
+    kernels = np.linspace(1, 2, 4)
+    with pytest.raises(ValueError):
+        single_point_at_zero_2d.radial_profile(kernels, radii, 1, [0, 0])
+        
 def test_radial_profile_2d_single_point(single_point_at_zero_2d):
     radii = np.arange(0, 100, 0.5)
     sigma = 2.0
@@ -518,8 +524,13 @@ def test_radial_profile_error_checking_2D(single_point_at_zero_2d):
     with pytest.raises(ValueError):
         single_point_at_zero_2d.radial_profile(1, np.arange(0, 10), 1,
                                                [1, 1, 1])
+        
+def test_radial_profile_multiple_kernel_sizes(single_point_at_zero_2d):
+    radii = [1, 2, 3]
+    kernels = [0.5, 0.6, 0.7]
+    true_densities = [utils.gaussian_2d_radial(r, s)
+                      for r, s in zip(radii, kernels)]
+    test_densities = single_point_at_zero_2d.radial_profile(kernels, radii, 1
+                                                            [0, 0])
+    assert np.allclose(true_densities, test_densities)
 
-# def test_radial_profile_error_checking_3D(single_point_at_zero_3d):
-#     with pytest.raises(ValueError):
-#         single_point_at_zero_3d.radial_profile(1, np.arange(0, 10), 1
-#                                                [1, 1])

@@ -222,10 +222,13 @@ class KDE(object):
             self.location_max_z = z
 
 
-    def radial_profile(self, kernel_size, radii, num_each, center):
+    def radial_profile(self, kernel_sizes, radii, num_each, center):
         """Create a radial KDE profile.
         
-        :param kernel_size: Size of the smoothing kernel.
+        :param kernel_size: Size of the smoothing kernel. Can be either a scalar
+                            or a list of sizes where the length is equal to the
+                            number of radii. At each radius, the kernel of the
+                            corresponding size will be used.
         :param radii: List of radii at which the density will be calculated.
                       Since KDE binning doesn't make sense, this will work by 
                       putting `num_each` points at each radius, evenly
@@ -240,6 +243,16 @@ class KDE(object):
         if len(center) != self.dimension:
             raise ValueError("The center must be of the same dimension as the "
                              "data")
+
+        # parse the kernel sizes
+        try:
+            utils.test_iterable(kernel_sizes, "")
+            # it is iterable, which is fine. Then have to check that it's the
+            # same length as radii
+            if len(kernel_sizes) != len(radii):
+                raise ValueError("kernel_sizes and radii has to be same size.")
+        except TypeError: #
+            kernel_sizes = np.repeat(kernel_sizes, len(radii))
 
         # get those locations we want to sample the density at. These are
         # relative to the center for now.
@@ -262,11 +275,9 @@ class KDE(object):
         # these locations will still be sorted in order of increasing radius,
         # so they are easy to use. We still have to iterate, and can't do it
         # in a vectorized way, unfortunately.
-        return repeated_radii, \
-               np.array([self.density(kernel_size, *loc) for loc in locations])
 
-
-
-        
+        return repeated_radii, np.array([self.density(kernel, *loc)
+                                          for loc, kernel 
+                                          in zip(locations, kernel_sizes)])
 
     

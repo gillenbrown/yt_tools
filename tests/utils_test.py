@@ -440,5 +440,3 @@ def test_sphere_containment():
     assert not utils.sphere_containment(cen_1, cen_2, 0.1, 0.1)  # don't touch
     assert not utils.sphere_containment(cen_1, cen_2, 0.2, 0.1)  # don't touch
     assert not utils.sphere_containment(cen_1, cen_2, 0.1, 0.2)  # don't touch
-
-
