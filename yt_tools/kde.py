@@ -251,7 +251,7 @@ class KDE(object):
             # same length as radii
             if len(kernel_sizes) != len(radii):
                 raise ValueError("kernel_sizes and radii has to be same size.")
-        except TypeError: #
+        except TypeError: # is a scalar
             kernel_sizes = np.repeat(kernel_sizes, len(radii))
 
         # get those locations we want to sample the density at. These are
@@ -261,6 +261,7 @@ class KDE(object):
         if self.dimension == 2:
             rel_locs = utils.get_2d_polar_points(radii, num_each)
             repeated_radii = np.repeat(radii, num_each)
+            repeated_kernels = np.repeat(kernel_sizes, num_each)
         else:
             raise ValueError("Only 2D for now.")
 
@@ -278,6 +279,6 @@ class KDE(object):
 
         return repeated_radii, np.array([self.density(kernel, *loc)
                                           for loc, kernel 
-                                          in zip(locations, kernel_sizes)])
+                                          in zip(locations, repeated_kernels)])
 
     

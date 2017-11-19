@@ -530,7 +530,7 @@ def test_radial_profile_multiple_kernel_sizes(single_point_at_zero_2d):
     kernels = [0.5, 0.6, 0.7]
     true_densities = [utils.gaussian_2d_radial(r, s)
                       for r, s in zip(radii, kernels)]
-    test_densities = single_point_at_zero_2d.radial_profile(kernels, radii, 1
-                                                            [0, 0])
+    _, test_densities = single_point_at_zero_2d.radial_profile(kernels, radii,
+                                                               1, [0, 0])
     assert np.allclose(true_densities, test_densities)
 

@@ -373,6 +373,16 @@ def test_binning_length_size(length, bin_size, bins):
     assert len(means) == len(stds)
     assert len(means) == bins
 
+@pytest.mark.parametrize("length,bin_size", [
+    (20, 5),
+    (36, 2),
+    (234, 23),
+    (9583749, 2598)
+])
+def test_binning_length_size(length, bin_size):
+    means, stds = utils.bin_mean_and_spread(np.arange(length), bin_size)
+    assert len(means) == len(stds)
+
 def test_intersection_error_checking():
     with pytest.raises(ValueError):
         utils.sphere_intersection(-10, 5, 8)

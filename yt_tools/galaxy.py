@@ -624,9 +624,15 @@ class Galaxy(object):
         bin_radii, _ = utils.bin_mean_and_spread(full_radii, num_azimuthal)
         bin_density, bin_density_sd = utils.bin_mean_and_spread(final_densities,
                                                               num_azimuthal)
+
         self.binned_radii[key] = bin_radii
         self.binned_densities[key] = bin_density
         self.binned_densities_std[key] = bin_density_sd
+        print("\n\n")
+        print(len(self.binned_radii[key]),
+              len(self.binned_densities[key]),
+              len(self.binned_densities_std[key]))
+        print("\n\n")
 
     def find_nsc_radius(self):
         """
