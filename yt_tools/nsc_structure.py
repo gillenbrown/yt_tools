@@ -399,7 +399,9 @@ class AxisRatios(object):
     def __init__(self, x, y, z, mass):
         """
         Initialize the object. This takes the coordinated and mass, which is all
-        that is needed to calculate the axis ratios.
+        that is needed to calculate the axis ratios. Note that the coordinates
+        need to be relative to the center of the mass distribution for this to
+        actually work.
         
         :param x: List of x values for the positions of the stars. 
         :param y: List of x values for the positions of the stars. 
