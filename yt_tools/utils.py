@@ -134,12 +134,11 @@ def get_2d_polar_points(radii, num_each):
     
     :param radii: list of radii
     :param num_each: number of points to put at each radius. These will be
-                     equally spaced in the azimuthal direction.
+                     randomly spaced in the azimuthal direction.
     :returns x: list of x values, as described above.
     :returns y: list of y values, as described above.
     """
-    spacing = 2 * np.pi / num_each
-    phi = np.arange(0, 2 * np.pi, spacing)
+    phi = np.random.uniform(0, 2 * np.pi, num_each)
     repeated_phi = np.tile(phi, len(radii))
     repeated_radii = np.repeat(radii, num_each)
     return convert_polar_to_cartesian(repeated_radii, repeated_phi)
