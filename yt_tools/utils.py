@@ -130,7 +130,7 @@ def convert_spherical_to_cartesian(r, theta, phi):
 
 def get_2d_polar_points(radii, num_each):
     """Generates points in 2D, such that each each radius there will be a point
-    at a random azimuthal coordinate. 
+    at a random azimuthal coordinate.  This is centered around zero.
     
     :param radii: list of radii
     :param num_each: number of points to put at each radius. These will be
@@ -250,14 +250,12 @@ def sum_in_quadrature(*args):
     return np.sqrt(sum([x**2 for x in args]))
 
 
-def bin_mean_and_spread(values, bin_size=100):
+def bin_values(values, bin_size=100):
     """
-    Bins values together, returning the average in each bin and the spread
-    in log of that value. Does not return any information about the bin edges
-    or anything else. This does binning where there are an equal amount of data
-    points in each bin, and the bins are done in the order the data was
-    passed in. The spread is defined as the standard deviation of the log base
-    10 of the points passed in.
+    Bins values together, returning the average in each bin. Does not return any
+    information about the bin edges or anything else. This does binning where
+    there are an equal amount of data points in each bin, and the bins are done
+    in the order the data was passed in.
 
     When bin_size doesn't evenly divide the size of the dataset passed in, the
     last bin will be larger than the others.
@@ -283,8 +281,6 @@ def bin_mean_and_spread(values, bin_size=100):
     """
 
     binned_values = []
-    binned_spreads = []
-
     # we want to iterate with constant bin size. If we have
     # a length that isn't divisible by bin_size, the extra stuff
     # at the end will all get put in one bin.
@@ -302,10 +298,8 @@ def bin_mean_and_spread(values, bin_size=100):
 
         # then keep the mean.
         binned_values.append(np.mean(these_values))
-        binned_spreads.append(np.std(np.log10(these_values)))
 
-
-    return np.array(binned_values), np.array(binned_spreads)
+    return np.array(binned_values)
 
 def sphere_intersection(r1, r2, separation):
     """Determines whether two spheres are in contact with each other.

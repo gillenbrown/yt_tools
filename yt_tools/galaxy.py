@@ -201,13 +201,10 @@ def read_gal(ds, file_obj):
         # then assign the values to the correct dictionary
         if data_type == "radii":
             gal.radii[key] = values
-            means, _ = utils.bin_mean_and_spread(values, 100)
-            gal.binned_radii[key] = means
+            gal.binned_radii[key] = utils.bin_values(values, 100)
         else:  # densities
             gal.densities[key] = values
-            means, stds = utils.bin_mean_and_spread(values, 100)
-            gal.binned_densities[key] = means
-            gal.binned_densities_std[key] = stds
+            gal.binned_densities[key] = utils.bin_values(values, 100)
 
     # then we can do the fun stuff where we calculate everythign of interest.
     # this should all be pretty quick, since the KDE process has already been
@@ -285,7 +282,6 @@ class Galaxy(object):
         self.densities = dict()  # used for radial profiles
         self.binned_radii = dict()  # used for radial profiles
         self.binned_densities = dict()  # used for radial profiles
-        self.binned_densities_std = dict()  # used for radial profiles
         self.disk_kde = None  # used for cylindrical plots
         self.disk_nsc = None  # used for cylindrical plots
         self.nsc = None  # used for NSC analysis
@@ -621,13 +617,11 @@ class Galaxy(object):
         self.densities[key] = final_densities
 
         # store the binned radii too, since I will be using those
-        bin_radii, _ = utils.bin_mean_and_spread(full_radii, num_azimuthal)
-        bin_density, bin_density_sd = utils.bin_mean_and_spread(final_densities,
-                                                              num_azimuthal)
+        bin_radii = utils.bin_values(full_radii, num_azimuthal)
+        bin_density = utils.bin_values(final_densities, num_azimuthal)
 
         self.binned_radii[key] = bin_radii
         self.binned_densities[key] = bin_density
-        self.binned_densities_std[key] = bin_density_sd
 
     def find_nsc_radius(self):
         """
@@ -642,8 +636,7 @@ class Galaxy(object):
             self.kde_profile("MASS", dimension=2,
                              outer_radius=1000 * yt.units.pc)
         self.nsc = nsc_structure.NscStructure(self.binned_radii["mass_kde_2D"],
-                                              self.binned_densities["mass_kde_2D"],
-                                              self.binned_densities_std["mass_kde_2D"])
+                                              self.binned_densities["mass_kde_2D"])
 
         if self.nsc.nsc_radius is None:
             self.nsc_radius = None
@@ -838,9 +831,3 @@ class Galaxy(object):
         radius_2 = self.radius.in_units("kpc").value
 
         return utils.sphere_containment(cen_1, cen_2, radius_1, radius_2)
-
-
-
-
-
-
