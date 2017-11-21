@@ -17,10 +17,19 @@ out_file = open("./minigal_save.txt", "w")
 read_in_gal.mini_write(out_file)
 out_file.close()
 
+# Note that none of these tests actually check what happens when a galaxy does
+# not have a NSC. I think my code works fine in those situations, but it is not
+# directly tested here. I checked it by running it on the real sims, where
+# some do not have a NSC. I then fixed the bugs that arose there. Checking that
+# it works for galaxies with a NSC is the key point, though.
+
 @pytest.fixture
 def new_gal():
     out_file = open("./minigal_save.txt", "r")
     return minigal.Minigal(out_file)
+
+def test_id(new_gal):
+    assert read_in_gal.id == new_gal.id
 
 def test_mass(new_gal):
     mass, mass_err = read_in_gal.nsc_mass_and_errs()
@@ -34,10 +43,14 @@ def test_gal_mass(new_gal):
     assert np.isclose(gal_mass.to("msun").value, new_gal.gal_mass)
 
 def test_nsc_radius(new_gal):
+    nsc_radius = read_in_gal.nsc_radius.to("pc").value
+    assert np.isclose(nsc_radius, new_gal.nsc_radius)
+
+def test_nsc_radius_half(new_gal):
     nsc_radius = read_in_gal.nsc.r_half_non_parametric
     assert np.isclose(nsc_radius, new_gal.nsc_r_half)
 
-def test_nsc_radius_errs(new_gal):
+def test_nsc_radius_half_errs(new_gal):
     nsc_radius_err = read_in_gal.nsc.r_half_non_parametric_err
     assert np.allclose(nsc_radius_err, new_gal.nsc_r_half_err)
 
@@ -108,6 +121,62 @@ def test_al_on_fe(new_gal):
 def test_al_on_fe_spread(new_gal):
     al_on_fe_s = np.sqrt(read_in_gal.nsc_abundances.x_on_fe_average("Al")[1])
     assert np.isclose(al_on_fe_s, new_gal.al_on_fe_spread)
+
+def test_kde_radii(new_gal):
+    radii = read_in_gal.radii["mass_kde_2D"]
+    assert np.allclose(radii, new_gal.kde_radii)
+
+def test_kde_densities(new_gal):
+    densities = read_in_gal.densities["mass_kde_2D"]
+    assert np.allclose(densities, new_gal.kde_densities)
+
+def test_kde_binned_radii(new_gal):
+    radii = read_in_gal.binned_radii["mass_kde_2D"]
+    assert np.allclose(radii, new_gal.kde_binned_radii)
+
+def test_kde_binned_densities(new_gal):
+    densities = read_in_gal.binned_densities["mass_kde_2D"]
+    assert np.allclose(densities, new_gal.kde_binned_densities)
+
+def test_fit_components_disk_mass(new_gal):
+    M_d = read_in_gal.nsc.M_d_parametric
+    assert np.isclose(M_d, new_gal.component_fit_disk_mass)
+
+def test_fit_components_disk_radius(new_gal):
+    a_d = read_in_gal.nsc.a_d_parametric
+    assert np.isclose(a_d, new_gal.component_fit_disk_scale_radius)
+
+def test_fit_components_cluster_mass(new_gal):
+    M_c = read_in_gal.nsc.M_c_parametric
+    assert np.isclose(M_c, new_gal.component_fit_cluster_mass)
+
+def test_fit_components_cluster_radius(new_gal):
+    a_c = read_in_gal.nsc.a_c_parametric
+    assert np.isclose(a_c, new_gal.component_fit_cluster_scale_radius)
+
+def test_kernel_size(new_gal):
+    kernel = read_in_gal.kernel_size.in_units("pc").value
+    assert np.isclose(kernel, new_gal.kernel_size)
+
+def test_na_abundances(new_gal):
+    na_on_fe, masses = read_in_gal.nsc_abundances.x_on_fe_individual("Na")
+    assert np.allclose(na_on_fe, new_gal.star_na_on_fe)
+    assert np.allclose(masses, new_gal.star_masses)
+
+def test_o_abundances(new_gal):
+    o_on_fe, masses = read_in_gal.nsc_abundances.x_on_fe_individual("O")
+    assert np.allclose(o_on_fe, new_gal.star_o_on_fe)
+    assert np.allclose(masses, new_gal.star_masses)
+
+def test_mg_abundances(new_gal):
+    mg_on_fe, masses = read_in_gal.nsc_abundances.x_on_fe_individual("Mg")
+    assert np.allclose(mg_on_fe, new_gal.star_mg_on_fe)
+    assert np.allclose(masses, new_gal.star_masses)
+
+def test_al_abundances(new_gal):
+    al_on_fe, masses = read_in_gal.nsc_abundances.x_on_fe_individual("Al")
+    assert np.allclose(al_on_fe, new_gal.star_al_on_fe)
+    assert np.allclose(masses, new_gal.star_masses)
 
 
 

@@ -286,6 +286,7 @@ class Galaxy(object):
         self.disk_nsc = None  # used for cylindrical plots
         self.nsc = None  # used for NSC analysis
         self.nsc_radius = None  # used for NSC analysis
+        self.nsc_radius_err = None # used for NSC analysis
         self.nsc_idx_sphere = None  # used for NSC analysis
         self.nsc_idx_disk_kde = None  # used for NSC analysis
         self.nsc_idx_disk_nsc = None  # used for NSC analysis
@@ -497,6 +498,10 @@ class Galaxy(object):
         that come from increasing the NSC radius by its errors. This is the
         same way that the errors are calculated in the NscStructure module for
         the smoothed profiles. """
+        try:
+            self._check_nsc_existence()
+        except AttributeError:
+            return None, [None, None]
 
         # get the upper and lower limits on the NSC radius
         nsc_low = self.nsc_radius - self.nsc_radius_err[0]
@@ -846,8 +851,41 @@ class Galaxy(object):
         file_obj.write("\n")
         file_obj.write("new_galaxy_here\n")  # tag so later read-in is easier
 
-        # masses
+        #ID
+        _write_single_item(file_obj, self.id, "id")
+
+        # KDE lists These need to be written first because they are always
+        # used in the plotting, regardless of whether or not there is a NSC
+        _write_single_item(file_obj, self.radii["mass_kde_2D"], "kde_radii",
+                           multiple=True)
+        _write_single_item(file_obj, self.densities["mass_kde_2D"],
+                           "kde_densities", multiple=True)
+        _write_single_item(file_obj, self.binned_radii["mass_kde_2D"],
+                           "kde_binned_radii", multiple=True)
+        _write_single_item(file_obj, self.binned_densities["mass_kde_2D"],
+                           "kde_binned_densities", multiple=True)
+
+        # fit components
+        _write_single_item(file_obj, self.nsc.M_d_parametric,
+                           "component_fit_disk_mass")
+        _write_single_item(file_obj, self.nsc.M_c_parametric,
+                           "component_fit_cluster_mass")
+        _write_single_item(file_obj, self.nsc.a_d_parametric,
+                           "component_fit_disk_scale_radius")
+        _write_single_item(file_obj, self.nsc.a_c_parametric,
+                           "component_fit_cluster_scale_radius")
+
+        # kernel size
+        _write_single_item(file_obj, self.kernel_size.to("pc").value,
+                           "kernel_size")
+
+        # masses. If there is not an NSC, we will exit here.
         mass, mass_err = self.nsc_mass_and_errs()
+        if mass is None:
+            _write_single_item(file_obj, 0, "nsc_mass")
+            file_obj.write("end_of_galaxy\n")  # tag so later read-in is easier
+            return
+
         # parse mas_err properly
         mass_err = [item.to("Msun").value for item in mass_err]
         _write_single_item(file_obj, mass.to("Msun").value, "nsc_mass")
@@ -857,7 +895,10 @@ class Galaxy(object):
         gal_mass = self.stellar_mass(radius_cut=None)
         _write_single_item(file_obj, gal_mass.to("Msun").value, "gal_mass")
 
-        # nsc radius (already in pc)
+        # nsc radius
+        _write_single_item(file_obj, self.nsc_radius.to("pc").value,
+                           "nsc_radius")
+        # nsc half mass radius (already in pc)
         _write_single_item(file_obj, self.nsc.r_half_non_parametric,
                            "nsc_r_half")
         _write_single_item(file_obj, self.nsc.r_half_non_parametric_err,
@@ -899,14 +940,23 @@ class Galaxy(object):
         o_sigma = np.sqrt(self.nsc_abundances.x_on_fe_average("O")[1])
         _write_single_item(file_obj, o_sigma, "o_on_fe_spread")
 
+        # [Mg/Fe]
         _write_single_item(file_obj, self.nsc_abundances.x_on_fe_total("Mg"),
                            "mg_on_fe")
         mg_sigma = np.sqrt(self.nsc_abundances.x_on_fe_average("Mg")[1])
         _write_single_item(file_obj, mg_sigma, "mg_on_fe_spread")
 
+        # [Al/Fe]
         _write_single_item(file_obj, self.nsc_abundances.x_on_fe_total("Al"),
                            "al_on_fe")
         al_sigma = np.sqrt(self.nsc_abundances.x_on_fe_average("Al")[1])
         _write_single_item(file_obj, al_sigma, "al_on_fe_spread")
+
+        # individual abundances
+        for elt in ["Mg", "Al", "O", "Na"]:
+            abund, star_masses = self.nsc_abundances.x_on_fe_individual(elt)
+            _write_single_item(file_obj, abund, multiple=True,
+                               name="star_{}_on_fe".format(elt.lower()))
+        _write_single_item(file_obj, star_masses, "star_masses", multiple=True)
 
         file_obj.write("end_of_galaxy\n")  # tag so later read-in is easier

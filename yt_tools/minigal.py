@@ -11,10 +11,17 @@ def parse_line(line):
     return name, values
 
 class Minigal():
+    """
+    Class holding a shorted version of the data that is held in the galaxy
+    class. This is done to make plotting go quicker, as we don't have to read
+    in all the simulation objects, just the data we need.
+    """
     def __init__(self, file_obj):
         """
+        Initialize the Minigal object from a file.
 
-        :param file_obj:
+        :param file_obj: Already opened file object that will have data about
+                         this galaxy.
         """
         # initialize some stuff about the object
         self.value_dict = dict()
@@ -28,19 +35,17 @@ class Minigal():
 
 
     def _read(self, file_obj):
-        """Reads a galaxy object from a file.
+        """Reads a mini galaxy object from a file.
 
-                The file has to be an already opened file object that is at the location
-                of a galaxy object, written by the Galaxy.write() function. This function
-                will return a Galaxy object with all the attributes filled in.
+        The file has to be an already opened file object that is at the location
+        of a galaxy object, written by the Galaxy.mini_write() function.
+        This function will fill in the attributes of this instance.
 
-                If the file is not in the right spot, a ValueError will be raised.
+        If the file is not in the right spot, a ValueError will be raised.
 
-                :param file_obj: already opened file that is at the location of a new
-                                 galaxy object, as described above.
-                :returns: Minigal object with the data filled in.
-                :rtype: Minigal
-                """
+        :param file_obj: already opened file that is at the location of a new
+                         galaxy object, as described above.
+        """
         # first find the location in the file where the the galaxy object starts.
         # there could be blank lines, which we ignore. I can't iterate through the
         # file directly, since I need to get individual lines later, and Python
