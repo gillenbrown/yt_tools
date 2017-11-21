@@ -1,3 +1,5 @@
+import utils
+
 def parse_line(line):
     objects = line.split()
     name = objects[0]
@@ -67,4 +69,18 @@ class Minigal():
             name, value = parse_line(this_line)
             self.value_dict[name] = value
             this_line = file_obj.readline()
+
+        # there are a couple things I need to make sure are lists
+        keys_to_check = ["kde_radii", "kde_densities", "kde_binned_radii",
+                         "kde_binned_densities", "nsc_mass_err",
+                         "nsc_r_half_err", "star_masses",
+                         "star_al_on_fe", "star_mg_on_fe",
+                         "star_o_on_fe", "star_na_on_fe"]
+        for key in keys_to_check:
+            if key in self.value_dict:
+                this_value = self.value_dict[key]
+                try:
+                    utils.test_iterable(this_value, "")
+                except TypeError:  # not iterable
+                    self.value_dict[key] = [this_value]
 
