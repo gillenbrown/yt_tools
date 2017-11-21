@@ -1,0 +1,25 @@
+
+new_galaxy_here
+nsc_mass:	6657678565.02	
+nsc_mass_err:	5216950.0981	5745101.75801	
+gal_mass:	7367791073.79	
+nsc_r_half:	30.78	
+nsc_r_half_err:	0.03	0.02	
+b_over_a:	0.990740895515	
+c_over_a:	0.883901361853	
+ellipticity:	0.116098638147	
+nsc_rot_vel:	-61.9895319301	
+nsc_3d_sigma:	516.999067318	
+metallicity:	0.356107445031	
+metallicity_spread:	0.209613760609	
+fe_on_h:	0.126639304987	
+fe_on_h_spread:	0.22808653311	
+gal_fe_on_h:	0.105020055317	
+gal_fe_on_h_spread:	0.264895631429	
+o_on_fe:	0.311889647323	
+o_on_fe_spread:	0.0287422579184	
+mg_on_fe:	0.357242478098	
+mg_on_fe_spread:	0.0251610976134	
+al_on_fe:	0.459628143633	
+al_on_fe_spread:	0.0369920847783	
+end_of_galaxy

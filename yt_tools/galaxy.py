@@ -831,3 +831,82 @@ class Galaxy(object):
         radius_2 = self.radius.in_units("kpc").value
 
         return utils.sphere_containment(cen_1, cen_2, radius_1, radius_2)
+
+    def mini_write(self, file_obj):
+        """Writes the galaxy object to a file, to be read in later.
+
+        This is done to save time, since the KDE process can be expensive and
+        takes a while. This writes out the essential info to be plotted, so it
+        can be read by the minigal class to make things even less expensive.
+
+        :param file_obj: already opened file object that is ready to be
+                         written to.
+        :returns: None, but writes to the file.
+        """
+        file_obj.write("\n")
+        file_obj.write("new_galaxy_here\n")  # tag so later read-in is easier
+
+        # masses
+        mass, mass_err = self.nsc_mass_and_errs()
+        # parse mas_err properly
+        mass_err = [item.to("Msun").value for item in mass_err]
+        _write_single_item(file_obj, mass.to("Msun").value, "nsc_mass")
+        _write_single_item(file_obj, mass_err, "nsc_mass_err", multiple=True)
+
+        # galaxy mass
+        gal_mass = self.stellar_mass(radius_cut=None)
+        _write_single_item(file_obj, gal_mass.to("Msun").value, "gal_mass")
+
+        # nsc radius (already in pc)
+        _write_single_item(file_obj, self.nsc.r_half_non_parametric,
+                           "nsc_r_half")
+        _write_single_item(file_obj, self.nsc.r_half_non_parametric_err,
+                           "nsc_r_half_err", multiple=True)
+
+        # axis ratios
+        _write_single_item(file_obj, self.nsc_axis_ratios.b_over_a, "b_over_a")
+        _write_single_item(file_obj, self.nsc_axis_ratios.c_over_a, "c_over_a")
+        _write_single_item(file_obj, self.nsc_axis_ratios.ellipticity,
+                           "ellipticity")
+
+        # rotation and dispersion
+        _write_single_item(file_obj, self.mean_rot_vel.to("km/s").value,
+                           "nsc_rot_vel")
+        _write_single_item(file_obj, self.nsc_3d_sigma.to("km/s").value,
+                           "nsc_3d_sigma")
+
+        # metallicity
+        z = self.nsc_abundances.log_z_over_z_sun_total()
+        z_sigma = np.sqrt(self.nsc_abundances.log_z_over_z_sun_average()[1])
+        _write_single_item(file_obj, z, "metallicity")
+        _write_single_item(file_obj, z_sigma, "metallicity_spread")
+
+        # NSC [Fe/H]
+        _write_single_item(file_obj, self.nsc_abundances.x_on_h_total("Fe"),
+                           "fe_on_h")
+        nsc_sigma = np.sqrt(self.nsc_abundances.x_on_h_average("Fe")[1])
+        _write_single_item(file_obj, nsc_sigma, "fe_on_h_spread")
+
+        # Gal [Fe/H]
+        _write_single_item(file_obj, self.gal_abundances.x_on_h_total("Fe"),
+                           "gal_fe_on_h")
+        gal_sigma = np.sqrt(self.gal_abundances.x_on_h_average("Fe")[1])
+        _write_single_item(file_obj, gal_sigma, "gal_fe_on_h_spread")
+
+        # [O/Fe]
+        _write_single_item(file_obj, self.nsc_abundances.x_on_fe_total("O"),
+                           "o_on_fe")
+        o_sigma = np.sqrt(self.nsc_abundances.x_on_fe_average("O")[1])
+        _write_single_item(file_obj, o_sigma, "o_on_fe_spread")
+
+        _write_single_item(file_obj, self.nsc_abundances.x_on_fe_total("Mg"),
+                           "mg_on_fe")
+        mg_sigma = np.sqrt(self.nsc_abundances.x_on_fe_average("Mg")[1])
+        _write_single_item(file_obj, mg_sigma, "mg_on_fe_spread")
+
+        _write_single_item(file_obj, self.nsc_abundances.x_on_fe_total("Al"),
+                           "al_on_fe")
+        al_sigma = np.sqrt(self.nsc_abundances.x_on_fe_average("Al")[1])
+        _write_single_item(file_obj, al_sigma, "al_on_fe_spread")
+
+        file_obj.write("end_of_galaxy\n")  # tag so later read-in is easier
