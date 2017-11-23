@@ -241,6 +241,13 @@ class KDE(object):
 
     def radial_profile(self, kernel_sizes, radii, num_each, center):
         """Create a radial KDE profile.
+
+        In 2D and 3D this is pretty straightforward. In 1D it doesn't make a lot
+        of sense, so let me explain. This is designed to be used for a 1D
+        dataset that was originally in 2D or 3D but projected along an azimuthal
+        direction, resulting in a set of values that are all non-negative and
+        that represent a radius. I know this is a bit weird, but it is what I
+        originally used this for.
         
         :param kernel_size: Size of the smoothing kernel. Can be either a scalar
                             or a list of sizes where the length is equal to the
@@ -282,6 +289,10 @@ class KDE(object):
         # if self.dimension == 3:
         #     rel_locs = utils.get_3d_sperical_points(radii)
         if self.dimension == 1:
+            if any(np.array(self.x) < 0):
+                raise ValueError("When doing a radial profile, we can't have "
+                                 "any negative values. See the documentation "
+                                 "for this function. ")
             if num_each != 1:
                 raise ValueError("num_each doesn't make sense to be anything "
                                  "other than 1 in 1D")

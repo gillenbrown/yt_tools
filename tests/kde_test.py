@@ -648,6 +648,27 @@ def test_radial_profile_error_check_positive_radii_2D(single_point_at_zero_2d):
         else:  # positive radius, won't get an error.
             single_point_at_zero_2d.radial_profile([1], [radius], 1, [0, 0])
 
+def test_radial_profile_1d_num_each_error_checking(single_point_at_zero_1d):
+    """num_each can't be anything other than 1 in 1D."""
+    num_radii = 123
+    radii = np.linspace(0, 100, num_radii)
+    num_each = 23
+    with pytest.raises(ValueError):
+        single_point_at_zero_1d.radial_profile(1, radii, num_each, [0])
+
+def test_radial_profile_1d_center_error_checking(single_point_at_zero_1d):
+    """Center can't be anything other than zero in 1D. """
+    radii = [1, 2, 3]
+    with pytest.raises(ValueError):
+        single_point_at_zero_1d.radial_profile(1, radii, 1, [10])
+
+def test_radial_profile_1d_no_neg_x_error_checking():
+    """All x values have to be positive when doing a radial profile in 1D.
+    See the documentation for the radial profile function for more info."""
+    kde_obj = kde.KDE([[-1]])
+    with pytest.raises(ValueError):
+        kde_obj.radial_profile([1], [1], 1, [0])
+
 #def test_radial_profile_error_check_positive_radii_3D(single_point_at_zero_3d):
 #     for radius in [-2, -1, 0, 1, 2]:
 #         if radius < 0:
@@ -678,20 +699,6 @@ def test_radial_profile_2d_single_point(single_point_at_zero_2d):
     new_radii, new_densities = func_out
     assert np.allclose(true_densities, new_densities)
     assert np.allclose(radii, new_radii)
-
-def test_radial_profile_1d_num_each_error_checking(single_point_at_zero_1d):
-    """num_each can't be anything other than 1 in 1D."""
-    num_radii = 123
-    radii = np.linspace(0, 100,num_radii)
-    num_each = 23
-    with pytest.raises(ValueError):
-        single_point_at_zero_1d.radial_profile(1, radii, num_each, [0])
-
-def test_radial_profile_1d_center_error_checking(single_point_at_zero_1d):
-    """Center can't be anything other than zero in 1D. """
-    radii = [1, 2, 3]
-    with pytest.raises(ValueError):
-        single_point_at_zero_1d.radial_profile(1, radii, 1, [10])
 
 def test_radial_profile_2d_length_of_arrays(single_point_at_zero_2d):
     num_radii = 123
@@ -739,13 +746,38 @@ def test_radial_profile_multiple_kernel_sizes_2d(single_point_at_zero_2d):
 @pytest.mark.parametrize("loc", [0, 1, 2, 10, 70])
 def test_integrate_over_kde_with_weights_1D_single(loc):
     """Test that when we integrate over a weighted KDE profile, we do indeed
-    get the total mass back, like we should. """
+    get the total mass back, like we should. This is true no matter what
+    radius the particle is at. """
     # setup
     total_mass = np.random.uniform(1, 5)  # doesn't matter
     kde_obj = kde.KDE([[loc]], values=[total_mass])
 
     # make the profile
     x_values = np.arange(0, 100, 0.01)
+    kernel_size = np.random.uniform(1, 5)  # doesn't matter
+    _, profile = kde_obj.radial_profile(kernel_size, x_values, num_each=1,
+                                        center=[0])
+    # then integrate it
+    integral = integrate.simps(y=profile, x=x_values)
+
+    assert np.isclose(integral, total_mass)
+
+@pytest.mark.parametrize("loc", [[0, 3],
+                                 [1, 2],
+                                 [2, 10],
+                                 [10, 20],
+                                 [70, 50]])
+def test_integrate_over_kde_with_weights_1D_multiple(loc):
+    """Test that when we integrate over a weighted KDE profile, we do indeed
+    get the total mass back, like we should. This is true no matter what
+    radius the particle is at. """
+    # setup
+    masses = np.random.uniform(1, 5, 2)  # doesn't matter
+    total_mass = np.sum(masses)
+    kde_obj = kde.KDE([loc], values=masses)
+
+    # make the profile
+    x_values = np.arange(0, 100, 0.005)
     kernel_size = np.random.uniform(1, 5)  # doesn't matter
     _, profile = kde_obj.radial_profile(kernel_size, x_values, num_each=1,
                                         center=[0])
