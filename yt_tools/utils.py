@@ -44,6 +44,17 @@ def gaussian_2d_radial(radius, sigma):
     coefficient = 1.0 / (sigma ** 2 * 2 * np.pi)
     return coefficient * np.exp(exponent)
 
+def gaussian_1d(length, sigma):
+    """Just a Gaussian in 1D, nothing fancy."""
+
+    # Don't want regular error checking, since negative distance is fine.
+    # Error checking: standard deviation must be positive;
+    if sigma <= 0:
+        raise ValueError("The standard deviation must be positive.")
+
+    exponent = (-1) * length ** 2 / (2 * sigma ** 2)
+    coefficient = 1.0 / np.sqrt(2 * np.pi * sigma**2)
+    return coefficient * np.exp(exponent)
 
 def distance(x1, x2, y1=0, y2=0, z1=0, z2=0):
     """ Calculates a distance between two points using the Pythagorean theorem.

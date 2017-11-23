@@ -84,7 +84,8 @@ class KDE(object):
         # we also want to check that everything is iterable.
         try:
             iter(locations[0])
-            iter(locations[1])
+            if self.dimension > 1:
+                iter(locations[1])
             if self.dimension == 3:
                 iter(locations[2])
             iter(self.values)
@@ -108,8 +109,14 @@ class KDE(object):
             # check that all are the right size
             if not len(self.values) == len(self.x) == len(self.y):
                 raise ValueError("X, Y, and values need to be the same size.")
+        elif self.dimension == 1:
+            self.x = locations[0]
+            self.smoothing_function = utils.gaussian_1d
+            # check that all are the right size
+            if not len(self.values) == len(self.x):
+                raise ValueError("X and values need to be the same size.")
         else:
-            raise ValueError("We can only do KDE in 2 or 3 dimensions now.")
+            raise ValueError("We can only do KDE in 1, 2, or 3 dimensions now.")
 
         # enter the parameters for the maximum finding function.
         self.location_max_x = None
@@ -117,16 +124,26 @@ class KDE(object):
         self.location_max_z = None
     
 
-    def density(self, kernel_size, x, y, z=None):
+    def density(self, kernel_size, x, y=None, z=None):
         # first check if the location passed in matches the dimensions we have
-        if self.dimension == 3 and z is None:
-            raise ValueError("In 3D, we need a z coordinate.")
-        elif self.dimension == 2 and z is not None:
+        if self.dimension == 3 and (x is None or y is None or z is None):
+            raise ValueError("In 3D, we need x, y, and z coordinates.")
+
+        if self.dimension == 2 and (x is None or y is None):
+            raise ValueError("In 2D, we need x and y coordinates.")
+        if self.dimension == 2 and z is not None:
             raise ValueError("In 2D, we can't use a z coordinate.")
+
+        if self.dimension == 1 and x is None:
+            raise ValueError("In 1D we need an x coordinate")
+        if self.dimension == 1 and (y is not None or z is not None):
+            raise ValueError("In 1D we cannot use y or z coordinates.")
 
         # get the distances from the location the user passed in to the
         # location of all the points
-        if self.dimension == 2:
+        if self.dimension == 1:
+            distances = utils.distance(self.x, x)
+        elif self.dimension == 2:
             distances = utils.distance(self.x, x, self.y, y)
         elif self.dimension == 3:
             distances = utils.distance(self.x, x, self.y, y, self.z, z)
@@ -244,6 +261,12 @@ class KDE(object):
             raise ValueError("The center must be of the same dimension as the "
                              "data")
 
+        # check that all radii are non-negative. That's all that makes sense
+        # for a radial plot
+        if any(np.array(radii) < 0):
+            raise ValueError("All radii must be non-negative in a "
+                             "radial profile.")
+
         # parse the kernel sizes
         try:
             utils.test_iterable(kernel_sizes, "")
@@ -258,12 +281,23 @@ class KDE(object):
         # relative to the center for now.
         # if self.dimension == 3:
         #     rel_locs = utils.get_3d_sperical_points(radii)
-        if self.dimension == 2:
+        if self.dimension == 1:
+            if num_each != 1:
+                raise ValueError("num_each doesn't make sense to be anything "
+                                 "other than 1 in 1D")
+            if center != [0]:
+                raise ValueError("The center for the radial profile has to be "
+                                 "zero")
+            # In 1D things are straightforward
+            rel_locs = [np.array(radii)]  # this is just the distances we are given
+            repeated_radii = np.array(radii)
+            repeated_kernels = np.array(kernel_sizes)
+        elif self.dimension == 2:
             rel_locs = utils.get_2d_polar_points(radii, num_each)
             repeated_radii = np.repeat(radii, num_each)
             repeated_kernels = np.repeat(kernel_sizes, num_each)
         else:
-            raise ValueError("Only 2D for now.")
+            raise ValueError("Only 1D or 2D for now.")
 
         # then turn these into real space locations by adding the galaxy
         # center to the relative locations.
@@ -277,8 +311,30 @@ class KDE(object):
         # so they are easy to use. We still have to iterate, and can't do it
         # in a vectorized way, unfortunately.
 
-        return repeated_radii, np.array([self.density(kernel, *loc)
-                                          for loc, kernel 
-                                          in zip(locations, repeated_kernels)])
+        # This is simple when doing it in 2 or 3D, but trickier if in 1D
+        if self.dimension == 1:
+            density_profile = []
+            for loc, kernel in zip(locations, repeated_kernels):
+                # if we are close to the center, we have to add the density
+                # from the less than zero portion of the kernel. This takes
+                # care of the fact that the kernel will put values into the
+                # less than zero regime, which doesn't make any sense. This is
+                # necessary to make sure the profile actually integrates to the
+                # correct value
+                if loc[0] < kernel * 10:  # loc is 1D
+                    dens_pos = self.density(kernel, *loc)
+                    neg_loc = -1 * loc[0]
+                    dens_neg = self.density(kernel, neg_loc)
+                    density_profile.append(dens_neg + dens_pos)
+                else:
+                    density_profile.append(self.density(kernel, *loc))
+
+        else:  # 2D or 3D
+            density_profile = np.array([self.density(kernel, *loc)
+                                        for loc, kernel
+                                        in zip(locations, repeated_kernels)])
+
+        # if we got here, we are in 2 or 3D
+        return repeated_radii, density_profile
 
     

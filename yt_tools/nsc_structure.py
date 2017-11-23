@@ -256,10 +256,6 @@ class NscStructure(object):
             return None
 
         cumulative_integral = 0
-        # iterate through the values. The radii were created by binning a bunch
-        # of KDE values, so they are already in the center of a bin. Therefore
-        # I can just use these values as my radii for integration, and we will
-        # be using the center of each bin, which is the best.
         bin_width = 0.01
         for radius in np.arange(0, max(self.radii), bin_width):
             integrand_here = self.dens_interp(radius) * 2 * np.pi * radius
@@ -394,8 +390,8 @@ class AxisRatios(object):
         actually work.
         
         :param x: List of x values for the positions of the stars. 
-        :param y: List of x values for the positions of the stars. 
-        :param z: List of x values for the positions of the stars. 
+        :param y: List of y values for the positions of the stars.
+        :param z: List of z values for the positions of the stars.
         :param mass: List of star masses.
         """
         # error checking

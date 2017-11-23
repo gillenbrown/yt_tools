@@ -15,6 +15,13 @@ import pytest
 def test_distance_zero_dist():
     """Tests the distance calculation for the trivial case"""
     assert utils.distance(0, 0, 0, 0) == 0
+    assert utils.distance(0, 0) == 0
+
+def test_distance_1D():
+    """Tests the distance calculation in 2D in a couple ways"""
+    assert np.isclose(utils.distance(2, 1), 1)
+    # make sure the squaring is working properly
+    assert np.isclose(utils.distance(3, 1), 2)
 
 def test_distance_2D():
     """Tests the distance calculation in 2D in a couple ways"""
@@ -30,8 +37,12 @@ def test_distance_3D():
 
 def test_distance_array():
     """Test the distance calculation when using arrays"""
-    kde_dist = utils.distance(np.array([1, 1]), 0, np.array([1, 1]), 0)
-    real_dist = np.array([np.sqrt(2), np.sqrt(2)])
+    kde_dist = utils.distance(np.array([1, 2]), 1)
+    real_dist = np.array([0, 1])
+    assert np.allclose(kde_dist, real_dist)
+
+    kde_dist = utils.distance(np.array([1, 2]), 0, np.array([1, 2]), 0)
+    real_dist = np.array([np.sqrt(2), np.sqrt(8)])
     assert np.allclose(kde_dist, real_dist)
 
     kde_dist = utils.distance(np.array([2, 1, 3]), 1, np.array([1, -3, 5]), 2)
@@ -59,22 +70,32 @@ def spherical_integrand(r, func, sigma):
 def cylindrical_integrad(r, func, sigma):
     return func(r, sigma) * 2 * np.pi * r
 
-def test_3d_radial():
+def linear_integrand(r, func, sigma):
+    return func(r, sigma)
+
+def test_3d_radial_integration():
     """Test the integration of the 3D Gaussian function"""
     sigma = np.random.uniform(0.001, 100)
     integral, error = quad(spherical_integrand, 0, np.infty,
                            args=(utils.gaussian_3d_radial, sigma))
     assert(np.isclose(1, integral, atol=error*error_tolerance, rtol=0))
 
-def test_3d_radial():
-    """Test the integration of the 3D Gaussian function"""
+def test_2d_radial_integration():
+    """Test the integration of the 2D Gaussian function"""
     sigma = np.random.uniform(0.001, 100)
     integral, error = quad(cylindrical_integrad, 0, np.infty,
                            args=(utils.gaussian_2d_radial, sigma))
     assert(np.isclose(1, integral, atol=error*error_tolerance, rtol=0))
 
+def test_1d_radial_integration():
+    """Test the integration of the 1D Gaussian function"""
+    sigma = np.random.uniform(0.001, 100)
+    integral, error = quad(linear_integrand, -1 * np.infty, np.infty,
+                           args=(utils.gaussian_1d, sigma))
+    assert(np.isclose(1, integral, atol=error*error_tolerance, rtol=0))
+
 # I also want to test the error checking for these Gaussian functions.
-@pytest.mark.parametrize("func", [utils.gaussian_2d_radial,
+@pytest.mark.parametrize("func", [utils.gaussian_2d_radial,  # 1D can handle -
                                   utils.gaussian_3d_radial])
 def test_gaussian_2d_error_checking_radius(func):
     """The radius must be positive, whether we have an array or one value"""
@@ -83,14 +104,22 @@ def test_gaussian_2d_error_checking_radius(func):
     with pytest.raises(RuntimeError):
         func(np.array([0, 1, 2, 3, -5]), 1)
 
-@pytest.mark.parametrize("func", [utils.gaussian_2d_radial,
+@pytest.mark.parametrize("func", [utils.gaussian_1d,
+                                  utils.gaussian_2d_radial,
                                   utils.gaussian_3d_radial])
-def test_gaussian_2d_error_checking_sigma(func):
+def test_gaussian_error_checking_sigma(func):
     """The standard deviation must be positive"""
     with pytest.raises(ValueError):
         func(1, 0)
     with pytest.raises(ValueError):
         func(1, -1)
+
+def test_radial_gaussian_1d_actual_points():
+    """Test against points plugged into calculator."""
+    assert np.isclose(utils.gaussian_1d(2, 5), 0.073654028)
+    assert np.isclose(utils.gaussian_1d(7, 5), 0.029945493)
+    assert np.isclose(utils.gaussian_1d(2.3, 7.4), 0.05136901)
+    assert np.isclose(utils.gaussian_1d(9.5, 7.4), 0.023648184)
 
 def test_radial_gaussian_2d_actual_points():
     """Test against points plugged into calculator after deriving formula

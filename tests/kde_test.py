@@ -3,6 +3,7 @@ from yt_tools import utils
 
 import pytest
 import numpy as np
+from scipy import integrate
 
 # -----------------------------------------------------------
 
@@ -29,6 +30,19 @@ def test_kde_init_results_2d():
     assert kde_obj.y == [2, 3, 4]
     assert kde_obj.values == [3, 4, 5]
     assert kde_obj.smoothing_function == utils.gaussian_2d_radial
+    with pytest.raises(AttributeError):
+        kde_obj.z
+
+def test_kde_init_results_1d():
+    """Tests that a KDE object in 2D has the correct values, including it
+    not having a z coordinate. """
+    kde_obj = kde.KDE([[1, 2, 3]], [3, 4, 5])
+    assert kde_obj.dimension == 1
+    assert kde_obj.x == [1, 2, 3]
+    assert kde_obj.values == [3, 4, 5]
+    assert kde_obj.smoothing_function == utils.gaussian_1d
+    with pytest.raises(AttributeError):
+        kde_obj.y
     with pytest.raises(AttributeError):
         kde_obj.z
 
@@ -66,6 +80,14 @@ def test_kde_init_checking():
 # -----------------------------------------------------------
 
 @pytest.fixture
+def single_point_at_zero_1d():
+    return kde.KDE([np.array([0])])
+
+@pytest.fixture
+def single_point_at_one_1d():
+    return kde.KDE([np.array([1])])
+
+@pytest.fixture
 def single_point_at_zero_2d():
     return kde.KDE([np.array([0]), np.array([0])])
 
@@ -80,6 +102,11 @@ def single_point_at_zero_3d():
 @pytest.fixture
 def single_point_at_one_3d():
     return kde.KDE([np.array([1]), np.array([1]), np.array([1])])
+
+@pytest.fixture
+def single_point_at_zero_1d_weighted():
+    return kde.KDE([np.array([0])],
+                   np.array([np.random.uniform(1, 5)]))
 
 @pytest.fixture
 def single_point_at_zero_2d_weighted():
@@ -97,15 +124,64 @@ def single_point_at_zero_3d_weighted():
 
 # -----------------------------------------------------------
 
-def test_density_error_checking_points_2d_loc_3d(single_point_at_zero_2d):
+def test_density_error_checking_points_1d(single_point_at_zero_1d):
+    """Test that a 1D point needs 1D coordinates"""
+    with pytest.raises(ValueError):
+        single_point_at_zero_1d.density(kernel_size=1, x=1, y=1)
+    with pytest.raises(ValueError):
+        single_point_at_zero_1d.density(kernel_size=1, x=1, z=1)
+    with pytest.raises(ValueError):
+        single_point_at_zero_1d.density(kernel_size=1, x=1, y=1, z=1)
+    with pytest.raises(ValueError):
+        single_point_at_zero_1d.density(kernel_size=1, x=None)
+    # no error
+    single_point_at_zero_1d.density(kernel_size=1, x=1)
+
+def test_density_error_checking_points_2d(single_point_at_zero_2d):
     """Test that a 2D point needs 2D coordinates"""
     with pytest.raises(ValueError):
-        single_point_at_zero_2d.density(1, 1, 1, 1)
+        single_point_at_zero_2d.density(kernel_size=1, x=1, y=1, z=1)
+    with pytest.raises(ValueError):
+        single_point_at_zero_2d.density(kernel_size=1, x=None, y=1)
+    with pytest.raises(ValueError):
+        single_point_at_zero_2d.density(kernel_size=1, x=1, y=None)
+    with pytest.raises(ValueError):
+        single_point_at_zero_2d.density(kernel_size=1, x=None, y=None)
 
-def test_density_error_checking_points_3d_loc_2d(single_point_at_zero_3d):
+    # no error
+    single_point_at_zero_2d.density(kernel_size=1, x=1, y=1)
+
+def test_density_error_checking_points_3d(single_point_at_zero_3d):
     """Test that a 3D point needs 3D coordinates"""
     with pytest.raises(ValueError):
-        single_point_at_zero_3d.density(1, 1, 1)
+        single_point_at_zero_3d.density(kernel_size=1, x=1, y=1, z=None)
+    with pytest.raises(ValueError):
+        single_point_at_zero_3d.density(kernel_size=1, x=1, y=None, z=1)
+    with pytest.raises(ValueError):
+        single_point_at_zero_3d.density(kernel_size=1, x=None, y=1, z=1)
+    with pytest.raises(ValueError):
+        single_point_at_zero_3d.density(kernel_size=1, x=None, y=None, z=1)
+    with pytest.raises(ValueError):
+        single_point_at_zero_3d.density(kernel_size=1, x=None, y=1, z=None)
+    with pytest.raises(ValueError):
+        single_point_at_zero_3d.density(kernel_size=1, x=1, y=None, z=None)
+    with pytest.raises(ValueError):
+        single_point_at_zero_3d.density(kernel_size=1, x=None, y=None, z=None)
+
+    # no error
+    single_point_at_zero_3d.density(kernel_size=1, x=1, y=1, z=1)
+
+def test_density_single_point_1d_zero_zero_dist(single_point_at_zero_1d):
+    """Test a simple density calculation in 2D"""
+    sigma = 5
+    density = utils.gaussian_1d(0, sigma)
+    assert np.isclose(density, single_point_at_zero_1d.density(sigma, 0))
+
+def test_density_single_point_1d_one_zero_dist(single_point_at_one_1d):
+    """Test a simple density calculation in 2D"""
+    sigma = 5
+    density = utils.gaussian_1d(0, sigma)
+    assert np.isclose(density, single_point_at_one_1d.density(sigma, 1))
 
 def test_density_single_point_2d_zero_zero_dist(single_point_at_zero_2d):
     """Test a simple density calculation in 2D"""
@@ -131,6 +207,21 @@ def test_density_single_point_3d_one_zero_dist(single_point_at_one_3d):
     density = utils.gaussian_3d_radial(0, sigma)
     assert np.isclose(density, single_point_at_one_3d.density(sigma, 1, 1, 1))
 
+
+# Now with nonzero distance, at any location.
+
+def test_density_single_point_1d_zero_nonzero_dist(single_point_at_zero_1d):
+    """Test a simple density calculation in 2D"""
+    sigma = 5
+    density = utils.gaussian_1d(1, sigma)
+    assert np.isclose(density, single_point_at_zero_1d.density(sigma, 1))
+
+def test_density_single_point_1d_one_nonzero_dist(single_point_at_one_1d):
+    """Test a simple density calculation in 2D"""
+    sigma = 5
+    density = utils.gaussian_1d(2, sigma)
+    assert np.isclose(density, single_point_at_one_1d.density(sigma, 3))
+
 def test_density_single_point_2d_zero_nonzero_dist(single_point_at_zero_2d):
     """Test a simple density calculation in 2D"""
     sigma = 5
@@ -155,6 +246,17 @@ def test_density_single_point_3d_one_nonzero_dist(single_point_at_one_3d):
     density = utils.gaussian_3d_radial(3, sigma)
     assert np.isclose(density, single_point_at_one_3d.density(sigma, 1, 1, -2))
 
+# now with weighting
+
+def test_density_single_point_1d_weighted(single_point_at_zero_1d_weighted):
+    """Test a simple density calculation in 2D, but with weights"""
+    sigma = 5.357
+    density = utils.gaussian_1d(0, sigma)
+
+    kde_density = single_point_at_zero_1d_weighted.density(sigma, 0)
+    weight = np.sum(single_point_at_zero_1d_weighted.values)
+    assert np.isclose(density * weight, kde_density)
+
 def test_density_single_point_2d_weighted(single_point_at_zero_2d_weighted):
     """Test a simple density calculation in 2D, but with weights"""
     sigma = 5.357
@@ -172,6 +274,22 @@ def test_density_single_point_3d_weighted(single_point_at_zero_3d_weighted):
     kde_density = single_point_at_zero_3d_weighted.density(sigma, 0, 0, 0)
     weight = np.sum(single_point_at_zero_3d_weighted.values)
     assert np.isclose(density * weight, kde_density)
+
+def test_density_2_points_1d():
+    """Test a density distribution around a single point in 1D.
+    Each point is weighted differently."""
+    weights = np.array([4, 7])
+    # create points different distances from the center.
+    kde_obj = kde.KDE([np.array([-1, 2])], weights)
+    sigma = 2.3678
+    # get the Gaussian density at the appropriate distances. We will do this
+    # at x=0.
+    density = utils.gaussian_1d(np.array([1, 2]), sigma)
+    # then multiply by the sum of the weights
+    true_density = np.sum(weights * density)
+
+    # then compare that to the real result
+    assert np.isclose(true_density, kde_obj.density(sigma, 0))
 
 def test_density_4_points_2d():
     """Test a density calculation with multiple points in 2D. I made a plus
@@ -480,12 +598,78 @@ def test_two_points_small_kernel_2d(two_points_2d_weighted):
     #                                                           [0, 0, 0]),
     #                    true_densities)
 
-def test_radial_profile_error_checking(single_point_at_zero_2d):
+
+# -----------------------------------------------------------
+
+#  Radial profiles
+
+# -----------------------------------------------------------
+
+def test_radial_profile_error_checking_kernel_length(single_point_at_zero_2d):
     radii = np.linspace(0, 1, 5)
-    kernels = np.linspace(1, 2, 4)
+    kernels = np.linspace(1, 2, 4)  # not same length as radii
     with pytest.raises(ValueError):
         single_point_at_zero_2d.radial_profile(kernels, radii, 1, [0, 0])
-        
+
+def test_radial_profile_error_checking_1d_center(single_point_at_zero_1d):
+    """The center should have the right dimension."""
+    radii = np.linspace(0, 1, 5)
+    kernels = np.linspace(1, 2, 5)
+    with pytest.raises(ValueError):
+        single_point_at_zero_1d.radial_profile(kernels, radii, 1, [0, 0])
+
+def test_radial_profile_error_checking_2d_center(single_point_at_zero_2d):
+    """The center should have the right dimension."""
+    radii = np.linspace(0, 1, 5)
+    kernels = np.linspace(1, 2, 5)
+    with pytest.raises(ValueError):
+        single_point_at_zero_2d.radial_profile(kernels, radii, 1, [0, 0, 0])
+
+def test_radial_profile_error_checking_3d_center(single_point_at_zero_3d):
+    """The center should have the right dimension."""
+    radii = np.linspace(0, 1, 5)
+    kernels = np.linspace(1, 2, 5)
+    with pytest.raises(ValueError):
+        single_point_at_zero_3d.radial_profile(kernels, radii, 1, [0, 0])
+
+def test_radial_profile_error_check_positive_radii_1D(single_point_at_zero_1d):
+    for radius in [-2, -1, 0, 1, 2]:
+        if radius < 0:
+            with pytest.raises(ValueError):
+                single_point_at_zero_1d.radial_profile([1], [radius], 1, [0])
+        else:  # positive radius, won't get an error.
+            single_point_at_zero_1d.radial_profile([1], [radius], 1, [0])
+
+def test_radial_profile_error_check_positive_radii_2D(single_point_at_zero_2d):
+    for radius in [-2, -1, 0, 1, 2]:
+        if radius < 0:
+            with pytest.raises(ValueError):
+                single_point_at_zero_2d.radial_profile([1], [radius], 1, [0, 0])
+        else:  # positive radius, won't get an error.
+            single_point_at_zero_2d.radial_profile([1], [radius], 1, [0, 0])
+
+#def test_radial_profile_error_check_positive_radii_3D(single_point_at_zero_3d):
+#     for radius in [-2, -1, 0, 1, 2]:
+#         if radius < 0:
+#             with pytest.raises(ValueError):
+#                 single_point_at_zero_3d.radial_profile([1], [radius], 1,
+#                                                        [0, 0, 0])
+#         else:  # positive radius, won't get an error.
+#             single_point_at_zero_3d.radial_profile([1], [radius], 1,
+#                                                    [0, 0, 0])
+
+def test_radial_profile_1d_single_point(single_point_at_zero_1d):
+    radii = np.arange(0, 100, 0.5)
+    sigma = 2.0
+    # the true density in the profile is a little trickier than it is in 2 or
+    # 3D, since we have to account for the portion that goes below zero. We
+    # handle that here by multiplying by 2, since it's symmetric.
+    true_densities = utils.gaussian_1d(radii, sigma) * 2.0
+    test_out = single_point_at_zero_1d.radial_profile(sigma, radii, 1, [0])
+    new_radii, new_densities = test_out
+    assert np.allclose(true_densities, new_densities)
+    assert np.allclose(radii, new_radii)
+
 def test_radial_profile_2d_single_point(single_point_at_zero_2d):
     radii = np.arange(0, 100, 0.5)
     sigma = 2.0
@@ -494,6 +678,20 @@ def test_radial_profile_2d_single_point(single_point_at_zero_2d):
     new_radii, new_densities = func_out
     assert np.allclose(true_densities, new_densities)
     assert np.allclose(radii, new_radii)
+
+def test_radial_profile_1d_num_each_error_checking(single_point_at_zero_1d):
+    """num_each can't be anything other than 1 in 1D."""
+    num_radii = 123
+    radii = np.linspace(0, 100,num_radii)
+    num_each = 23
+    with pytest.raises(ValueError):
+        single_point_at_zero_1d.radial_profile(1, radii, num_each, [0])
+
+def test_radial_profile_1d_center_error_checking(single_point_at_zero_1d):
+    """Center can't be anything other than zero in 1D. """
+    radii = [1, 2, 3]
+    with pytest.raises(ValueError):
+        single_point_at_zero_1d.radial_profile(1, radii, 1, [10])
 
 def test_radial_profile_2d_length_of_arrays(single_point_at_zero_2d):
     num_radii = 123
@@ -519,13 +717,17 @@ def test_radial_profile_2d_multiple_at_each(single_point_at_zero_2d):
     assert np.allclose(true_densities, new_densities)
     assert np.allclose([0, 0, 1, 1, 2, 2], new_radii)
 
-
-def test_radial_profile_error_checking_2D(single_point_at_zero_2d):
-    with pytest.raises(ValueError):
-        single_point_at_zero_2d.radial_profile(1, np.arange(0, 10), 1,
-                                               [1, 1, 1])
         
-def test_radial_profile_multiple_kernel_sizes(single_point_at_zero_2d):
+def test_radial_profile_multiple_kernel_sizes_1d(single_point_at_zero_1d):
+    radii = [1, 2, 3]
+    kernels = [0.5, 0.6, 0.7]
+    true_densities = [utils.gaussian_1d(r, s) * 2 # same reason as above
+                      for r, s in zip(radii, kernels)]
+    _, test_densities = single_point_at_zero_1d.radial_profile(kernels, radii,
+                                                               1, [0])
+    assert np.allclose(true_densities, test_densities)
+
+def test_radial_profile_multiple_kernel_sizes_2d(single_point_at_zero_2d):
     radii = [1, 2, 3]
     kernels = [0.5, 0.6, 0.7]
     true_densities = [utils.gaussian_2d_radial(r, s)
@@ -533,4 +735,23 @@ def test_radial_profile_multiple_kernel_sizes(single_point_at_zero_2d):
     _, test_densities = single_point_at_zero_2d.radial_profile(kernels, radii,
                                                                1, [0, 0])
     assert np.allclose(true_densities, test_densities)
+
+@pytest.mark.parametrize("loc", [0, 1, 2, 10, 70])
+def test_integrate_over_kde_with_weights_1D_single(loc):
+    """Test that when we integrate over a weighted KDE profile, we do indeed
+    get the total mass back, like we should. """
+    # setup
+    total_mass = np.random.uniform(1, 5)  # doesn't matter
+    kde_obj = kde.KDE([[loc]], values=[total_mass])
+
+    # make the profile
+    x_values = np.arange(0, 100, 0.01)
+    kernel_size = np.random.uniform(1, 5)  # doesn't matter
+    _, profile = kde_obj.radial_profile(kernel_size, x_values, num_each=1,
+                                        center=[0])
+    # then integrate it
+    integral = integrate.simps(y=profile, x=x_values)
+
+    assert np.isclose(integral, total_mass)
+
 
