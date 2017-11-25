@@ -59,7 +59,9 @@ def gal():
 
 @pytest.fixture
 def real_gal():  # has larger radius to actually include everythign we need to
-    return galaxy.Galaxy(ds, best_loc, 1000 * pc, j_radius=30 * pc)
+    gal =  galaxy.Galaxy(ds, best_loc, 1000 * pc, j_radius=30 * pc)
+    gal.kde_profile("MASS", dimension=1, outer_radius=1000*pc)
+    return gal
 
 @pytest.fixture
 def read_in_gal():
@@ -78,12 +80,13 @@ def test_kde_creation_simple_error_checking(gal):
     with pytest.raises(ValueError):
         gal._create_kde_object(dimension=4)
     with pytest.raises(ValueError):
-        gal._create_kde_object(dimension=1)
+        gal._create_kde_object(dimension=0)
     with pytest.raises(ValueError):
         gal._create_kde_object(quantity="test", dimension=3)
     # then test what should work. We need to add a disk to make cylindrical work
     gal.add_disk()
     gal._create_kde_object()
+    gal._create_kde_object(dimension=1)
     gal._create_kde_object(dimension=2)
     gal._create_kde_object(dimension=3)
     gal._create_kde_object(quantity="mass")
@@ -99,6 +102,7 @@ def test_kde_creation_dimensions(gal):
     assert gal._create_kde_object(dimension=3).dimension == 3
     gal.add_disk()  # so we can get cartesian
     assert gal._create_kde_object(dimension=2).dimension == 2
+    assert gal._create_kde_object(dimension=1).dimension == 1
 
 def test_kde_profile_units(gal):
     with pytest.raises(TypeError):
@@ -113,6 +117,7 @@ def test_kde_profile_coords_error_checking(gal):
         gal.kde_profile(dimension=2)
     gal.add_disk()
     gal.kde_profile(dimension=2)  # no error now.
+    gal.kde_profile(dimension=1)  # no error
     # gal.kde_profile(dimension=3)  # no error
     gal.kde_profile()  # no error
 
@@ -345,6 +350,10 @@ def test_reading_writing(read_in_gal):
     # KDE profiles should be the same too.
     assert len(read_in_gal.radii) > 0  # should have multiple keys
     assert len(new_gal.radii) > 0  # should have multiple keys
+    assert "mass_kde_1D" in new_gal.radii
+    assert "mass_kde_1D" in new_gal.densities
+    assert "mass_kde_1D" in new_gal.binned_radii
+    assert "mass_kde_1D" in new_gal.binned_densities
     for key in read_in_gal.binned_radii:
         assert len(read_in_gal.radii[key]) > 0
         assert len(read_in_gal.densities[key]) > 0

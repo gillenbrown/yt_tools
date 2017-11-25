@@ -278,6 +278,8 @@ class Galaxy(object):
         self._star_kde_metals_3d = None  # used for KDE profiles
         self._star_kde_mass_2d = None  # used for KDE profiles
         self._star_kde_metals_2d = None  # used for KDE profiles
+        self._star_kde_mass_1d = None  # used for KDE profiles
+        self._star_kde_metals_1d = None  # used for KDE profiles
         self.radii = dict()  # used for radial profiles
         self.densities = dict()  # used for radial profiles
         self.binned_radii = dict()  # used for radial profiles
@@ -334,7 +336,7 @@ class Galaxy(object):
 
             # store these locations
             locations = (x, y, z)
-        else:  # cylindrical
+        elif dimension == 2:  # cylindrical
             container = self.disk_kde
             r = container[('STAR', 'particle_position_cylindrical_radius')]
             r = np.array(r.in_units("pc"))
@@ -344,6 +346,12 @@ class Galaxy(object):
             x, y = utils.convert_polar_to_cartesian(r, theta)
             # store these location
             locations = (x, y)
+        else: # radial
+            container = self.disk_kde
+            r = container[('STAR', 'particle_position_cylindrical_radius')]
+            r = np.array(r.in_units("pc"))
+            # store these location
+            locations = (r,)  # weird comma needed for single element tuple
 
         # then get the quantity we care about. We need masses for both
         masses = np.array(container[('STAR', 'MASS')].in_units("msun"))
@@ -462,10 +470,10 @@ class Galaxy(object):
         the coordinate system is valid. Also, if the user wants to do things
         in 2D, there needs to be an already existing disk. """
         # check that the coordinate system is okay
-        if dimension not in [2, 3]:
-            raise ValueError("`dimension` must be either 2 or 3.")
+        if dimension not in [1, 2, 3]:
+            raise ValueError("`dimension` must be either 1, 2, or 3.")
         # check that we are able to actually do the cylindrical profiles
-        if dimension == 2 and self.disk_kde is None:
+        if dimension in [1, 2] and self.disk_kde is None:
             raise RuntimeError("Need to create a disk first. ")
         if quantity.lower() not in ["mass", "z"]:
             raise ValueError("Only mass and Z are supported. ")
@@ -555,7 +563,18 @@ class Galaxy(object):
         # as does the center. In 3D we just use the center of the galaxy, since
         # it is in Cartesian coords, but in 2D we use 0, since the transform to
         # xy from cylindrical already subtracts off the center
-        if dimension == 2:
+        if dimension == 1:
+            center = [0]
+            # create the KDE objects if needed
+            if self._star_kde_mass_1d is None:
+                self._star_kde_mass_1d = self._create_kde_object(1, "mass")
+            mass_kde = self._star_kde_mass_1d
+            # only assign metals if needed
+            if quantity == "Z":
+                if self._star_kde_metals_1d is None:
+                    self._star_kde_metals_1d = self._create_kde_object(1, "Z")
+                metals_kde = self._star_kde_metals_1d
+        elif dimension == 2:
             center = [0, 0]
             # create the KDE objects if needed
             if self._star_kde_mass_2d is None:
@@ -596,7 +615,11 @@ class Galaxy(object):
         kernels = np.array(kernels)
 
         # we are then able to do the actual profiles
-        num_azimuthal = 100
+        if dimension == 1:
+            num_azimuthal = 1
+        else:
+            num_azimuthal = 100
+
         if quantity.lower() == "mass":
             # use the mass KDE object that's already set up
             profile = mass_kde.radial_profile(kernels, radii,
@@ -856,14 +879,22 @@ class Galaxy(object):
 
         # KDE lists These need to be written first because they are always
         # used in the plotting, regardless of whether or not there is a NSC
-        _write_single_item(file_obj, self.radii["mass_kde_2D"], "kde_radii",
-                           multiple=True)
+        _write_single_item(file_obj, self.radii["mass_kde_2D"],
+                           "kde_radii_2D", multiple=True)
         _write_single_item(file_obj, self.densities["mass_kde_2D"],
-                           "kde_densities", multiple=True)
+                           "kde_densities_2D", multiple=True)
         _write_single_item(file_obj, self.binned_radii["mass_kde_2D"],
-                           "kde_binned_radii", multiple=True)
+                           "kde_binned_radii_2D", multiple=True)
         _write_single_item(file_obj, self.binned_densities["mass_kde_2D"],
-                           "kde_binned_densities", multiple=True)
+                           "kde_binned_densities_2D", multiple=True)
+        _write_single_item(file_obj, self.radii["mass_kde_1D"],
+                           "kde_radii_1D", multiple=True)
+        _write_single_item(file_obj, self.densities["mass_kde_1D"],
+                           "kde_densities_1D", multiple=True)
+        _write_single_item(file_obj, self.binned_radii["mass_kde_1D"],
+                           "kde_binned_radii_1D", multiple=True)
+        _write_single_item(file_obj, self.binned_densities["mass_kde_1D"],
+                           "kde_binned_densities_1D", multiple=True)
 
         # fit components
         _write_single_item(file_obj, self.nsc.M_d_parametric,
