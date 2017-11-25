@@ -93,16 +93,18 @@ def _parse_line(line, multiple=False, units=False, new_type=float):
 def _parse_kde_line(line):
     """ Parse a single line containing data from the KDE profile.
 
-    This will return a three element tuple. The first is the type of data this
+    This will return a four element tuple. The first is the type of data this
     belongs to, which will either be "radii" or "densities". The next will be
     the key for either the radii or densities dictionary that this line belongs
-    to. The last item will be the list of values that is the value in this
+    to. The third will be a bool indicating whether or not these value are
+    smoothed. The last item will be the list of values that is the value in this
     dictionary.
 
     :param line: Line containing KDE data to parse.
     :returns: "radii" or "density", telling which dictionary these values
               belong to.
     :returns: key into the dictonary above
+    :returns: bool of whether or not this is smoothed.
     :returns: values that go in that dictionary, holding either the radii or
               densities, as indicated.
     """
@@ -110,11 +112,21 @@ def _parse_kde_line(line):
     parsed_key = split_line[0]
     # this parsed key is of the format "dict_key", where key will have
     # underscores in it too.
-    data_type = parsed_key.split("_")[0]
-    # we then mangle the rest back into the right format.
-    key = "_".join(parsed_key.split("_")[1:]).strip(":")
+    if "radii" in parsed_key:
+        data_type = "radii"
+    else:
+        data_type = "density"
+
+    # get the values
     values = [float(item) for item in split_line[1:]]
-    return data_type, key, values
+    # see if it is smoothed
+    smoothed = "smoothed" in line
+    # we then mangle the rest back into the right format.
+    if smoothed:
+        key = "_".join(parsed_key.split("_")[2:]).strip(":")
+    else:
+        key = "_".join(parsed_key.split("_")[1:]).strip(":")
+    return data_type, key, smoothed, values
 
 
 def read_gal(ds, file_obj):
@@ -191,20 +203,30 @@ def read_gal(ds, file_obj):
     gal.mean_rot_vel = mean_rot_vel
     gal.nsc_3d_sigma = nsc_3d_sigma
 
+    # then the binned profile
+    gal.binned_radii = _parse_line(file_obj.readline(),
+                                   units=False, multiple=True)
+    gal.binned_densities = _parse_line(file_obj.readline(),
+                                       units=False, multiple=True)
+
     # then we get to the KDE values.
     while True:
         line = file_obj.readline()
         if line.strip() == "end_of_galaxy":
             break  # this is the end of the file
         # if we aren't at the end, parse the line
-        data_type, key, values = _parse_kde_line(line)
+        data_type, key, smoothed, values = _parse_kde_line(line)
         # then assign the values to the correct dictionary
-        if data_type == "radii":
-            gal.radii[key] = values
-            gal.binned_radii[key] = utils.bin_values(values, 100)
-        else:  # densities
-            gal.densities[key] = values
-            gal.binned_densities[key] = utils.bin_values(values, 100)
+        if smoothed:
+            if data_type == "radii":
+                gal.kde_radii_smoothed[key] = values
+            else:  # densities
+                gal.kde_densities_smoothed[key] = values
+        else:
+            if data_type == "radii":
+                gal.kde_radii[key] = values
+            else:  # densities
+                gal.kde_densities[key] = values
 
     # then we can do the fun stuff where we calculate everythign of interest.
     # this should all be pretty quick, since the KDE process has already been
@@ -280,10 +302,12 @@ class Galaxy(object):
         self._star_kde_metals_2d = None  # used for KDE profiles
         self._star_kde_mass_1d = None  # used for KDE profiles
         self._star_kde_metals_1d = None  # used for KDE profiles
-        self.radii = dict()  # used for radial profiles
-        self.densities = dict()  # used for radial profiles
-        self.binned_radii = dict()  # used for radial profiles
-        self.binned_densities = dict()  # used for radial profiles
+        self.kde_radii = dict()  # used for radial profiles
+        self.kde_densities = dict()  # used for radial profiles
+        self.kde_radii_smoothed = dict()  # used for radial profiles
+        self.kde_densities_smoothed = dict()  # used for radial profiles
+        self.binned_radii = None  # used for radial profiles
+        self.binned_densities = None  # used for radial profiles
         self.disk_kde = None  # used for cylindrical plots
         self.disk_nsc = None  # used for cylindrical plots
         self.nsc = None  # used for NSC analysis
@@ -613,10 +637,12 @@ class Galaxy(object):
             else:
                 kernels.append(2 * base_kernel_size)
         kernels = np.array(kernels)
+        kernels = base_kernel_size  # for now, just to make things simpler.
 
         # we are then able to do the actual profiles
         if dimension == 1:
             num_azimuthal = 1
+            radii = radii[1:] # ignore zero at center when in 1D.
         else:
             num_azimuthal = 100
 
@@ -625,6 +651,11 @@ class Galaxy(object):
             profile = mass_kde.radial_profile(kernels, radii,
                                               num_azimuthal, center)
             full_radii, final_densities = profile
+
+            # If we are in 1D, we need to divide by 2 pi r to get surface density
+            if dimension == 1:
+                final_densities /= 2 * np.pi * full_radii
+
         elif quantity == "Z":
             # for metallicity we have to calculate the mass in metals, and
             # divide it by the mass in stars
@@ -641,15 +672,16 @@ class Galaxy(object):
 
         # then set the attributes. The key used to store the data is needed
         key = "{}_kde_{}D".format(quantity.lower(), dimension)
-        self.radii[key] = full_radii
-        self.densities[key] = final_densities
+        self.kde_radii[key] = full_radii
+        self.kde_densities[key] = final_densities
 
-        # store the binned radii too, since I will be using those
-        bin_radii = utils.bin_values(full_radii, num_azimuthal)
-        bin_density = utils.bin_values(final_densities, num_azimuthal)
+        if dimension > 1:
+            # store the binned radii too, since I will be using those
+            bin_radii = utils.bin_values(full_radii, num_azimuthal)
+            bin_density = utils.bin_values(final_densities, num_azimuthal)
 
-        self.binned_radii[key] = bin_radii
-        self.binned_densities[key] = bin_density
+            self.kde_radii_smoothed[key] = bin_radii
+            self.kde_densities_smoothed[key] = bin_density
 
     def find_nsc_radius(self):
         """
@@ -660,11 +692,11 @@ class Galaxy(object):
         """
 
         # first need to to the KDE fitting procedure, possibly.
-        if "mass_kde_2D" not in self.radii:
+        if "mass_kde_2D" not in self.kde_radii:
             self.kde_profile("MASS", dimension=2,
                              outer_radius=1000 * yt.units.pc)
-        self.nsc = nsc_structure.NscStructure(self.binned_radii["mass_kde_2D"],
-                                              self.binned_densities["mass_kde_2D"])
+        self.nsc = nsc_structure.NscStructure(self.kde_radii_smoothed["mass_kde_2D"],
+                                              self.kde_densities_smoothed["mass_kde_2D"])
 
         if self.nsc.nsc_radius is None:
             self.nsc_radius = None
@@ -772,6 +804,53 @@ class Galaxy(object):
                                                     z_Ia[self.nsc_idx_sphere],
                                                     z_II[self.nsc_idx_sphere])
 
+    def contains(self, other_gal):
+        """
+        Checks whether this galaxy entirely contains another.
+
+        A galaxy cannot contain itself.
+
+        :param other_gal: Other galaxy that will be used to see if this gal is
+                          contained within self.
+        :return: Whether or not this galaxy is contained within the other.
+        :rtype: bool
+        """
+        # to use the comparison in the utils file, everything has to be in the
+        # same units.
+        cen_1 = other_gal.center.in_units("kpc").value
+        cen_2 = self.center.in_units("kpc").value
+
+        radius_1 = other_gal.radius.in_units("kpc").value
+        radius_2 = self.radius.in_units("kpc").value
+
+        return utils.sphere_containment(cen_1, cen_2, radius_1, radius_2)
+
+    def histogram_profile(self, min_radius=100*yt.units.pc,
+                          max_radius=1000*yt.units.pc, num_bins=100):
+        # first get the values. We bin in radius, and weight by mass.
+        container = self.disk_kde  # contains the whole galaxy.
+        r = container[('STAR', 'particle_position_cylindrical_radius')]
+        r = np.array(r.in_units("pc"))
+        masses = np.array(container[('STAR', 'MASS')].in_units("msun"))
+
+        # create the bins.
+        min_log_r = np.log10(min_radius.to("pc").value)
+        max_log_r = np.log10(max_radius.to("pc").value)
+        bin_edges = np.logspace(min_log_r, max_log_r, num_bins+1)
+        # then do the actual binning.
+        hist, bin_edges = np.histogram(r, bins=bin_edges, weights=masses)
+
+        # then get the area of each bin
+        areas = [np.pi * ((bin_edges[idx + 1])**2 - (bin_edges[idx])**2)
+                 for idx in range(len(bin_edges) - 1)]
+        # then turn the bin edges to bin_centers.
+        centers = [utils.log_mean(bin_edges[idx], bin_edges[idx + 1])
+                   for idx in range(len(bin_edges) - 1)]
+
+        self.binned_radii = centers
+        self.binned_densities = hist / np.array(areas)  # hist is mass per bin
+
+
     def write(self, file_obj):
         """Writes the galaxy object to a file, to be read in later.
 
@@ -830,35 +909,27 @@ class Galaxy(object):
             _write_single_item(file_obj, None, "mean_rot_vel")
             _write_single_item(file_obj, None, "nsc_3d_sigma")
 
+        # then the binned radii too
+        _write_single_item(file_obj, self.binned_radii,
+                           "binned_radii", multiple=True)
+        _write_single_item(file_obj, self.binned_densities,
+                           "binned_densities", multiple=True)
 
         # then all we need are the KDE values
-        for key in self.radii:
-            _write_single_item(file_obj, self.radii[key],
+        for key in self.kde_radii:
+            _write_single_item(file_obj, self.kde_radii[key],
                                "radii_{}".format(key), multiple=True)
-            _write_single_item(file_obj, self.densities[key],
+            _write_single_item(file_obj, self.kde_densities[key],
                               "density_{}".format(key), multiple=True)
+        for key in self.kde_radii_smoothed:
+            _write_single_item(file_obj, self.kde_radii_smoothed[key],
+                               "smoothed_radii_{}".format(key), multiple=True)
+            _write_single_item(file_obj, self.kde_densities_smoothed[key],
+                               "smoothed_densities_{}".format(key),
+                               multiple=True)
+
+
         file_obj.write("end_of_galaxy\n")  # tag so later read-in is easier
-
-    def contains(self, other_gal):
-        """
-        Checks whether this galaxy entirely contains another.
-
-        A galaxy cannot contain itself.
-
-        :param other_gal: Other galaxy that will be used to see if this gal is
-                          contained within self.
-        :return: Whether or not this galaxy is contained within the other.
-        :rtype: bool
-        """
-        # to use the comparison in the utils file, everything has to be in the
-        # same units.
-        cen_1 = other_gal.center.in_units("kpc").value
-        cen_2 = self.center.in_units("kpc").value
-
-        radius_1 = other_gal.radius.in_units("kpc").value
-        radius_2 = self.radius.in_units("kpc").value
-
-        return utils.sphere_containment(cen_1, cen_2, radius_1, radius_2)
 
     def mini_write(self, file_obj):
         """Writes the galaxy object to a file, to be read in later.
@@ -879,22 +950,22 @@ class Galaxy(object):
 
         # KDE lists These need to be written first because they are always
         # used in the plotting, regardless of whether or not there is a NSC
-        _write_single_item(file_obj, self.radii["mass_kde_2D"],
+        _write_single_item(file_obj, self.kde_radii["mass_kde_2D"],
                            "kde_radii_2D", multiple=True)
-        _write_single_item(file_obj, self.densities["mass_kde_2D"],
+        _write_single_item(file_obj, self.kde_densities["mass_kde_2D"],
                            "kde_densities_2D", multiple=True)
-        _write_single_item(file_obj, self.binned_radii["mass_kde_2D"],
-                           "kde_binned_radii_2D", multiple=True)
-        _write_single_item(file_obj, self.binned_densities["mass_kde_2D"],
-                           "kde_binned_densities_2D", multiple=True)
-        _write_single_item(file_obj, self.radii["mass_kde_1D"],
+        _write_single_item(file_obj, self.kde_radii_smoothed["mass_kde_2D"],
+                           "kde_radii_2D_smoothed", multiple=True)
+        _write_single_item(file_obj, self.kde_densities_smoothed["mass_kde_2D"],
+                           "kde_densities_2D_smoothed", multiple=True)
+        _write_single_item(file_obj, self.kde_radii["mass_kde_1D"],
                            "kde_radii_1D", multiple=True)
-        _write_single_item(file_obj, self.densities["mass_kde_1D"],
+        _write_single_item(file_obj, self.kde_densities["mass_kde_1D"],
                            "kde_densities_1D", multiple=True)
-        _write_single_item(file_obj, self.binned_radii["mass_kde_1D"],
-                           "kde_binned_radii_1D", multiple=True)
-        _write_single_item(file_obj, self.binned_densities["mass_kde_1D"],
-                           "kde_binned_densities_1D", multiple=True)
+        _write_single_item(file_obj, self.binned_radii,
+                           "binned_radii", multiple=True)
+        _write_single_item(file_obj, self.binned_densities,
+                           "binned_densities", multiple=True)
 
         # fit components
         _write_single_item(file_obj, self.nsc.M_d_parametric,

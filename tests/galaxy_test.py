@@ -61,6 +61,7 @@ def gal():
 def real_gal():  # has larger radius to actually include everythign we need to
     gal =  galaxy.Galaxy(ds, best_loc, 1000 * pc, j_radius=30 * pc)
     gal.kde_profile("MASS", dimension=1, outer_radius=1000*pc)
+    gal.histogram_profile(100*pc, 1000*pc, 100)
     return gal
 
 @pytest.fixture
@@ -148,14 +149,14 @@ def test_kde_profile_quantity_check(gal):
 def test_kde_profile_radii_values(gal):
     gal.add_disk()
     gal.kde_profile("MASS", dimension=2, outer_radius=1000 * pc)
-    assert np.allclose(gal.radii["mass_kde_2D"][::100],
-                       gal.binned_radii["mass_kde_2D"])
-    assert np.isclose(gal.binned_radii["mass_kde_2D"][0], 0.0)
-    assert np.isclose(gal.binned_radii["mass_kde_2D"][1], 1.0)
-    assert len(gal.radii["mass_kde_2D"]) == \
-           100 * len(gal.binned_radii["mass_kde_2D"])
-    assert len(gal.densities["mass_kde_2D"]) == \
-           100 * len(gal.binned_densities["mass_kde_2D"])
+    assert np.allclose(gal.kde_radii["mass_kde_2D"][::100],
+                       gal.kde_radii_smoothed["mass_kde_2D"])
+    assert np.isclose(gal.kde_radii_smoothed["mass_kde_2D"][0], 0.0)
+    assert np.isclose(gal.kde_radii_smoothed["mass_kde_2D"][1], 1.0)
+    assert len(gal.kde_radii["mass_kde_2D"]) == \
+           100 * len(gal.kde_radii_smoothed["mass_kde_2D"])
+    assert len(gal.kde_densities["mass_kde_2D"]) == \
+           100 * len(gal.kde_densities_smoothed["mass_kde_2D"])
 
 # def test_kde_profile_results_reasonable(gal):
 #     """Check whether the results have roughtly correct values."""
@@ -348,25 +349,32 @@ def test_reading_writing(read_in_gal):
                           new_gal.nsc_idx_disk_kde)
 
     # KDE profiles should be the same too.
-    assert len(read_in_gal.radii) > 0  # should have multiple keys
-    assert len(new_gal.radii) > 0  # should have multiple keys
-    assert "mass_kde_1D" in new_gal.radii
-    assert "mass_kde_1D" in new_gal.densities
-    assert "mass_kde_1D" in new_gal.binned_radii
-    assert "mass_kde_1D" in new_gal.binned_densities
-    for key in read_in_gal.binned_radii:
-        assert len(read_in_gal.radii[key]) > 0
-        assert len(read_in_gal.densities[key]) > 0
-        assert len(read_in_gal.binned_radii[key]) > 0
-        assert len(read_in_gal.binned_densities[key]) > 0
+    assert len(read_in_gal.kde_radii) > 0  # should have multiple keys
+    assert len(new_gal.kde_radii) > 0  # should have multiple keys
+    assert "mass_kde_1D" in new_gal.kde_radii
+    assert "mass_kde_1D" in new_gal.kde_densities
+    assert "mass_kde_1D" not in new_gal.kde_radii_smoothed
+    assert "mass_kde_1D" not in new_gal.kde_densities_smoothed
+    for key in read_in_gal.kde_radii:
+        assert len(read_in_gal.kde_radii[key]) > 0
+        assert len(read_in_gal.kde_densities[key]) > 0
         # by asserting they match below, we also check new gal length
+        assert np.allclose(read_in_gal.kde_radii[key],
+                           new_gal.kde_radii[key])
+        assert np.allclose(read_in_gal.kde_densities[key],
+                           new_gal.kde_densities[key])
+    # then do the same for the smoothed values.
+    for key in read_in_gal.kde_radii_smoothed:
+        assert len(read_in_gal.kde_radii_smoothed[key]) > 0
+        assert len(read_in_gal.kde_densities_smoothed[key]) > 0
+        assert np.allclose(read_in_gal.kde_radii_smoothed[key],
+                           new_gal.kde_radii_smoothed[key])
+        assert np.allclose(read_in_gal.kde_densities_smoothed[key],
+                           new_gal.kde_densities_smoothed[key])
 
-        assert np.allclose(read_in_gal.radii[key], new_gal.radii[key])
-        assert np.allclose(read_in_gal.densities[key], new_gal.densities[key])
-        assert np.allclose(read_in_gal.binned_radii[key],
-                           new_gal.binned_radii[key])
-        assert np.allclose(read_in_gal.binned_densities[key],
-                           new_gal.binned_densities[key])
+    # and the binned radii
+    assert np.allclose(read_in_gal.binned_radii,     new_gal.binned_radii)
+    assert np.allclose(read_in_gal.binned_densities, new_gal.binned_densities)
 
     # then check some of the derived parameters
     assert read_in_gal.nsc_axis_ratios.b_over_a == new_gal.nsc_axis_ratios.b_over_a

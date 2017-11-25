@@ -385,6 +385,12 @@ def test_binning_length_size(length, bin_size, bins):
     means = utils.bin_values(np.arange(length), bin_size)
     assert len(means) == bins
 
+# -----------------------------------------------------------------------------
+
+# sphere intersection
+
+# -----------------------------------------------------------------------------
+
 def test_intersection_error_checking():
     with pytest.raises(ValueError):
         utils.sphere_intersection(-10, 5, 8)
@@ -452,3 +458,33 @@ def test_sphere_containment():
     assert not utils.sphere_containment(cen_1, cen_2, 0.1, 0.1)  # don't touch
     assert not utils.sphere_containment(cen_1, cen_2, 0.2, 0.1)  # don't touch
     assert not utils.sphere_containment(cen_1, cen_2, 0.1, 0.2)  # don't touch
+
+# -----------------------------------------------------------------------------
+
+# test mean in log space
+
+# -----------------------------------------------------------------------------
+
+def test_log_mean_simple_case_positive_log_a():
+    assert np.isclose(utils.log_mean(1, 100), 10)
+
+def test_log_mean_simple_case_positive_log_b():
+    assert np.isclose(utils.log_mean(100, 10000), 1000)
+
+def test_log_mean_simple_case_negative_log_a():
+    assert np.isclose(utils.log_mean(0.001, 0.1), 0.01)
+
+def test_log_mean_simple_case_negative_log_b():
+    assert np.isclose(utils.log_mean(0.00001, 0.001), 0.0001)
+
+def test_log_mean_less_easy_positive_1():
+    assert np.isclose(utils.log_mean(1, 10), 3.16227766)  # 10^0.5 in calculator
+
+def test_log_mean_less_easy_positive_b():
+    assert np.isclose(utils.log_mean(314, 3268), 1012.991609)  # calculator
+
+def test_log_mean_less_easy_negative_a():
+    assert np.isclose(utils.log_mean(0.01, 0.1), 0.0316227766) # calculator
+
+def test_log_mean_less_easy_negative_b():
+    assert np.isclose(utils.log_mean(0.003458, 0.00008629), 0.000546252)

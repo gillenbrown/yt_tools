@@ -123,36 +123,36 @@ def test_al_on_fe_spread(new_gal):
     assert np.isclose(al_on_fe_s, new_gal.al_on_fe_spread)
 
 def test_kde_radii_2D(new_gal):
-    radii = read_in_gal.radii["mass_kde_2D"]
+    radii = read_in_gal.kde_radii["mass_kde_2D"]
     assert np.allclose(radii, new_gal.kde_radii_2D)
 
 def test_kde_densities_2D(new_gal):
-    densities = read_in_gal.densities["mass_kde_2D"]
+    densities = read_in_gal.kde_densities["mass_kde_2D"]
     assert np.allclose(densities, new_gal.kde_densities_2D)
 
 def test_kde_binned_radii_2D(new_gal):
-    radii = read_in_gal.binned_radii["mass_kde_2D"]
-    assert np.allclose(radii, new_gal.kde_binned_radii_2D)
+    radii = read_in_gal.kde_radii_smoothed["mass_kde_2D"]
+    assert np.allclose(radii, new_gal.kde_radii_2D_smoothed)
 
 def test_kde_binned_densities_2D(new_gal):
-    densities = read_in_gal.binned_densities["mass_kde_2D"]
-    assert np.allclose(densities, new_gal.kde_binned_densities_2D)
+    densities = read_in_gal.kde_densities_smoothed["mass_kde_2D"]
+    assert np.allclose(densities, new_gal.kde_densities_2D_smoothed)
 
 def test_kde_radii_1D(new_gal):
-    radii = read_in_gal.radii["mass_kde_1D"]
+    radii = read_in_gal.kde_radii["mass_kde_1D"]
     assert np.allclose(radii, new_gal.kde_radii_1D)
 
 def test_kde_densities_1D(new_gal):
-    densities = read_in_gal.densities["mass_kde_1D"]
+    densities = read_in_gal.kde_densities["mass_kde_1D"]
     assert np.allclose(densities, new_gal.kde_densities_1D)
 
-def test_kde_binned_radii_1D(new_gal):
-    radii = read_in_gal.binned_radii["mass_kde_1D"]
-    assert np.allclose(radii, new_gal.kde_binned_radii_1D)
+def test_binned_radii(new_gal):
+    radii = read_in_gal.binned_radii
+    assert np.allclose(radii, new_gal.binned_radii)
 
-def test_kde_binned_densities_1D(new_gal):
-    densities = read_in_gal.binned_densities["mass_kde_1D"]
-    assert np.allclose(densities, new_gal.kde_binned_densities_1D)
+def test_binned_densities(new_gal):
+    densities = read_in_gal.binned_densities
+    assert np.allclose(densities, new_gal.binned_densities)
 
 def test_fit_components_disk_mass(new_gal):
     M_d = read_in_gal.nsc.M_d_parametric

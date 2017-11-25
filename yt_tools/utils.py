@@ -382,3 +382,7 @@ def sphere_containment(cen_1, cen_2, r_1, r_2):
     # contained by seeing whether or not there is an intersection between the
     # two spheres.
     return not sphere_intersection(r_1, r_2, dist)
+
+def log_mean(a, b):
+    avg_log = np.mean(np.log10([a, b]))
+    return 10**avg_log
