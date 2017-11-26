@@ -714,7 +714,7 @@ class Galaxy(object):
                       disk_radius=10 * self.nsc_radius, disk_type="nsc")
 
         # then get the indices of the stars actually in the NSC
-        if self.nsc_idx_sphere is None:
+        if self.nsc_idx_sphere is None:  # checks for read in
             radius_key = ('STAR', 'particle_position_spherical_radius')
             self.nsc_idx_disk_kde = np.where(self.disk_kde[radius_key] <
                                              self.nsc_radius)[0]
@@ -725,11 +725,16 @@ class Galaxy(object):
 
         # The same number of stars should be in the NSC to matter what
         # container is being used.
-        assert len(self.nsc_idx_disk_kde) == len(self.nsc_idx_disk_nsc)
-        assert len(self.nsc_idx_disk_kde) == len(self.nsc_idx_sphere)
+        print(len(self.nsc_idx_disk_kde), len(self.nsc_idx_disk_nsc),
+              len(self.nsc_idx_sphere))
+        if not len(self.nsc_idx_disk_kde) == len(self.nsc_idx_sphere):
+            raise RuntimeError("KDE disk and sphere don't have same NSC stars.")
+        if not len(self.nsc_idx_disk_nsc) == len(self.nsc_idx_sphere):
+            raise RuntimeError("NSC disk and sphere don't have same NSC stars.")
 
         # then check that there are actually stars in the NSC
-        assert len(self.nsc_idx_disk_kde) > 0
+        if len(self.nsc_idx_disk_kde) == 0:
+            raise RuntimeError("No stars in NSC.")
 
     def create_axis_ratios(self):
         """Creates the axis ratios object. """

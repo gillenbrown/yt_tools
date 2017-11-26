@@ -247,9 +247,9 @@ def test_real_nsc_existence(read_in_gal):
 
 def test_real_nsc_disk_attributes(read_in_gal):
     assert np.isclose(read_in_gal.disk_nsc.radius.in_units("pc").value,
-                      2 * read_in_gal.nsc_radius.in_units("pc").value)
+                      10 * read_in_gal.nsc_radius.in_units("pc").value)
     assert np.isclose(read_in_gal.disk_nsc.height.in_units("pc").value,
-                      2 * read_in_gal.nsc_radius.in_units("pc").value)
+                      10 * read_in_gal.nsc_radius.in_units("pc").value)
     assert np.allclose(read_in_gal.disk_nsc.center.in_units("pc").value,
                        read_in_gal.center.in_units("pc").value)
 
@@ -273,6 +273,15 @@ def test_real_nsc_radius_cut(read_in_gal):
         nsc_idx_set = set(idx)
         non_nsc_idx = list(all_idx_set.difference(nsc_idx_set))
         assert np.min(radii[non_nsc_idx]) > read_in_gal.nsc_radius
+
+def test_real_nsc_indices(read_in_gal):
+    # The same number of stars should be in the NSC to matter what
+    # container is being used.
+    assert len(read_in_gal.nsc_idx_disk_kde)==len(read_in_gal.nsc_idx_disk_nsc)
+    assert len(read_in_gal.nsc_idx_disk_kde)==len(read_in_gal.nsc_idx_sphere)
+
+    # then check that there are actually stars in the NSC
+    assert len(read_in_gal.nsc_idx_disk_kde) > 0
 
 def test_real_nsc_axis_ratios(read_in_gal):
     # Test that the axis ratios for the NSC look reasonable.
