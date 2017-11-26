@@ -235,6 +235,7 @@ def read_gal(ds, file_obj):
         gal.find_nsc_radius()
         gal.create_axis_ratios()
         gal.create_abundances()
+        gal.nsc_rotation()
     except AttributeError:  # will happen if no NSC
         pass
 
@@ -709,8 +710,8 @@ class Galaxy(object):
         # twoce the radius so that we are sure to include everything inside,
         # since yt selects based on cells, not particles.
         self.add_disk(normal=self.disk_kde._norm_vec,
-                      disk_height=2 * self.nsc_radius,
-                      disk_radius=2 * self.nsc_radius, disk_type="nsc")
+                      disk_height=10 * self.nsc_radius,
+                      disk_radius=10 * self.nsc_radius, disk_type="nsc")
 
         # then get the indices of the stars actually in the NSC
         if self.nsc_idx_sphere is None:
@@ -722,9 +723,13 @@ class Galaxy(object):
             self.nsc_idx_sphere = np.where(self.sphere[radius_key] <
                                            self.nsc_radius)[0]
 
+        # The same number of stars should be in the NSC to matter what
+        # container is being used.
+        assert len(self.nsc_idx_disk_kde) == len(self.nsc_idx_disk_nsc)
+        assert len(self.nsc_idx_disk_kde) == len(self.nsc_idx_sphere)
+
         # then check that there are actually stars in the NSC
-        if len(self.nsc_idx_sphere) == 0 or len(self.nsc_idx_disk_nsc) == 0:
-            self.nsc_radius = None
+        assert len(self.nsc_idx_disk_kde) > 0
 
     def create_axis_ratios(self):
         """Creates the axis ratios object. """
