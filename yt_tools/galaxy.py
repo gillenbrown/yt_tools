@@ -293,7 +293,7 @@ class Galaxy(object):
         self.min_dx = np.min(self.sphere[('index', 'dx')])
         # the kernel we will use should be the width of the cell, to match the
         # smoothing length of the simulation.
-        self.kernel_size = 3 * yt.units.pc
+        self.kernel_size = 6 * yt.units.pc
 
         # then there are several quantities we initialize to zero or blank, but
         # will be filled in future analyses
