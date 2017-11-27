@@ -736,6 +736,17 @@ class Galaxy(object):
         if len(self.nsc_idx_disk_kde) == 0:
             raise RuntimeError("No stars in NSC.")
 
+        # then check if the NSC is dominated by one massive star particle. If
+        # so, then our half mass is just an upper limit
+        # half mass upper limits
+        nsc_star_masses = self.sphere[('STAR', "MASS")][self.nsc_idx_sphere]
+        if utils.max_above_half(nsc_star_masses):  # one star particle dominates
+            new_lower_err = self.nsc_mass_and_errs()[0]  # just the mass.
+            # since the errors are a tuple we have to be more clever about
+            # setting the lower limit to be a lower limit.
+            new_errors = new_lower_err, self.nsc.r_half_non_parametric_err[1]
+            self.nsc.r_half_non_parametric_err = new_errors
+
     def create_axis_ratios(self):
         """Creates the axis ratios object. """
         self._check_nsc_existence()

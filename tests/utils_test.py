@@ -488,3 +488,21 @@ def test_log_mean_less_easy_negative_a():
 
 def test_log_mean_less_easy_negative_b():
     assert np.isclose(utils.log_mean(0.003458, 0.00008629), 0.000546252)
+
+# -----------------------------------------------------------------------------
+
+# test half mass upper limits
+
+# -----------------------------------------------------------------------------
+
+def test_more_than_half_false_a():
+    assert not utils.max_above_half([1, 2, 1, 1, 1, 1])
+
+def test_more_than_half_false_b():
+    assert not utils.max_above_half([2, 2, 2, 2, 2, 10])
+
+def test_more_than_half_true_a():
+    assert utils.max_above_half([10, 1])
+
+def test_more_than_half_true_b():
+    assert utils.max_above_half([10, 5, 4])

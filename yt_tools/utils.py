@@ -384,5 +384,31 @@ def sphere_containment(cen_1, cen_2, r_1, r_2):
     return not sphere_intersection(r_1, r_2, dist)
 
 def log_mean(a, b):
+    """
+    Returns the mean of the values in log space.
+
+    This is defined as: 10^(mean(log(values))). A simple example would be that
+    the mean of 1 (10^0) and 100 (10^2) would be 10 (10^1).
+
+    :param a: first value to take a mean of
+    :param b: second value to take a mean of
+    :return: mean of the values in log space.
+    """
     avg_log = np.mean(np.log10([a, b]))
     return 10**avg_log
+
+def max_above_half(values):
+    """
+    Sees if the maximum value of an item in the list is more than half of the
+    sum of all the items in the list.
+
+    This is used to determine if there should be an upper limit on NSCs in the
+    half mass radii.
+
+    :param values: list of values
+    :type values: list
+    :return: Whether or not the maximum value in the list is more than half
+             of the total sum of the list.
+    :rtype: bool
+    """
+    return max(values) > 0.5 * sum(values)
