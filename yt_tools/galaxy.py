@@ -960,8 +960,8 @@ class Galaxy(object):
         self.integrated_kde_radii_simps = []
         self.integrated_kde_densities_simps = []
 
-        full_radii = self.kde_radii["mass_kde_1d"]
-        full_dens = self.kde_densities["mass_kde_1d"]
+        full_radii = self.kde_radii["mass_kde_1D"]
+        full_dens = self.kde_densities["mass_kde_1D"]
 
         # these are spaced from 0 to 100 with gap of 0.1
         low_idx = np.arange(0, 1000, 10)
