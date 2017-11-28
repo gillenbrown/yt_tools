@@ -948,7 +948,7 @@ class Galaxy(object):
 
             annnulus_area = utils.annulus_area(lower, higher)
 
-            self.integrated_kde_radii_quad.append(np.mean(lower, higher))
+            self.integrated_kde_radii_quad.append(np.mean([lower, higher]))
             self.integrated_kde_densities_quad.append(this_mass / annnulus_area)
 
         end_time = time.time()
