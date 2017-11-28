@@ -720,16 +720,22 @@ def test_radial_profile_error_check_positive_radii_1D(single_point_at_zero_1d):
     for radius in [-2, -1, 0, 1, 2]:
         if radius < 0:
             with pytest.raises(ValueError):
+                single_point_at_zero_1d.radial_profile(radius, kernel=1)
+            with pytest.raises(ValueError):  # same but in a list
                 single_point_at_zero_1d.radial_profile([radius], kernel=1)
         else:  # positive radius, won't get an error.
             single_point_at_zero_1d.radial_profile([radius], kernel=1)
+            single_point_at_zero_1d.radial_profile(radius, kernel=1)
 
 def test_radial_profile_error_check_positive_radii_2D(single_point_at_zero_2d):
     for radius in [-2, -1, 0, 1, 2]:
         if radius < 0:
             with pytest.raises(ValueError):
+                single_point_at_zero_2d.radial_profile(radius, kernel=1)
+            with pytest.raises(ValueError):  # same but in a list
                 single_point_at_zero_2d.radial_profile([radius], kernel=1)
         else:  # positive radius, won't get an error.
+            single_point_at_zero_2d.radial_profile(radius, kernel=1)
             single_point_at_zero_2d.radial_profile([radius], kernel=1)
 
 def test_radial_profile_1d_num_each_error_checking(single_point_at_zero_1d):

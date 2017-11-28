@@ -943,7 +943,7 @@ class Galaxy(object):
 
         for lower, higher in zip(lower_radii, higher_radii):
             args = (inner_kernel, 1, break_radius, outer_kernel)
-            this_mass = integrate.quad(mass_kde.radial_profile,
+            this_mass = integrate.quad(mass_kde.radial_profile_wrapper,
                                        lower, higher, args=args)[0]
 
             annnulus_area = utils.annulus_area(lower, higher)

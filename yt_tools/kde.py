@@ -312,9 +312,16 @@ class KDE(object):
         """
         # check that all radii are non-negative. That's all that makes sense
         # for a radial plot
-        if any(np.array(radii) < 0):
-            raise ValueError("All radii must be non-negative in a "
-                             "radial profile.")
+        try:
+            if any(np.array(radii) < 0):
+                raise ValueError("All radii must be non-negative in a "
+                                 "radial profile.")
+        except TypeError: # have single value, radii not iterable
+            if radii < 0:
+                raise ValueError("All radii must be non-negative in a "
+                                 "radial profile.")
+            # if it passes, recast radii as an array
+            radii = np.array([radii])
 
         # get those locations we want to sample the density at. There are
         # technically relative locations, but since the center is always zero
@@ -380,4 +387,12 @@ class KDE(object):
         # if we got here, we are in 2 or 3D
         return repeated_radii, density_profile
 
-    
+    def radial_profile_wrapper(self, radii, kernel, num_each=1,
+                               break_radius=np.inf, outer_kernel=None):
+        """Only used so we can integrate the radial profile."""
+        radii, densities = self.radial_profile(radii=radii, kernel=kernel,
+                                               num_each=num_each,
+                                               break_radius=break_radius,
+                                               outer_kernel=outer_kernel)
+        if len(densities) == 1:
+            return densities[0]
