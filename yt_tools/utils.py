@@ -424,3 +424,21 @@ def max_above_half(values):
     :rtype: bool
     """
     return max(values) > 0.5 * sum(values)
+
+def annulus_area(radius_a, radius_b):
+    """Calculates the area of an annulus.
+
+    This is just pi (big_radius^2 - small_radius^2)
+
+    :param radius_a: Radius of one edge of the annulus, either inner or outer.
+                     The order these radii are passed in with does not matter.
+    :type radius_a: float
+    :param radius_b: Radius of the other edge of the annulus, either inner or
+                     outer.
+    :type radius_b: float
+    :return: area of the annulus between radius_a and radius_b
+    :rtype: float
+    """
+    if min([radius_a, radius_b]) < 0:
+        raise ValueError("Both radii in annulus_area have to be positive.")
+    return abs(np.pi * (radius_a**2 - radius_b**2))

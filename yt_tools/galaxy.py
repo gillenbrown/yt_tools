@@ -1,6 +1,7 @@
 import yt
 import numpy as np
 import time
+from scipy import integrate
 
 from . import kde
 from . import utils
@@ -310,6 +311,10 @@ class Galaxy(object):
         self.kde_densities_smoothed = dict()  # used for radial profiles
         self.binned_radii = None  # used for radial profiles
         self.binned_densities = None  # used for radial profiles
+        self.integrated_kde_radii_quad = None  # used for radial profiles
+        self.integrated_kde_densities_quad = None  # used for radial profiles
+        self.integrated_kde_radii_simps = None  # used for radial profiles
+        self.integrated_kde_densities_simps = None  # used for radial profiles
         self.disk_kde = None  # used for cylindrical plots
         self.disk_whole = None  # used for cylindrical plots
         self.disk_nsc = None  # used for cylindrical plots
@@ -741,13 +746,11 @@ class Galaxy(object):
 
         # The same number of stars should be in the NSC to matter what
         # container is being used.
-        if not len(self.nsc_idx_disk_kde) == len(self.nsc_idx_sphere):
-            raise RuntimeError("KDE disk and sphere don't have same NSC stars.")
         if not len(self.nsc_idx_disk_nsc) == len(self.nsc_idx_sphere):
             raise RuntimeError("NSC disk and sphere don't have same NSC stars.")
 
         # then check that there are actually stars in the NSC
-        if len(self.nsc_idx_disk_kde) == 0:
+        if len(self.nsc_idx_disk_nsc) == 0:
             raise RuntimeError("No stars in NSC.")
 
         # then check if the NSC is dominated by one massive star particle. If
@@ -885,6 +888,75 @@ class Galaxy(object):
         self.binned_radii = centers
         self.binned_densities = hist / np.array(areas)  # hist is mass per bin
 
+    def quad_integrate_kde(self):
+        start_time = time.time()
+        # do the KDE error checking
+        self._kde_profile_error_checking("mass", 1)
+
+        # the KDE objects that we want to use depend on the coordinate system,
+        # as does the center. In 3D we just use the center of the galaxy, since
+        # it is in Cartesian coords, but in 2D we use 0, since the transform to
+        # xy from cylindrical already subtracts off the center
+        # create the KDE objects if needed
+        if self._star_kde_mass_1d is None:
+            self._star_kde_mass_1d = self._create_kde_object(1, "mass")
+        mass_kde = self._star_kde_mass_1d
+
+        # the smoothing kernel we will use in the KDE process is half the size
+        # of the smallest cell in the sphere when we are inside 12pc, but
+        # twice this when outside of that distance.
+        inner_kernel = self.kernel_size.in_units("pc").value
+        outer_kernel = inner_kernel * 2
+        break_radius = inner_kernel * 4
+
+        # then do the setup for the actual profiles
+        self.integrated_kde_radii_quad = []
+        self.integrated_kde_densities_quad = []
+        spacing = 1.0
+        lower_radii = np.arange(0, 99, spacing)
+        higher_radii = lower_radii + spacing
+
+        for lower, higher in zip(lower_radii, higher_radii):
+            args = (inner_kernel, 1, break_radius, outer_kernel)
+            this_mass = integrate.quad(mass_kde.radial_profile,
+                                       lower, higher, args=args)[0]
+
+            annnulus_area = utils.annulus_area(lower, higher)
+
+            self.integrated_kde_radii_quad.append(np.mean(lower, higher))
+            self.integrated_kde_densities_quad.append(this_mass / annnulus_area)
+
+        end_time = time.time()
+        print("{} seconds for quad integral".format(end_time - start_time))
+
+    def simps_integrate_kde(self):
+        start_time = time.time()
+
+        self.integrated_kde_radii_simps = []
+        self.integrated_kde_densities_simps = []
+
+        full_radii = self.kde_radii["mass_kde_1d"]
+        full_dens = self.kde_densities["mass_kde_1d"]
+
+        # these are spaced from 0 to 100 with gap of 0.1
+        low_idx = np.arange(0, 1000, 10)
+        high_idx = low_idx + 11  # have to include the edges
+        for l_idx, h_idx in zip(low_idx, high_idx):
+            this_radii = full_radii[l_idx:h_idx]
+            this_dens = full_dens[l_idx:h_idx]
+
+            avg_radius = np.mean(this_radii)
+            this_mass = integrate.simps(y=this_dens, x=this_radii)
+
+            annulus_area = utils.annulus_area(this_radii[0],
+                                              this_radii[-1])
+
+            self.integrated_kde_radii_simps.append(avg_radius)
+            self.integrated_kde_densities_simps.append(this_mass / annulus_area)
+
+
+        end_time = time.time()
+        print("{} seconds for quad integral".format(end_time - start_time))
 
     def write(self, file_obj):
         """Writes the galaxy object to a file, to be read in later.

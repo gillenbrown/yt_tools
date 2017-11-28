@@ -594,3 +594,44 @@ def test_more_than_half_true_a():
 
 def test_more_than_half_true_b():
     assert utils.max_above_half([10, 5, 4])
+
+# -----------------------------------------------------------------------------
+
+# test annulus area
+
+# -----------------------------------------------------------------------------
+
+def test_annulus_error_checking():
+    # neither radius can be below zero
+    with pytest.raises(ValueError):
+        utils.annulus_area(-1, 1)
+    with pytest.raises(ValueError):
+        utils.annulus_area(1, -1)
+    with pytest.raises(ValueError):
+        utils.annulus_area(-1, -1)
+
+def test_annulus_area_around_zero():
+    assert np.isclose(utils.annulus_area(0, 1), np.pi)
+
+def test_annulus_area_same_radius():
+    radius = np.random.uniform(1, 10, 1)
+    assert np.isclose(utils.annulus_area(radius, radius), 0)
+
+def test_annulus_area_actual_annulus_a():
+    test_area = utils.annulus_area(10, 9)
+    true_area = 59.69026042  # calculator
+    assert np.isclose(test_area, true_area)
+
+def test_annulus_area_actual_annulus_b():
+    test_area = utils.annulus_area(5, 2)
+    true_area = 65.97344573  # calculator
+    assert np.isclose(test_area, true_area)
+
+def test_annulus_area_symmetry():
+    """The order of the operands shouldn't matter."""
+    radius_a = np.random.uniform(1, 10)
+    radius_b = np.random.uniform(1, 10)
+    forwards = utils.annulus_area(radius_a, radius_b)
+    backwards = utils.annulus_area(radius_b, radius_a)
+    assert np.isclose(forwards, backwards)
+
