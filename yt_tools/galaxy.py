@@ -561,7 +561,6 @@ class Galaxy(object):
                   this_nsc_high_mass - this_nsc_mass)
         return this_nsc_mass, errors
 
-
     def kde_profile(self, quantity="MASS", dimension=2, outer_radius=None):
         """
         Create a radial profile of a given quantity of the stars, typicall mass.
@@ -688,7 +687,8 @@ class Galaxy(object):
         key = "{}_kde_{}D".format(quantity.lower(), dimension)
         self.kde_radii[key] = full_radii
         self.kde_densities[key] = final_densities
-        self.kde_densities[key+"_surface"] = surface_densities  #TODO:remove
+        if dimension == 1:
+            self.kde_densities[key+"_surface"] = surface_densities  #TODO:remove
 
         if dimension > 1:
             # store the binned radii too, since I will be using those
