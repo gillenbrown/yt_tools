@@ -631,9 +631,13 @@ class Galaxy(object):
         # we will do linear spacing within 100 pc, then log spacing outside
         # of that.
         if dimension == 1:
-            radii = np.arange(0, outer_radius, 0.1)
+            inner_radii = np.arange(0, 100, 0.1)
+            outer_radii = np.logspace(2, np.log10(outer_radius), 1000)
         else:
-            radii = np.arange(0, outer_radius, 1)
+            inner_radii = np.arange(0, 100, 1)
+            outer_radii = np.logspace(2, np.log10(outer_radius), 100)
+        radii = np.concatenate([inner_radii, outer_radii])
+
 
         # the smoothing kernel we will use in the KDE process is half the size
         # of the smallest cell in the sphere when we are inside 12pc, but
@@ -709,7 +713,7 @@ class Galaxy(object):
         # first need to to the KDE fitting procedure, possibly.
         if "mass_kde_2D" not in self.kde_radii:
             self.kde_profile("MASS", dimension=2,
-                             outer_radius=100 * yt.units.pc)
+                             outer_radius=1000 * yt.units.pc)
         if self.binned_densities is None:
             self.histogram_profile(100*yt.units.pc, 1000*yt.units.pc,
                                    num_bins=100)
