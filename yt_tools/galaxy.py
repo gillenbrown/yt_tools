@@ -697,9 +697,16 @@ class Galaxy(object):
         # first need to to the KDE fitting procedure, possibly.
         if "mass_kde_2D" not in self.kde_radii:
             self.kde_profile("MASS", dimension=2,
-                             outer_radius=1000 * yt.units.pc)
-        self.nsc = nsc_structure.NscStructure(self.kde_radii_smoothed["mass_kde_2D"],
-                                              self.kde_densities_smoothed["mass_kde_2D"])
+                             outer_radius=100 * yt.units.pc)
+        if self.binned_densities is None:
+            self.histogram_profile(100*yt.units.pc, 1000*yt.units.pc,
+                                   num_bins=100)
+        # then concatenate the bins together
+        fit_radii = np.concatenate([self.kde_radii_smoothed["mass_kde_2D"],
+                                    self.binned_radii])
+        fit_densities = np.concatenate([self.kde_densities_smoothed["mass_kde_2D"],
+                                        self.binned_densities])
+        self.nsc = nsc_structure.NscStructure(fit_radii, fit_densities)
 
         if self.nsc.nsc_radius is None:
             self.nsc_radius = None
