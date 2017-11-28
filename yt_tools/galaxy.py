@@ -904,7 +904,7 @@ class Galaxy(object):
         areas = [utils.annulus_area(bin_edges[idx], bin_edges[idx + 1])
                  for idx in range(len(bin_edges) - 1)]
         # then turn the bin edges to bin_centers.
-        centers = [np.mean(bin_edges[idx], bin_edges[idx + 1])
+        centers = [np.mean([bin_edges[idx], bin_edges[idx + 1]])
                    for idx in range(len(bin_edges) - 1)]
 
         self.binned_radii = centers
