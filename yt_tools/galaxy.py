@@ -311,6 +311,7 @@ class Galaxy(object):
         self.binned_radii = None  # used for radial profiles
         self.binned_densities = None  # used for radial profiles
         self.disk_kde = None  # used for cylindrical plots
+        self.disk_whole = None  # used for cylindrical plots
         self.disk_nsc = None  # used for cylindrical plots
         self.nsc = None  # used for NSC analysis
         self.nsc_radius = None  # used for NSC analysis
@@ -439,6 +440,12 @@ class Galaxy(object):
         else:
             raise ValueError("Disk type not specified properly.")
 
+        # then create a whole disk if needed
+        if self.disk_whole is None:
+            big_disk = self.ds.disk(center=self.center, normal=normal,
+                                    height=disk_height, radius=self.radius)
+            self.disk_whole = big_disk
+
     def centering(self, accuracy=0.1):
         """Recenters the galaxy on the location of the maximum stellar density.
         
@@ -462,7 +469,7 @@ class Galaxy(object):
             self._star_kde_mass_3d = self._create_kde_object(3, "mass")
 
         # we will start the centering at the center of mass of the galaxy
-        # and will only search a 1 kpc region around this center
+        # and will only search a 10 kpc region around this center
         # com_yt = self.sphere.quantities.center_of_mass(use_particles=True,
         #                                                use_gas=False)
         # com_yt = np.array(com_yt.in_units("pc"))
@@ -716,7 +723,7 @@ class Galaxy(object):
         self.nsc_radius_err = self.nsc.nsc_radius_err * yt.units.pc
 
         # then create a new disk object that entirely contains the NSC. I choose
-        # twoce the radius so that we are sure to include everything inside,
+        # 10 times the radius so that we are sure to include everything inside,
         # since yt selects based on cells, not particles.
         self.add_disk(normal=self.disk_kde._norm_vec,
                       disk_height=10 * self.nsc_radius,
@@ -856,7 +863,7 @@ class Galaxy(object):
     def histogram_profile(self, min_radius=100*yt.units.pc,
                           max_radius=1000*yt.units.pc, num_bins=100):
         # first get the values. We bin in radius, and weight by mass.
-        container = self.disk_kde  # contains the whole galaxy.
+        container = self.disk_whole  # contains the whole galaxy.
         r = container[('STAR', 'particle_position_cylindrical_radius')]
         r = np.array(r.in_units("pc"))
         masses = np.array(container[('STAR', 'MASS')].in_units("msun"))
