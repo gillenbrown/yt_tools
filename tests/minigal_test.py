@@ -38,13 +38,17 @@ def test_mass(new_gal):
     assert np.isclose(mass.to("msun").value, new_gal.nsc_mass)
     assert np.allclose(mass_err, new_gal.nsc_mass_err)
 
+def test_nsc_radius(new_gal):
+    nsc_radius = read_in_gal.nsc_radius.to("pc").value
+    assert np.isclose(nsc_radius, new_gal.nsc_radius)
+
 def test_gal_mass(new_gal):
     gal_mass = read_in_gal.stellar_mass(radius_cut=None)
     assert np.isclose(gal_mass.to("msun").value, new_gal.gal_mass)
 
-def test_nsc_radius(new_gal):
-    nsc_radius = read_in_gal.nsc_radius.to("pc").value
-    assert np.isclose(nsc_radius, new_gal.nsc_radius)
+def test_gal_half_mass_radius(new_gal)
+    half_mass_radius = read_in_gal.galaxy_half_mass_radius()
+    assert np.isclose(half_mass_radius.to("kpc").value, new_gal.gal_r_half)
 
 def test_nsc_radius_half(new_gal):
     nsc_radius = read_in_gal.nsc.r_half_non_parametric

@@ -536,6 +536,23 @@ class Galaxy(object):
         else:  # whole galaxy
             return np.sum(masses)
 
+    def galaxy_half_mass_radius(self):
+        """Calculates the half mass radius of the galaxy.
+
+        This is just based on star particles, and finds the radius at which
+        there is more than half the total mass enclosed. This only has a
+        resolution of 50 pc right now, which is hopefully good enough for the
+        brief comparison we will make.
+        """
+        total_gal_mass = self.stellar_mass(radius_cut=None)
+        # then iterate through a range of radii
+        for radius in np.arange(0, 10, 0.05) * yt.units.kpc:
+            interior_mass = self.stellar_mass(radius_cut=radius)
+            # when we get to more than half of the total, we have the
+            # half mass radius.
+            if interior_mass > 0.5 * total_gal_mass:
+                return interior_mass
+
     def nsc_mass_and_errs(self):
         """Calculates the mass of the NSC and the errors on that.
 
@@ -1116,10 +1133,6 @@ class Galaxy(object):
         _write_single_item(file_obj, mass.to("Msun").value, "nsc_mass")
         _write_single_item(file_obj, mass_err, "nsc_mass_err", multiple=True)
 
-        # galaxy mass
-        gal_mass = self.stellar_mass(radius_cut=None)
-        _write_single_item(file_obj, gal_mass.to("Msun").value, "gal_mass")
-
         # nsc radius
         _write_single_item(file_obj, self.nsc_radius.to("pc").value,
                            "nsc_radius")
@@ -1128,6 +1141,15 @@ class Galaxy(object):
                            "nsc_r_half")
         _write_single_item(file_obj, self.nsc.r_half_non_parametric_err,
                            "nsc_r_half_err", multiple=True)
+
+        # galaxy mass
+        gal_mass = self.stellar_mass(radius_cut=None)
+        _write_single_item(file_obj, gal_mass.to("Msun").value, "gal_mass")
+
+        # galaxy half mass radius
+        gal_half_mass_radius = self.galaxy_half_mass_radius()
+        _write_single_item(file_obj, gal_half_mass_radius.to("kpc").value,
+                           "gal_r_half")
 
         # axis ratios
         _write_single_item(file_obj, self.nsc_axis_ratios.b_over_a, "b_over_a")

@@ -317,6 +317,32 @@ def test_nsc_abundances(read_in_gal):
 
 # -----------------------------------------------------------------------------
 #
+# test other stuff
+#
+# -----------------------------------------------------------------------------
+
+def test_containment(read_in_gal, gal):
+    """Both galaxies are at the same spot, but read_in_gal has a much larger
+    radius, so gal should be contained in read_in_gal."""
+    assert read_in_gal.contains(gal)
+    assert not gal.contains(read_in_gal)
+    # galaxy can't contain itself.
+    assert not gal.contains(gal)
+    assert not read_in_gal.contains(read_in_gal)
+
+def test_half_mass_radius_units(read_in_gal):
+    half_mass_radius = read_in_gal.galaxy_half_mass_radius
+    assert utils.test_for_units(half_mass_radius, "")
+
+def test_half_mass_radius_actually_worked(read_in_gal):
+    half_mass_radius = read_in_gal.galaxy_half_mass_radius
+    total_mass = read_in_gal.stellar_mass(radius_cut=None)
+    half_mass = read_in_gal.stellar_mass(radius_cut=half_mass_radius)
+    assert 0.5 < half_mass / total_mass
+    assert 0 * pc < half_mass_radius < read_in_gal.radius
+
+# -----------------------------------------------------------------------------
+#
 # test the reading and writing
 #
 # -----------------------------------------------------------------------------
@@ -419,19 +445,3 @@ def test_reading_writing(real_gal):
                       new_gal.gal_abundances.z_on_h_total())
     assert np.isclose(read_in_gal.gal_abundances.log_z_over_z_sun_total(),
                       new_gal.gal_abundances.log_z_over_z_sun_total())
-
-
-# -----------------------------------------------------------------------------
-#
-# test containment
-#
-# -----------------------------------------------------------------------------
-
-def test_containment(read_in_gal, gal):
-    """Both galaxies are at the same spot, but read_in_gal has a much larger
-    radius, so gal should be contained in read_in_gal."""
-    assert read_in_gal.contains(gal)
-    assert not gal.contains(read_in_gal)
-    # galaxy can't contain itself.
-    assert not gal.contains(gal)
-    assert not read_in_gal.contains(read_in_gal)
