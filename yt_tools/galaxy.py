@@ -865,6 +865,7 @@ class Galaxy(object):
 
     def histogram_profile(self, min_radius=100*yt.units.pc,
                           max_radius=1000*yt.units.pc, num_bins=100):
+        start_time = time.time()
         # first get the values. We bin in radius, and weight by mass.
         container = self.disk_whole  # contains the whole galaxy.
         r = container[('STAR', 'particle_position_cylindrical_radius')]
@@ -879,14 +880,17 @@ class Galaxy(object):
         hist, bin_edges = np.histogram(r, bins=bin_edges, weights=masses)
 
         # then get the area of each bin
-        areas = [np.pi * ((bin_edges[idx + 1])**2 - (bin_edges[idx])**2)
+        areas = [utils.annulus_area(bin_edges[idx], bin_edges[idx + 1])
                  for idx in range(len(bin_edges) - 1)]
         # then turn the bin edges to bin_centers.
-        centers = [utils.log_mean(bin_edges[idx], bin_edges[idx + 1])
+        centers = [np.mean(bin_edges[idx], bin_edges[idx + 1])
                    for idx in range(len(bin_edges) - 1)]
 
         self.binned_radii = centers
         self.binned_densities = hist / np.array(areas)  # hist is mass per bin
+
+        end_time = time.time()
+        print("{} seconds for binning profile".format(end_time - start_time))
 
     def quad_integrate_kde(self):
         start_time = time.time()
@@ -956,7 +960,7 @@ class Galaxy(object):
 
 
         end_time = time.time()
-        print("{} seconds for quad integral".format(end_time - start_time))
+        print("{} seconds for simps integral".format(end_time - start_time))
 
     def write(self, file_obj):
         """Writes the galaxy object to a file, to be read in later.
