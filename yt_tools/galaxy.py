@@ -1,5 +1,6 @@
 import yt
 import numpy as np
+import time
 
 from . import kde
 from . import utils
@@ -293,7 +294,7 @@ class Galaxy(object):
         self.min_dx = np.min(self.sphere[('index', 'dx')])
         # the kernel we will use should be the width of the cell, to match the
         # smoothing length of the simulation.
-        self.kernel_size = 6 * yt.units.pc
+        self.kernel_size = 3 * yt.units.pc
 
         # then there are several quantities we initialize to zero or blank, but
         # will be filled in future analyses
@@ -572,6 +573,8 @@ class Galaxy(object):
                              profile. Needs to have a unit on it. If not 
                              provided, it defaults to the radius of the galaxy.
         """
+        start_time = time.time()
+
         if outer_radius is None:
             outer_radius = self.radius
         # test that both outer_radius and spacing have units
@@ -582,7 +585,6 @@ class Galaxy(object):
 
         # All the KDE stuff is in parsecs, so convert those to parsecs
         outer_radius = outer_radius.in_units("pc").value
-        center = self.center.in_units("pc").value
 
         # the KDE objects that we want to use depend on the coordinate system,
         # as does the center. In 3D we just use the center of the galaxy, since
@@ -611,34 +613,22 @@ class Galaxy(object):
                     self._star_kde_metals_2d = self._create_kde_object(2, "Z")
                 metals_kde = self._star_kde_metals_2d
         else:  # spherical: keep regular center
-            if self._star_kde_mass_3d is None:
-                self._star_kde_mass_3d = self._create_kde_object(3, "mass")
-            mass_kde = self._star_kde_mass_3d
-            # only assigne metals if needed
-            if quantity == "Z":
-                if self._star_kde_metals_3d is None:
-                    self._star_kde_metals_3d = self._create_kde_object(3, "Z")
-                metals_kde = self._star_kde_metals_3d
+            raise ValueError("3D profile not supported")
 
         # then create the radii
         # we will do linear spacing within 100 pc, then log spacing outside
         # of that.
-        inner_radii = np.arange(0, 100, 1)
-        outer_radii = np.logspace(2, np.log10(outer_radius), 100)
-        radii = np.concatenate([inner_radii, outer_radii])
+        if dimension == 1:
+            radii = np.arange(0, outer_radius, 0.1)
+        else:
+            radii = np.arange(0, outer_radius, 1)
 
         # the smoothing kernel we will use in the KDE process is half the size
         # of the smallest cell in the sphere when we are inside 12pc, but
         # twice this when outside of that distance.
-        base_kernel_size = self.kernel_size.in_units("pc").value
-        kernels = []
-        for r in radii:
-            if r <= 12.0:
-                kernels.append(base_kernel_size)
-            else:
-                kernels.append(2 * base_kernel_size)
-        kernels = np.array(kernels)
-        kernels = base_kernel_size  # for now, just to make things simpler.
+        inner_kernel = self.kernel_size.in_units("pc").value
+        outer_kernel = inner_kernel * 2
+        break_radius = inner_kernel * 4
 
         # we are then able to do the actual profiles
         if dimension == 1:
@@ -649,8 +639,10 @@ class Galaxy(object):
 
         if quantity.lower() == "mass":
             # use the mass KDE object that's already set up
-            profile = mass_kde.radial_profile(kernels, radii,
-                                              num_azimuthal, center)
+            profile = mass_kde.radial_profile(radii=radii, kernel=inner_kernel,
+                                              outer_kernel=outer_kernel,
+                                              break_radius=break_radius,
+                                              num_each=num_azimuthal)
             full_radii, final_densities = profile
 
             # If we are in 1D, we need to divide by 2 pi r to get surface density
@@ -660,12 +652,18 @@ class Galaxy(object):
         elif quantity == "Z":
             # for metallicity we have to calculate the mass in metals, and
             # divide it by the mass in stars
-            metal_profile = metals_kde.radial_profile(kernels, radii,
-                                                      num_azimuthal, center)
+            metal_profile = metals_kde.radial_profile(radii=radii,
+                                                      kernel=inner_kernel,
+                                                      outer_kernel=outer_kernel,
+                                                      break_radius=break_radius,
+                                                      num_each=num_azimuthal)
             full_radii, metal_densities = metal_profile
 
-            mass_profile = mass_kde.radial_profile(kernels, radii,
-                                                   num_azimuthal, center)
+            mass_profile = mass_kde.radial_profile(radii=radii,
+                                                   kernel=inner_kernel,
+                                                   outer_kernel=outer_kernel,
+                                                   break_radius=break_radius,
+                                                   num_each=num_azimuthal)
             full_radii, mass_densities = mass_profile
             final_densities = metal_densities / mass_densities  # Z
         else:
@@ -683,6 +681,10 @@ class Galaxy(object):
 
             self.kde_radii_smoothed[key] = bin_radii
             self.kde_densities_smoothed[key] = bin_density
+
+        end_time = time.time()
+        print("{} seconds for {}D initial KDE".format(end_time - start_time,
+                                                      dimension))
 
     def find_nsc_radius(self):
         """
@@ -725,8 +727,6 @@ class Galaxy(object):
 
         # The same number of stars should be in the NSC to matter what
         # container is being used.
-        print(len(self.nsc_idx_disk_kde), len(self.nsc_idx_disk_nsc),
-              len(self.nsc_idx_sphere))
         if not len(self.nsc_idx_disk_kde) == len(self.nsc_idx_sphere):
             raise RuntimeError("KDE disk and sphere don't have same NSC stars.")
         if not len(self.nsc_idx_disk_nsc) == len(self.nsc_idx_sphere):

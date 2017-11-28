@@ -89,28 +89,29 @@ class KDE(object):
             if self.dimension == 3:
                 iter(locations[2])
             iter(self.values)
+            self.values = np.array(self.values)
         except(TypeError):
             raise TypeError("X, Y, Z, and value must be iterable.")
 
         # then get the x y z data
         if self.dimension == 3:
-            self.x = locations[0]
-            self.y = locations[1]
-            self.z = locations[2]
+            self.x = np.array(locations[0])
+            self.y = np.array(locations[1])
+            self.z = np.array(locations[2])
             # we can keep track of which smoothing function to use. 
             self.smoothing_function = utils.gaussian_3d_radial
             # check that all are the right size
             if not len(self.values) == len(self.x) == len(self.y) == len(self.z):
                 raise ValueError("X,Y,Z, and values need to be the same size.")
         elif self.dimension == 2:
-            self.x = locations[0]
-            self.y = locations[1]
+            self.x = np.array(locations[0])
+            self.y = np.array(locations[1])
             self.smoothing_function = utils.gaussian_2d_radial
             # check that all are the right size
             if not len(self.values) == len(self.x) == len(self.y):
                 raise ValueError("X, Y, and values need to be the same size.")
         elif self.dimension == 1:
-            self.x = locations[0]
+            self.x = np.array(locations[0])
             self.smoothing_function = utils.gaussian_1d
             # check that all are the right size
             if not len(self.values) == len(self.x):
@@ -124,7 +125,30 @@ class KDE(object):
         self.location_max_z = None
     
 
-    def density(self, kernel_size, x, y=None, z=None):
+    def density(self, inner_kernel_size, x, y=None, z=None,
+                break_radius=np.inf, outer_kernel=None):
+        """
+        Calculates the KDE density at a given location.
+
+        This can be optionally done with different kernels for points at
+        different radii. Points inside some radius can be given a smaller
+        kernel.
+
+        :param inner_kernel_size: kernel size used for points in the center,
+                                  that have a distance from the point of
+                                  interest less than break_radius
+        :param x: X location of the point at which to calculate the density
+        :param y: Y location of the point at which to calculate the density.
+                  Only a valid option when doing in 2D or 3D.
+        :param z: Z location of the point at which to calculate the density.
+                  Only a valid option when doing in 3D.
+        :param break_radius: Radius at which to switch to the other kernel.
+                             This value has the same units as x, y, and z.
+        :param outer_kernel: Kernel size to be used in the outer regions,
+                                  where distance is greater than break_radius.
+        :return: KDE density at the point of interest, which is the sum of the
+                 Gaussian density at this point from all points.
+        """
         # first check if the location passed in matches the dimensions we have
         if self.dimension == 3 and (x is None or y is None or z is None):
             raise ValueError("In 3D, we need x, y, and z coordinates.")
@@ -139,6 +163,11 @@ class KDE(object):
         if self.dimension == 1 and (y is not None or z is not None):
             raise ValueError("In 1D we cannot use y or z coordinates.")
 
+        # check the the user specified the outer kernel correctly
+        if break_radius < np.inf and outer_kernel is None:
+            raise ValueError("Have to specify an outer kernel size if using "
+                             "break radius")
+
         # get the distances from the location the user passed in to the
         # location of all the points
         if self.dimension == 1:
@@ -148,8 +177,25 @@ class KDE(object):
         elif self.dimension == 3:
             distances = utils.distance(self.x, x, self.y, y, self.z, z)
 
+        # get the kernel sizes. To do this we have to calculate the distance
+        # from zero, which is the default center.
+        if self.dimension == 1:
+            radii = utils.distance(self.x, 0)
+        elif self.dimension == 2:
+            radii = utils.distance(self.x, 0, self.y, 0)
+        elif self.dimension == 3:
+            radii = utils.distance(self.x, 0, self.y, 0, self.z, 0)
+
+        kernel_sizes = []
+        for rad in radii:
+            if rad < break_radius:
+                kernel_sizes.append(inner_kernel_size)
+            else:
+                kernel_sizes.append(outer_kernel)
+        kernel_sizes = np.array(kernel_sizes)
+
         # then we can calculate the Gaussian density at these distances
-        densities = self.smoothing_function(distances, kernel_size)
+        densities = self.smoothing_function(distances, kernel_sizes)
         # we then multiply each density by the corresponding weight there, and
         # sum that over all points to get the density at this point
         return np.sum(densities * self.values)
@@ -239,8 +285,9 @@ class KDE(object):
             self.location_max_z = z
 
 
-    def radial_profile(self, kernel_sizes, radii, num_each, center):
-        """Create a radial KDE profile.
+    def radial_profile(self, radii, kernel, num_each=1,
+                       break_radius=np.inf, outer_kernel=None):
+        """Create a radial KDE profile centered at 0.
 
         In 2D and 3D this is pretty straightforward. In 1D it doesn't make a lot
         of sense, so let me explain. This is designed to be used for a 1D
@@ -248,44 +295,30 @@ class KDE(object):
         direction, resulting in a set of values that are all non-negative and
         that represent a radius. I know this is a bit weird, but it is what I
         originally used this for.
-        
+
+        :param radii: List of radii at which the density will be calculated.
+                      Since KDE binning doesn't make sense, this will work by
+                      putting `num_each` points at each radius, evenly
+                      distributed over azimuth. You can then bin these if you
+                      like later.
         :param kernel_size: Size of the smoothing kernel. Can be either a scalar
                             or a list of sizes where the length is equal to the
                             number of radii. At each radius, the kernel of the
                             corresponding size will be used.
-        :param radii: List of radii at which the density will be calculated.
-                      Since KDE binning doesn't make sense, this will work by 
-                      putting `num_each` points at each radius, evenly
-                      distributed over azimuth. You can then bin these if you
-                      like later.
         :param num_each: How many azimuthal points to put at each of the
                          specified radii.
         :param center: location around which the profile will be calculated.
         :returns: List of radii and densities corresponding to those radii.
         """
-        # check that the length of the center matches the dimensions we have
-        if len(center) != self.dimension:
-            raise ValueError("The center must be of the same dimension as the "
-                             "data")
-
         # check that all radii are non-negative. That's all that makes sense
         # for a radial plot
         if any(np.array(radii) < 0):
             raise ValueError("All radii must be non-negative in a "
                              "radial profile.")
 
-        # parse the kernel sizes
-        try:
-            utils.test_iterable(kernel_sizes, "")
-            # it is iterable, which is fine. Then have to check that it's the
-            # same length as radii
-            if len(kernel_sizes) != len(radii):
-                raise ValueError("kernel_sizes and radii has to be same size.")
-        except TypeError: # is a scalar
-            kernel_sizes = np.repeat(kernel_sizes, len(radii))
-
-        # get those locations we want to sample the density at. These are
-        # relative to the center for now.
+        # get those locations we want to sample the density at. There are
+        # technically relative locations, but since the center is always zero
+        # this are absolute locations.
         # if self.dimension == 3:
         #     rel_locs = utils.get_3d_sperical_points(radii)
         if self.dimension == 1:
@@ -296,28 +329,18 @@ class KDE(object):
             if num_each != 1:
                 raise ValueError("num_each doesn't make sense to be anything "
                                  "other than 1 in 1D")
-            if center != [0]:
-                raise ValueError("The center for the radial profile has to be "
-                                 "zero")
             # In 1D things are straightforward
-            rel_locs = [np.array(radii)]  # this is just the distances we are given
+            locations = [np.array(radii)]
             repeated_radii = np.array(radii)
-            repeated_kernels = np.array(kernel_sizes)
         elif self.dimension == 2:
-            rel_locs = utils.get_2d_polar_points(radii, num_each)
+            locations = utils.get_2d_polar_points(radii, num_each)
             repeated_radii = np.repeat(radii, num_each)
-            repeated_kernels = np.repeat(kernel_sizes, num_each)
         else:
             raise ValueError("Only 1D or 2D for now.")
 
-        # then turn these into real space locations by adding the galaxy
-        # center to the relative locations.
-        individual_locs = [rel_locs[i] + center[i] for i in range(len(center))]
-        # ^ that is a two/three element list where each element is an array of
-        # x/y/z values
         # then turn those into a list of tuples where each point is a single
         # (x, y, [z]) tuple
-        locations = zip(*individual_locs)
+        locations = zip(*locations)
         # these locations will still be sorted in order of increasing radius,
         # so they are easy to use. We still have to iterate, and can't do it
         # in a vectorized way, unfortunately.
@@ -325,25 +348,34 @@ class KDE(object):
         # This is simple when doing it in 2 or 3D, but trickier if in 1D
         if self.dimension == 1:
             density_profile = []
-            for loc, kernel in zip(locations, repeated_kernels):
+            big_kernel = max(kernel, outer_kernel)
+            for loc in locations:
                 # if we are close to the center, we have to add the density
                 # from the less than zero portion of the kernel. This takes
                 # care of the fact that the kernel will put values into the
                 # less than zero regime, which doesn't make any sense. This is
                 # necessary to make sure the profile actually integrates to the
                 # correct value
-                if loc[0] < kernel * 10:  # loc is 1D
-                    dens_pos = self.density(kernel, *loc)
+                if loc[0] < big_kernel * 10:  # loc is 1D
+                    dens_pos = self.density(kernel, *loc,
+                                            break_radius=break_radius,
+                                            outer_kernel=outer_kernel)
                     neg_loc = -1 * loc[0]
-                    dens_neg = self.density(kernel, neg_loc)
+                    dens_neg = self.density(kernel, neg_loc,
+                                            break_radius=break_radius,
+                                            outer_kernel=outer_kernel)
                     density_profile.append(dens_neg + dens_pos)
                 else:
-                    density_profile.append(self.density(kernel, *loc))
+                    dens = self.density(kernel, *loc,
+                                        break_radius=break_radius,
+                                        outer_kernel=outer_kernel)
+                    density_profile.append(dens)
 
         else:  # 2D or 3D
-            density_profile = np.array([self.density(kernel, *loc)
-                                        for loc, kernel
-                                        in zip(locations, repeated_kernels)])
+            density_profile = np.array([self.density(kernel, *loc,
+                                                     break_radius=break_radius,
+                                                     outer_kernel=outer_kernel)
+                                        for loc in locations])
 
         # if we got here, we are in 2 or 3D
         return repeated_radii, density_profile

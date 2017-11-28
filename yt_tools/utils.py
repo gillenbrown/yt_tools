@@ -7,9 +7,22 @@ import numpy as np
 def _gaussian_error_checking(radius, sigma):
     """Checks that both the standard deviation and radius are positive"""
 
-    # Error checking: standard deviation must be positive;
-    if sigma <= 0:
-        raise ValueError("The standard deviation must be positive.")
+    # Error checking: standard deviation must be positive. We need to check
+    # this both for arrays and single values
+    try:
+        if sigma <= 0:
+            raise RuntimeError("The standard deviation must be positive.")
+    except ValueError: # will happen if we pass in an array
+        if any(sigma <= 0):
+            raise RuntimeError("The standard deviation must be positive. ")
+        # also check that it has the same length as radius.
+        try:
+            if len(sigma) != len(radius):
+                raise RuntimeError("If you have multiple sigma values, there "
+                                   "has to be the same number of radii.")
+        except TypeError:  # radii is not a list
+            raise RuntimeError("If you have multiple sigma values, there "
+                               "has to be the same number of radii.")
     # the radius must be positive too, but we need to check that for both
     # arrays and for single values.
     try:
@@ -44,15 +57,14 @@ def gaussian_2d_radial(radius, sigma):
     coefficient = 1.0 / (sigma ** 2 * 2 * np.pi)
     return coefficient * np.exp(exponent)
 
-def gaussian_1d(length, sigma):
-    """Just a Gaussian in 1D, nothing fancy."""
+def gaussian_1d(radius, sigma):
+    """Just a Gaussian in 1D, nothing fancy.
+    """
+    # radius can be negative here, so I take absolute value of the radius to
+    # trick the error checking function.
+    _gaussian_error_checking(np.abs(radius), sigma)
 
-    # Don't want regular error checking, since negative distance is fine.
-    # Error checking: standard deviation must be positive;
-    if sigma <= 0:
-        raise ValueError("The standard deviation must be positive.")
-
-    exponent = (-1) * length ** 2 / (2 * sigma ** 2)
+    exponent = (-1) * radius ** 2 / (2 * sigma ** 2)
     coefficient = 1.0 / np.sqrt(2 * np.pi * sigma**2)
     return coefficient * np.exp(exponent)
 
@@ -149,7 +161,7 @@ def get_2d_polar_points(radii, num_each):
     :returns x: list of x values, as described above.
     :returns y: list of y values, as described above.
     """
-    phi = np.random.uniform(0, 2 * np.pi, num_each)
+    phi = np.linspace(0, 2 * np.pi, num_each)
     repeated_phi = np.tile(phi, len(radii))
     repeated_radii = np.repeat(radii, num_each)
     return convert_polar_to_cartesian(repeated_radii, repeated_phi)

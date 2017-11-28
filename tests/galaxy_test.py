@@ -60,7 +60,7 @@ def gal():
 @pytest.fixture
 def real_gal():  # has larger radius to actually include everythign we need to
     gal =  galaxy.Galaxy(ds, best_loc, 1000 * pc, j_radius=30 * pc)
-    gal.kde_profile("MASS", dimension=1, outer_radius=1000*pc)
+    gal.kde_profile("MASS", dimension=1, outer_radius=100*pc)
     gal.histogram_profile(100*pc, 1000*pc, 100)
     return gal
 
@@ -107,31 +107,32 @@ def test_kde_creation_dimensions(gal):
 
 def test_kde_profile_units(gal):
     with pytest.raises(TypeError):
-        gal.kde_profile(outer_radius=100, dimension=2)
+        gal.kde_profile(outer_radius=10, dimension=2)
     gal.add_disk()
-    gal.kde_profile(outer_radius=100 * kpc, dimension=2)  # no error
+    gal.kde_profile(outer_radius=10 * pc, dimension=2)  # no error
 
 def test_kde_profile_coords_error_checking(gal):
     with pytest.raises(ValueError):
-        gal.kde_profile(dimension="sdf")
+        gal.kde_profile(dimension="sdf", outer_radius=10*pc)
     with pytest.raises(RuntimeError):  # no disk
-        gal.kde_profile(dimension=2)
+        gal.kde_profile(dimension=2, outer_radius=10*pc)
+    with pytest.raises(ValueError):
+        gal.kde_profile(dimension=3, outer_radius=10*pc)
     gal.add_disk()
-    gal.kde_profile(dimension=2)  # no error now.
-    gal.kde_profile(dimension=1)  # no error
-    # gal.kde_profile(dimension=3)  # no error
-    gal.kde_profile()  # no error
+    gal.kde_profile(dimension=2, outer_radius=10*pc)  # no error now.
+    gal.kde_profile(dimension=1, outer_radius=10*pc)  # no error
+    gal.kde_profile(outer_radius=10*pc)  # no error
 
 def test_kde_profile_quantity_check(gal):
     # we need spherical on all of this to avoid runtime errors from no disk
     gal.add_disk()
-    gal.kde_profile(dimension=2)
-    gal.kde_profile("MASS", dimension=2)
-    gal.kde_profile("Mass", dimension=2)
-    gal.kde_profile("mass", dimension=2)
-    gal.kde_profile("Z", dimension=2)
+    gal.kde_profile(dimension=2, outer_radius=10*pc)
+    gal.kde_profile("MASS", dimension=2, outer_radius=10*pc)
+    gal.kde_profile("Mass", dimension=2, outer_radius=10*pc)
+    gal.kde_profile("mass", dimension=2, outer_radius=10*pc)
+    gal.kde_profile("Z", dimension=2, outer_radius=10*pc)
     with pytest.raises(ValueError):
-        gal.kde_profile("test", dimension=2)
+        gal.kde_profile("test", dimension=2, outer_radius=10*pc)
 
 # def test_kde_profile_results_exist_and_right_length(gal):
 #     """Check whether the results exist where they should and have right size."""
@@ -148,7 +149,7 @@ def test_kde_profile_quantity_check(gal):
 
 def test_kde_profile_radii_values(gal):
     gal.add_disk()
-    gal.kde_profile("MASS", dimension=2, outer_radius=1000 * pc)
+    gal.kde_profile("MASS", dimension=2, outer_radius=10 * pc)
     assert np.allclose(gal.kde_radii["mass_kde_2D"][::100],
                        gal.kde_radii_smoothed["mass_kde_2D"])
     assert np.isclose(gal.kde_radii_smoothed["mass_kde_2D"][0], 0.0)

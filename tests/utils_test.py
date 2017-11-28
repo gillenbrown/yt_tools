@@ -109,10 +109,29 @@ def test_gaussian_2d_error_checking_radius(func):
                                   utils.gaussian_3d_radial])
 def test_gaussian_error_checking_sigma(func):
     """The standard deviation must be positive"""
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         func(1, 0)
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         func(1, -1)
+
+@pytest.mark.parametrize("func", [utils.gaussian_1d,
+                                  utils.gaussian_2d_radial,
+                                  utils.gaussian_3d_radial])
+def test_gaussian_error_checking_lengths(func):
+    test_array = np.array([1, 2, 3])
+    # if single radii and sigma, that's cool
+    func(1, 1)
+    # multiple radii and one sigma is cool
+    func(test_array, 1)
+    # multiple sigma and one radii is not cool
+    with pytest.raises(RuntimeError):
+        func(1, test_array)
+    # multiple sigma and radii is cool if they have the same length...
+    func(test_array, test_array)
+    # ...but not if they are different length
+    with pytest.raises(RuntimeError):
+        func(test_array, np.array([1, 2, 3, 4]))
+
 
 def test_radial_gaussian_1d_actual_points():
     """Test against points plugged into calculator."""
@@ -120,6 +139,28 @@ def test_radial_gaussian_1d_actual_points():
     assert np.isclose(utils.gaussian_1d(7, 5), 0.029945493)
     assert np.isclose(utils.gaussian_1d(2.3, 7.4), 0.05136901)
     assert np.isclose(utils.gaussian_1d(9.5, 7.4), 0.023648184)
+
+def test_radial_gaussian_1d_actual_points_radii_array():
+    """Same as previous function, but radii is put in an array. """
+    x_values = np.array([2, 7])
+    sigma = 5
+    test_densities = utils.gaussian_1d(x_values, sigma)
+    true_densities = [0.073654028, 0.029945493]
+    assert np.allclose(test_densities, true_densities)
+
+    x_values = np.array([2.3, 9.5])
+    sigma = 7.4
+    test_densities = utils.gaussian_1d(x_values, sigma)
+    true_densities = [0.05136901, 0.023648184]
+    assert np.allclose(test_densities, true_densities)
+
+def test_radial_gaussian_1d_actual_points_both_array():
+    """Same as previous function, but everything is put in an array. """
+    x_values = np.array([2, 7, 2.3, 9.5])
+    sigmas = np.array([5, 5, 7.4, 7.4])
+    test_densities = utils.gaussian_1d(x_values, sigmas)
+    true_densities = [0.073654028, 0.029945493, 0.05136901, 0.023648184]
+    assert np.allclose(test_densities, true_densities)
 
 def test_radial_gaussian_2d_actual_points():
     """Test against points plugged into calculator after deriving formula
@@ -129,6 +170,28 @@ def test_radial_gaussian_2d_actual_points():
     assert np.isclose(utils.gaussian_2d_radial(2.3, 7.4), 0.0027693608)
     assert np.isclose(utils.gaussian_2d_radial(9.5, 7.4), 0.0012749001)
 
+def test_radial_gaussian_2d_actual_points_radii_array():
+    """Same as previous function, but radii is put in an array. """
+    radii = np.array([2, 7])
+    sigma = 5
+    test_densities = utils.gaussian_2d_radial(radii, sigma)
+    true_densities = [0.0058767412, 0.0023893047]
+    assert np.allclose(test_densities, true_densities)
+
+    radii = np.array([2.3, 9.5])
+    sigma = 7.4
+    test_densities = utils.gaussian_2d_radial(radii, sigma)
+    true_densities = [0.0027693608, 0.0012749001]
+    assert np.allclose(test_densities, true_densities)
+
+def test_radial_gaussian_2d_actual_points_both_array():
+    """Same as previous function, but everything is put in an array. """
+    radii = np.array([2, 7, 2.3, 9.5])
+    sigmas = np.array([5, 5, 7.4, 7.4])
+    test_densities = utils.gaussian_2d_radial(radii, sigmas)
+    true_densities = [0.0058767412, 0.0023893047, 0.0027693608, 0.0012749001]
+    assert np.allclose(test_densities, true_densities)
+
 def test_radial_gaussian_3d_actual_points():
     """Test against points plugged into calculator after deriving formula
     manually again. """
@@ -136,6 +199,31 @@ def test_radial_gaussian_3d_actual_points():
     assert np.isclose(utils.gaussian_3d_radial(7, 5), 1.906389302E-4)
     assert np.isclose(utils.gaussian_3d_radial(2.3, 7.4), 1.492993391E-4)
     assert np.isclose(utils.gaussian_3d_radial(9.5, 7.4), 6.873129013E-5)
+
+def test_radial_gaussian_3d_actual_points_radii_array():
+    """Same as previous function, but radii is put in an array. """
+    radii = np.array([2, 7])
+    sigma = 5
+    test_densities = utils.gaussian_3d_radial(radii, sigma)
+    true_densities = [4.688961058E-4, 1.906389302E-4]
+    assert np.allclose(test_densities, true_densities)
+
+    radii = np.array([2.3, 9.5])
+    sigma = 7.4
+    test_densities = utils.gaussian_3d_radial(radii, sigma)
+    true_densities = [1.492993391E-4, 6.873129013E-5]
+    assert np.allclose(test_densities, true_densities)
+
+def test_radial_gaussian_3d_actual_points_both_array():
+    """Same as previous function, but everything is put in an array. """
+    radii = np.array([2, 7, 2.3, 9.5])
+    sigmas = np.array([5, 5, 7.4, 7.4])
+    test_densities = utils.gaussian_3d_radial(radii, sigmas)
+    true_densities = [4.688961058E-4, 1.906389302E-4,
+                      1.492993391E-4, 6.873129013E-5]
+    assert np.allclose(test_densities, true_densities)
+
+
 
 # test other stuff
 
