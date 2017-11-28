@@ -645,7 +645,6 @@ class Galaxy(object):
         # we are then able to do the actual profiles
         if dimension == 1:
             num_azimuthal = 1
-            radii = radii[1:] # ignore zero at center when in 1D.
         else:
             num_azimuthal = 100
 
@@ -659,7 +658,7 @@ class Galaxy(object):
 
             # If we are in 1D, we need to divide by 2 pi r to get surface density
             if dimension == 1:
-                final_densities /= 2 * np.pi * full_radii
+                surface_densities = final_densities / (2 * np.pi * full_radii)
 
         elif quantity == "Z":
             # for metallicity we have to calculate the mass in metals, and
@@ -685,6 +684,7 @@ class Galaxy(object):
         key = "{}_kde_{}D".format(quantity.lower(), dimension)
         self.kde_radii[key] = full_radii
         self.kde_densities[key] = final_densities
+        self.kde_densities[key+"_surface"] = surface_densities  #TODO:remove
 
         if dimension > 1:
             # store the binned radii too, since I will be using those
@@ -1071,12 +1071,20 @@ class Galaxy(object):
                            "kde_densities_2D_smoothed", multiple=True)
         _write_single_item(file_obj, self.kde_radii["mass_kde_1D"],
                            "kde_radii_1D", multiple=True)
-        _write_single_item(file_obj, self.kde_densities["mass_kde_1D"],
+        _write_single_item(file_obj, self.kde_densities["mass_kde_1D_surface"],
                            "kde_densities_1D", multiple=True)
         _write_single_item(file_obj, self.binned_radii,
                            "binned_radii", multiple=True)
         _write_single_item(file_obj, self.binned_densities,
                            "binned_densities", multiple=True)
+        _write_single_item(file_obj, self.integrated_kde_radii_quad,
+                           "integrated_radii_quad", multiple=True)
+        _write_single_item(file_obj, self.integrated_kde_densities_quad,
+                           "integrated_densities_quad", multiple=True)
+        _write_single_item(file_obj, self.integrated_kde_radii_simps,
+                           "integrated_radii_simps", multiple=True)
+        _write_single_item(file_obj, self.integrated_kde_densities_simps,
+                           "integrated_densities_simps", multiple=True)
 
         # fit components
         _write_single_item(file_obj, self.nsc.M_d_parametric,

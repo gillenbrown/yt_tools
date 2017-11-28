@@ -318,11 +318,11 @@ def test_nsc_abundances(read_in_gal):
 #
 # -----------------------------------------------------------------------------
 
-def test_reading_writing(read_in_gal):
+def test_reading_writing(real_gal):
     """The only thing we need is that the object needs to be the same after
     we write then read it in. There is a lot of checking here, though."""
     file = open("./real_gal_save.txt", "w")
-    read_in_gal.write(file)
+    real_gal.write(file)
     file.close()
 
     file = open("./real_gal_save.txt", "r")
