@@ -74,6 +74,8 @@ def read_in_gal():
     file.close()
     return gal
 
+default_read_in_gal = read_in_gal()
+
 # -----------------------------------------------------------------------------
 
 # test the KDE process
@@ -245,75 +247,81 @@ def test_add_disk_properties(gal):
 #
 # -----------------------------------------------------------------------------
 
-def test_real_nsc_existence(read_in_gal):
-    utils.test_for_units(read_in_gal.nsc_radius, "NSC radius")
-    assert 0 * pc < read_in_gal.nsc_radius < read_in_gal.sphere.radius
+def test_real_nsc_existence():
+    utils.test_for_units(default_read_in_gal.nsc_radius, "NSC radius")
+    assert 0 * pc < default_read_in_gal.nsc_radius < \
+           default_read_in_gal.sphere.radius
 
-def test_real_nsc_disk_attributes(read_in_gal):
-    assert np.isclose(read_in_gal.disk_nsc.radius.in_units("pc").value,
-                      10 * read_in_gal.nsc_radius.in_units("pc").value)
-    assert np.isclose(read_in_gal.disk_nsc.height.in_units("pc").value,
-                      10 * read_in_gal.nsc_radius.in_units("pc").value)
-    assert np.allclose(read_in_gal.disk_nsc.center.in_units("pc").value,
-                       read_in_gal.center.in_units("pc").value)
+def test_real_nsc_disk_attributes():
+    assert np.isclose(default_read_in_gal.disk_nsc.radius.in_units("pc").value,
+                      10 * default_read_in_gal.nsc_radius.in_units("pc").value)
+    assert np.isclose(default_read_in_gal.disk_nsc.height.in_units("pc").value,
+                      10 * default_read_in_gal.nsc_radius.in_units("pc").value)
+    assert np.allclose(default_read_in_gal.disk_nsc.center.in_units("pc").value,
+                       default_read_in_gal.center.in_units("pc").value)
 
-def test_real_nsc_stellar_mass(read_in_gal):
+def test_real_nsc_stellar_mass():
     # Test that the NSC mass is less than the total galaxy mass
-    assert read_in_gal.stellar_mass(radius_cut=None) > \
-           read_in_gal.stellar_mass(radius_cut=read_in_gal.nsc_radius)
+    nsc_rad = default_read_in_gal.nsc_radius
+    assert default_read_in_gal.stellar_mass(radius_cut=None) > \
+           default_read_in_gal.stellar_mass(radius_cut=nsc_rad)
 
-def test_real_nsc_radius_cut(read_in_gal):
+def test_real_nsc_radius_cut():
     # test that the NSC indices actually pick up the right objects
     radius_key = ('STAR', 'particle_position_spherical_radius')
-    for container, idx in zip([read_in_gal.sphere, read_in_gal.disk_kde,
-                               read_in_gal.disk_nsc],
-                              [read_in_gal.nsc_idx_sphere,
-                               read_in_gal.nsc_idx_disk_kde,
-                               read_in_gal.nsc_idx_disk_nsc]):
+    for container, idx in zip([default_read_in_gal.sphere,
+                               default_read_in_gal.disk_kde,
+                               default_read_in_gal.disk_nsc],
+                              [default_read_in_gal.nsc_idx_sphere,
+                               default_read_in_gal.nsc_idx_disk_kde,
+                               default_read_in_gal.nsc_idx_disk_nsc]):
         radii = container[radius_key]
-        assert np.max(radii[idx]) < read_in_gal.nsc_radius
+        assert np.max(radii[idx]) < default_read_in_gal.nsc_radius
         # then get the indices not in the nsc
         all_idx_set = set(range(len(radii)))
         nsc_idx_set = set(idx)
         non_nsc_idx = list(all_idx_set.difference(nsc_idx_set))
-        assert np.min(radii[non_nsc_idx]) > read_in_gal.nsc_radius
+        assert np.min(radii[non_nsc_idx]) > default_read_in_gal.nsc_radius
 
-def test_real_nsc_indices(read_in_gal):
+def test_real_nsc_indices():
     # The same number of stars should be in the NSC to matter what
     # container is being used.
-    assert len(read_in_gal.nsc_idx_disk_kde)==len(read_in_gal.nsc_idx_disk_nsc)
-    assert len(read_in_gal.nsc_idx_disk_kde)==len(read_in_gal.nsc_idx_sphere)
+    assert len(default_read_in_gal.nsc_idx_sphere) ==\
+           len(default_read_in_gal.nsc_idx_disk_nsc)
 
     # then check that there are actually stars in the NSC
-    assert len(read_in_gal.nsc_idx_disk_kde) > 0
+    assert len(default_read_in_gal.nsc_idx_disk_nsc) > 0
 
-def test_real_nsc_axis_ratios(read_in_gal):
+def test_real_nsc_axis_ratios():
     # Test that the axis ratios for the NSC look reasonable.
-    assert read_in_gal.nsc_axis_ratios.b_over_a < 1.0
+    assert default_read_in_gal.nsc_axis_ratios.b_over_a < 1.0
 
-def test_nsc_rotation_units(read_in_gal):
+def test_nsc_rotation_units():
     # test that the rotation on the NSC has the right units
-    utils.test_for_units(read_in_gal.mean_rot_vel, "rotational velocity")
-    utils.test_for_units(read_in_gal.nsc_3d_sigma, "sigma")
-    read_in_gal.mean_rot_vel.in_units("km/s")  # throw error if not compatible
-    read_in_gal.nsc_3d_sigma.in_units("km/s")  # throw error if not compatible
+    utils.test_for_units(default_read_in_gal.mean_rot_vel,
+                         "rotational velocity")
+    utils.test_for_units(default_read_in_gal.nsc_3d_sigma,
+                         "sigma")
+    # throw error if not compatible
+    default_read_in_gal.mean_rot_vel.in_units("km/s")
+    default_read_in_gal.nsc_3d_sigma.in_units("km/s")
 
-def test_nsc_abundances(read_in_gal):
+def test_nsc_abundances():
     # then check that the abundances exist and are not identical with each other
-    assert -5 < read_in_gal.nsc_abundances.z_on_h_total() < 5
-    assert -5 < read_in_gal.gal_abundances.z_on_h_total() < 5
-    assert -5 < read_in_gal.nsc_abundances.x_on_h_total("Fe") < 5
-    assert -5 < read_in_gal.gal_abundances.x_on_h_total("Fe") < 5
-    assert np.isclose(read_in_gal.nsc_abundances.x_on_fe_total("Fe"), 0)
-    assert np.isclose(read_in_gal.gal_abundances.x_on_fe_total("Fe"), 0)
-    assert -5 < read_in_gal.nsc_abundances.x_on_fe_total("Na") < 5
-    assert -5 < read_in_gal.gal_abundances.x_on_fe_total("Na") < 5
-    assert not np.isclose(read_in_gal.nsc_abundances.z_on_h_total(),
-                          read_in_gal.gal_abundances.z_on_h_total())
-    assert not np.isclose(read_in_gal.nsc_abundances.x_on_h_total("Na"),
-                          read_in_gal.gal_abundances.x_on_h_total("Na"))
-    assert not np.isclose(read_in_gal.nsc_abundances.x_on_fe_total("Na"),
-                          read_in_gal.gal_abundances.x_on_fe_total("Na"))
+    assert -5 < default_read_in_gal.nsc_abundances.z_on_h_total() < 5
+    assert -5 < default_read_in_gal.gal_abundances.z_on_h_total() < 5
+    assert -5 < default_read_in_gal.nsc_abundances.x_on_h_total("Fe") < 5
+    assert -5 < default_read_in_gal.gal_abundances.x_on_h_total("Fe") < 5
+    assert np.isclose(default_read_in_gal.nsc_abundances.x_on_fe_total("Fe"), 0)
+    assert np.isclose(default_read_in_gal.gal_abundances.x_on_fe_total("Fe"), 0)
+    assert -5 < default_read_in_gal.nsc_abundances.x_on_fe_total("Na") < 5
+    assert -5 < default_read_in_gal.gal_abundances.x_on_fe_total("Na") < 5
+    assert not np.isclose(default_read_in_gal.nsc_abundances.z_on_h_total(),
+                          default_read_in_gal.gal_abundances.z_on_h_total())
+    assert not np.isclose(default_read_in_gal.nsc_abundances.x_on_h_total("Na"),
+                          default_read_in_gal.gal_abundances.x_on_h_total("Na"))
+    assert not np.isclose(default_read_in_gal.nsc_abundances.x_on_fe_total("Na"),
+                          default_read_in_gal.gal_abundances.x_on_fe_total("Na"))
 
 # -----------------------------------------------------------------------------
 #
@@ -321,25 +329,25 @@ def test_nsc_abundances(read_in_gal):
 #
 # -----------------------------------------------------------------------------
 
-def test_containment(read_in_gal, gal):
+def test_containment(gal):
     """Both galaxies are at the same spot, but read_in_gal has a much larger
     radius, so gal should be contained in read_in_gal."""
-    assert read_in_gal.contains(gal)
-    assert not gal.contains(read_in_gal)
+    assert default_read_in_gal.contains(gal)
+    assert not gal.contains(default_read_in_gal)
     # galaxy can't contain itself.
     assert not gal.contains(gal)
-    assert not read_in_gal.contains(read_in_gal)
+    assert not default_read_in_gal.contains(default_read_in_gal)
 
-def test_half_mass_radius_units(read_in_gal):
-    half_mass_radius = read_in_gal.galaxy_half_mass_radius
-    assert utils.test_for_units(half_mass_radius, "")
+def test_half_mass_radius_units():
+    half_mass_radius = default_read_in_gal.galaxy_half_mass_radius()
+    utils.test_for_units(half_mass_radius, "")  # no error
 
-def test_half_mass_radius_actually_worked(read_in_gal):
-    half_mass_radius = read_in_gal.galaxy_half_mass_radius
-    total_mass = read_in_gal.stellar_mass(radius_cut=None)
-    half_mass = read_in_gal.stellar_mass(radius_cut=half_mass_radius)
+def test_half_mass_radius_actually_worked():
+    half_mass_radius = default_read_in_gal.galaxy_half_mass_radius()
+    total_mass = default_read_in_gal.stellar_mass(radius_cut=None)
+    half_mass = default_read_in_gal.stellar_mass(radius_cut=half_mass_radius)
     assert 0.5 < half_mass / total_mass
-    assert 0 * pc < half_mass_radius < read_in_gal.radius
+    assert 0 * pc < half_mass_radius < default_read_in_gal.radius
 
 # -----------------------------------------------------------------------------
 #
@@ -347,11 +355,11 @@ def test_half_mass_radius_actually_worked(read_in_gal):
 #
 # -----------------------------------------------------------------------------
 
-def test_reading_writing(real_gal):
+def test_reading_writing(read_in_gal):
     """The only thing we need is that the object needs to be the same after
     we write then read it in. There is a lot of checking here, though."""
     file = open("./real_gal_save.txt", "w")
-    real_gal.write(file)
+    read_in_gal.write(file)
     file.close()
 
     file = open("./real_gal_save.txt", "r")

@@ -4,6 +4,7 @@ from yt_tools import utils
 import pytest
 import numpy as np
 from scipy import integrate
+import time
 
 # -----------------------------------------------------------
 

@@ -13,6 +13,11 @@ ds = yt.load(file_loc)
 file = open("./real_gal_save.txt", "r")
 read_in_gal =  galaxy.read_gal(ds, file)
 file.close()
+
+read_in_gal.quad_integrate_kde()
+read_in_gal.simps_integrate_kde()
+read_in_gal.histogram_profile(100*yt.units.kpc, 1000*yt.units.kpc, 100)
+
 out_file = open("./minigal_save.txt", "w")
 read_in_gal.mini_write(out_file)
 out_file.close()
@@ -46,7 +51,7 @@ def test_gal_mass(new_gal):
     gal_mass = read_in_gal.stellar_mass(radius_cut=None)
     assert np.isclose(gal_mass.to("msun").value, new_gal.gal_mass)
 
-def test_gal_half_mass_radius(new_gal)
+def test_gal_half_mass_radius(new_gal):
     half_mass_radius = read_in_gal.galaxy_half_mass_radius()
     assert np.isclose(half_mass_radius.to("kpc").value, new_gal.gal_r_half)
 
@@ -143,11 +148,11 @@ def test_kde_binned_densities_2D(new_gal):
     assert np.allclose(densities, new_gal.kde_densities_2D_smoothed)
 
 def test_kde_radii_1D(new_gal):
-    radii = read_in_gal.kde_radii["mass_kde_1D"]
+    radii = read_in_gal.surface_1D_radii
     assert np.allclose(radii, new_gal.kde_radii_1D)
 
 def test_kde_densities_1D(new_gal):
-    densities = read_in_gal.kde_densities["mass_kde_1D_surface"]
+    densities = read_in_gal.surface_1D_densities
     assert np.allclose(densities, new_gal.kde_densities_1D)
 
 def test_binned_radii(new_gal):

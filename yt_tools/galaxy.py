@@ -211,6 +211,12 @@ def read_gal(ds, file_obj):
     gal.binned_densities = _parse_line(file_obj.readline(),
                                        units=False, multiple=True)
 
+    # then the surface densities
+    gal.surface_1D_radii = _parse_line(file_obj.readline(),
+                                       units=False, multiple=True)
+    gal.surface_1D_densities = _parse_line(file_obj.readline(),
+                                           units=False, multiple=True)
+
     # then we get to the KDE values.
     while True:
         line = file_obj.readline()
@@ -315,6 +321,8 @@ class Galaxy(object):
         self.integrated_kde_densities_quad = None  # used for radial profiles
         self.integrated_kde_radii_simps = None  # used for radial profiles
         self.integrated_kde_densities_simps = None  # used for radial profiles
+        self.surface_1D_radii = None  # used for radial profiles
+        self.surface_1D_densities = None  # used for radial profiles
         self.disk_kde = None  # used for cylindrical plots
         self.disk_whole = None  # used for cylindrical plots
         self.disk_nsc = None  # used for cylindrical plots
@@ -551,7 +559,7 @@ class Galaxy(object):
             # when we get to more than half of the total, we have the
             # half mass radius.
             if interior_mass > 0.5 * total_gal_mass:
-                return interior_mass
+                return radius
 
     def nsc_mass_and_errs(self):
         """Calculates the mass of the NSC and the errors on that.
@@ -705,7 +713,8 @@ class Galaxy(object):
         self.kde_radii[key] = full_radii
         self.kde_densities[key] = final_densities
         if dimension == 1:
-            self.kde_densities[key+"_surface"] = surface_densities  #TODO:remove
+            self.surface_1D_densities = surface_densities
+            self.surface_1D_radii = full_radii
 
         if dimension > 1:
             # store the binned radii too, since I will be using those
@@ -1047,6 +1056,12 @@ class Galaxy(object):
         _write_single_item(file_obj, self.binned_densities,
                            "binned_densities", multiple=True)
 
+        # then the 1D surface densities
+        _write_single_item(file_obj, self.surface_1D_radii,
+                           "surface_density_radii", multiple=True)
+        _write_single_item(file_obj, self.surface_1D_densities,
+                           "surface_density_radii", multiple=True)
+
         # then all we need are the KDE values
         for key in self.kde_radii:
             _write_single_item(file_obj, self.kde_radii[key],
@@ -1090,9 +1105,9 @@ class Galaxy(object):
                            "kde_radii_2D_smoothed", multiple=True)
         _write_single_item(file_obj, self.kde_densities_smoothed["mass_kde_2D"],
                            "kde_densities_2D_smoothed", multiple=True)
-        _write_single_item(file_obj, self.kde_radii["mass_kde_1D"],
+        _write_single_item(file_obj, self.surface_1D_radii,
                            "kde_radii_1D", multiple=True)
-        _write_single_item(file_obj, self.kde_densities["mass_kde_1D_surface"],
+        _write_single_item(file_obj, self.surface_1D_densities,
                            "kde_densities_1D", multiple=True)
         _write_single_item(file_obj, self.binned_radii,
                            "binned_radii", multiple=True)
