@@ -635,3 +635,22 @@ def test_annulus_area_symmetry():
     backwards = utils.annulus_area(radius_b, radius_a)
     assert np.isclose(forwards, backwards)
 
+def test_annulus_random_distribution_radii():
+    inner_radius = np.random.uniform(1, 5, 1)
+    outer_radius = np.random.uniform(5, 8, 1)
+    x, y = utils.generate_random_xy_annulus(inner_radius, outer_radius, 1000)
+
+    radii = np.sqrt(x**2 + y**2)
+    assert np.all(inner_radius < radii)
+    assert np.all(radii < outer_radius)
+
+def test_annulus_random_distribution_lengths():
+    inner_radius = np.random.uniform(1, 5, 1)
+    outer_radius = np.random.uniform(5, 8, 1)
+    x, y = utils.generate_random_xy_annulus(inner_radius, outer_radius, 1000)
+
+    assert len(x) == len(y) == 1000
+
+# then checked the evenness by eye.
+
+

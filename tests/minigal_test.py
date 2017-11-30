@@ -16,7 +16,6 @@ file.close()
 
 read_in_gal.quad_integrate_kde()
 read_in_gal.simps_integrate_kde()
-read_in_gal.histogram_profile(100*yt.units.kpc, 1000*yt.units.kpc, 100)
 
 out_file = open("./minigal_save.txt", "w")
 read_in_gal.mini_write(out_file)

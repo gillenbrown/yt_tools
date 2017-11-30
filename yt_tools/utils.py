@@ -127,6 +127,29 @@ def generate_random_theta_phi(number):
 
     return azimuth, altitude
 
+def generate_random_xy_annulus(inner_radius, outer_radius, number):
+    """
+    Generates random points on an annulus, evenly distibuted.
+
+    The algorithm for this comes from
+    http://mathworld.wolfram.com/DiskPointPicking.html
+    equations 4 and 5.
+
+    :param inner_radius: Inner radius of the annulus. Can be zero if a
+                         circle is desired.
+    :param outer_radius: Outer radius of the annulus.
+    :param number: Number of points to create.
+    :return: two lists containing x, y values of points inside this annulus,
+             distubuted uniformly.
+    """
+    r = np.random.uniform(inner_radius**2, outer_radius**2, number)
+    theta = np.random.uniform(0, 2 * np.pi, number)
+
+    x = np.sqrt(r) * np.cos(theta)
+    y = np.sqrt(r) * np.sin(theta)
+
+    return x, y
+
 def convert_polar_to_cartesian(r, phi):
     """Converts polar coordinate to cartesian.
 
