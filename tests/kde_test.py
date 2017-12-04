@@ -176,6 +176,38 @@ def test_density_error_checking_points_3d(single_point_at_zero_3d):
     # no error
     single_point_at_zero_3d.density(inner_kernel_size=1, x=1, y=1, z=1)
 
+def test_density_error_checking_no_arrays_1d(single_point_at_zero_1d):
+    with pytest.raises(TypeError):
+        single_point_at_zero_1d.density(inner_kernel_size=5, x=[1, 2])
+    with pytest.raises(TypeError):
+        single_point_at_zero_1d.density(inner_kernel_size=5,
+                                        x=np.array([1, 2]))
+    single_point_at_zero_1d.density(inner_kernel_size=5, x=2)# no error
+
+def test_density_error_checking_no_arrays_2d(single_point_at_zero_2d):
+    with pytest.raises(TypeError):
+        single_point_at_zero_2d.density(inner_kernel_size=5, x=1,
+                                        y=[1, 2])
+    with pytest.raises(TypeError):
+        single_point_at_zero_2d.density(inner_kernel_size=5, x=[1, 2],
+                                        y=[1, 2])
+    with pytest.raises(TypeError):
+        single_point_at_zero_2d.density(inner_kernel_size=5, x=[1, 2],
+                                        y=[1, 2])
+    with pytest.raises(TypeError):
+        single_point_at_zero_2d.density(inner_kernel_size=5,
+                                        x=np.array([1, 2]),
+                                        y=1)
+    with pytest.raises(TypeError):
+        single_point_at_zero_2d.density(inner_kernel_size=5,
+                                        x=np.array([1, 2]),
+                                        y=np.array([1, 2]))
+    with pytest.raises(TypeError):
+        single_point_at_zero_2d.density(inner_kernel_size=5,
+                                        x=1,
+                                        y=np.array([1, 2]))
+    single_point_at_zero_2d.density(inner_kernel_size=5, x=2, y=2)# no error
+
 def test_density_single_point_1d_zero_zero_dist(single_point_at_zero_1d):
     """Test a simple density calculation in 2D"""
     sigma = 5
@@ -428,7 +460,32 @@ def test_density_using_break_radius_multiple_weighted_2D():
                                     outer_kernel=outer_sigma)
     assert np.isclose(true_density, test_density)
 
+def test_density_speedup():
+    xs = np.random.uniform(0, 100, 10**4)
+    ys = np.random.uniform(0, 100, 10**4)
+    this_kde = kde.KDE([xs, ys])
 
+    inner_sigma = 2.3
+    outer_sigma = 4.5
+    break_radius = 23.6
+
+    x_loc = 23
+    y_loc = 67
+
+    time_a = time.time()
+    test_dens_a = this_kde.density(inner_kernel_size=inner_sigma, x=x_loc,
+                                   y=y_loc, break_radius=break_radius,
+                                   outer_kernel=outer_sigma)
+    time_b = time.time()
+    test_dens_b = this_kde.density(inner_kernel_size=inner_sigma, x=x_loc,
+                                   y=y_loc, break_radius=break_radius,
+                                   outer_kernel=outer_sigma)
+    time_c = time.time()
+
+    time_taken_before = time_b - time_a
+    time_taken_after = time_c - time_b
+    assert time_taken_after < time_taken_before
+    assert np.isclose(test_dens_a, test_dens_b)
 
 # -----------------------------------------------------------
 
@@ -458,7 +515,6 @@ def test_initial_cell_size_2d():
                        np.array([0,  49])])
     assert kde_obj._initial_cell_size() == 4.9
 
-
 def test_grid_resolution_steps_examples():
     """Test the process that creates the grid resolution. I will only test
     the simple cases where I know what I want."""
@@ -471,7 +527,6 @@ def test_grid_resolution_steps_examples():
     assert np.allclose(kde.grid_resolution_steps(4050, 50),
                        np.array([4050, 1350, 450, 150, 50]))
 
-
 def test_grid_resolution_steps_lengths():
     # then check the length of a couple of examples.
     l_82 = len(kde.grid_resolution_steps(82, 1))
@@ -483,7 +538,6 @@ def test_grid_resolution_steps_lengths():
     assert l_81 == l_80
     assert l_80 == l_28
     assert l_28 != l_27
-
 
 def test_constructing_grid_3d():
     """ See if the creation of the grid is correct"""

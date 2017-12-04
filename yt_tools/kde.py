@@ -123,10 +123,54 @@ class KDE(object):
         self.location_max_x = None
         self.location_max_y = None
         self.location_max_z = None
-    
+
+        # and some for kernel sizing
+        self._inner_kernel = -1
+        self._break_radius = 10**99
+        self._outer_kernel = -1
+        self._kernels = []
+
+    def _get_kernel_sizes(self, inner_kernel, break_radius, outer_kernel):
+        """
+
+        :param inner_kernel:
+        :param break_radius:
+        :param outer_kernel:
+        :return:
+        """
+        # manually check for closenes
+        tolerance = 0.0001
+        inner_bool = abs(inner_kernel - self._inner_kernel) < tolerance
+        break_bool = abs(break_radius - self._break_radius) < tolerance
+        outer_bool = abs(outer_kernel - self._outer_kernel) < tolerance
+        if inner_bool and break_bool and outer_bool:
+            return self._kernels
+
+        # otherwise set these
+        self._inner_kernel = inner_kernel
+        self._break_radius = break_radius
+        self._outer_kernel = outer_kernel
+
+        # otherwise make the kernel sizes. To do this we have to calculate the
+        # distance from zero, which is the default center.
+        if self.dimension == 1:
+            radii = utils.distance(self.x, 0)
+        elif self.dimension == 2:
+            radii = utils.distance(self.x, 0, self.y, 0)
+        elif self.dimension == 3:
+            radii = utils.distance(self.x, 0, self.y, 0, self.z, 0)
+
+        kernel_sizes = []
+        for rad in radii:
+            if rad < break_radius:
+                kernel_sizes.append(inner_kernel)
+            else:
+                kernel_sizes.append(outer_kernel)
+        self._kernels = np.array(kernel_sizes)
+        return self._kernels
 
     def density(self, inner_kernel_size, x, y=None, z=None,
-                break_radius=np.inf, outer_kernel=None):
+                break_radius=10**99, outer_kernel=-1):
         """
         Calculates the KDE density at a given location.
 
@@ -164,9 +208,20 @@ class KDE(object):
             raise ValueError("In 1D we cannot use y or z coordinates.")
 
         # check the the user specified the outer kernel correctly
-        if break_radius < np.inf and outer_kernel is None:
+        if break_radius < 10**99 and outer_kernel < 0:
             raise ValueError("Have to specify an outer kernel size if using "
                              "break radius")
+
+        # then check that the locations are a single value, not iterables. This
+        # will be a little weird, since checking for iterability will require
+        # checking for an error that only happens if it's not iterable
+        for value in [x, y, z]:
+            try:
+                iter(value)
+            except TypeError:  # not iterable
+                continue
+            else:  # is iterable
+                raise TypeError("x, y, and z cannot be iterable.")
 
         # get the distances from the location the user passed in to the
         # location of all the points
@@ -177,22 +232,9 @@ class KDE(object):
         elif self.dimension == 3:
             distances = utils.distance(self.x, x, self.y, y, self.z, z)
 
-        # get the kernel sizes. To do this we have to calculate the distance
-        # from zero, which is the default center.
-        if self.dimension == 1:
-            radii = utils.distance(self.x, 0)
-        elif self.dimension == 2:
-            radii = utils.distance(self.x, 0, self.y, 0)
-        elif self.dimension == 3:
-            radii = utils.distance(self.x, 0, self.y, 0, self.z, 0)
-
-        kernel_sizes = []
-        for rad in radii:
-            if rad < break_radius:
-                kernel_sizes.append(inner_kernel_size)
-            else:
-                kernel_sizes.append(outer_kernel)
-        kernel_sizes = np.array(kernel_sizes)
+        # then get the kernels
+        kernel_sizes = self._get_kernel_sizes(inner_kernel_size, break_radius,
+                                              outer_kernel)
 
         # then we can calculate the Gaussian density at these distances
         densities = self.smoothing_function(distances, kernel_sizes)
@@ -286,7 +328,7 @@ class KDE(object):
 
 
     def radial_profile(self, radii, kernel, num_each=1,
-                       break_radius=np.inf, outer_kernel=None):
+                       break_radius=10**99, outer_kernel=-1):
         """Create a radial KDE profile centered at 0.
 
         In 2D and 3D this is pretty straightforward. In 1D it doesn't make a lot
@@ -388,7 +430,7 @@ class KDE(object):
         return repeated_radii, density_profile
 
     def radial_profile_wrapper(self, radii, kernel, num_each=1,
-                               break_radius=np.inf, outer_kernel=None):
+                               break_radius=10*99, outer_kernel=None):
         """Only used so we can integrate the radial profile."""
         radii, densities = self.radial_profile(radii=radii, kernel=kernel,
                                                num_each=num_each,
