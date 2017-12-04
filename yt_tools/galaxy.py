@@ -884,16 +884,14 @@ class Galaxy(object):
 
         return utils.sphere_containment(cen_1, cen_2, radius_1, radius_2)
 
-    def histogram_profile(self, min_radius=50*yt.units.pc,
-                          max_radius=1000*yt.units.pc, num_bins=100):
+    def histogram_profile(self, bin_edges):
         # error checking
         if self.disk_whole is None:
             raise RuntimeError("Need to add disk before doing histogram "
                                "profile.")
-        if num_bins <= 0:
-            raise ValueError("number of bins has to be positive.")
-        utils.test_for_units(min_radius, "min_radius")
-        utils.test_for_units(max_radius, "max_radius")
+        utils.test_iterable(bin_edges, "bin_edges")
+        if not np.all(np.array(bin_edges) >= 0):
+            raise ValueError("All radii need to be positive")
 
         start_time = time.time()
         # first get the values. We bin in radius, and weight by mass.
@@ -902,10 +900,6 @@ class Galaxy(object):
         r = np.array(r.in_units("pc"))
         masses = np.array(container[('STAR', 'MASS')].in_units("msun"))
 
-        # create the bins.
-        min_log_r = np.log10(min_radius.to("pc").value)
-        max_log_r = np.log10(max_radius.to("pc").value)
-        bin_edges = np.logspace(min_log_r, max_log_r, num_bins+1)
         # then do the actual binning.
         hist, bin_edges = np.histogram(r, bins=bin_edges, weights=masses)
 
@@ -922,7 +916,7 @@ class Galaxy(object):
         end_time = time.time()
         print("{} seconds for binning profile".format(end_time - start_time))
 
-    def integrated_kde_profile(self, min_radius, max_radius, num_bins):
+    def integrated_kde_profile(self, bin_edges):
         """
         Create a radial profile by integrating the 2D KDE density.
 
@@ -941,25 +935,11 @@ class Galaxy(object):
         if self.disk_kde is None:
             raise RuntimeError("Need to add disk before doing histogram "
                                "profile.")
-        if num_bins <= 0:
-            raise ValueError("number of bins has to be positive.")
-        utils.test_for_units(min_radius, "min_radius")
-        utils.test_for_units(max_radius, "max_radius")
+        utils.test_iterable(bin_edges, "bin_edges")
+        if not np.all(np.array(bin_edges) >= 0):
+            raise ValueError("All radii need to be positive")
 
         start_time = time.time()
-        # create the bins. We have a special case if we start at the center
-        max_log_r = np.log10(max_radius.to("pc").value)
-        if np.isclose(min_radius.to("pc").value, 0):
-            # the central bin will be from 0 to 1 parsecs. Then we will be
-            # evenly spaced in log outside of this.
-            central_bin_edges = [0]
-            # we have num_bins -1 bins in the outer region, so there are
-            # num_bins edges for those bins.
-            main_edges = np.logspace(0, max_log_r, num_bins)
-            bin_edges = np.concatenate([central_bin_edges, main_edges])
-        else:
-            min_log_r = np.log10(min_radius.to("pc").value)
-            bin_edges = np.logspace(min_log_r, max_log_r, num_bins + 1)
 
         # the smoothing kernel we will use in the KDE process is half the size
         # of the smallest cell in the sphere when we are inside 12pc, but

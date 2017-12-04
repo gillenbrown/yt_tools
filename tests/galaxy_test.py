@@ -168,64 +168,49 @@ def test_histogram_profile_everything(gal):
     """This is in one mega test because the histogram process takes a while,
     and I don't want to have to wait. This makes running tests easier, even
     though I know it's bad practice. """
+    bin_num = 5
+    bin_edges = np.arange(0, bin_num + 1)
     # first check whether a disk has been added
     with pytest.raises(RuntimeError):
-        gal.histogram_profile(min_radius=0*pc)
+        gal.histogram_profile(bin_edges)
     gal.add_disk(j_radius=30*pc, disk_radius=30*pc, disk_height=30*pc)
-    gal.histogram_profile(min_radius=0*pc)  # no error
+    gal.histogram_profile(bin_edges)  # no error
 
-    # then check units.
+    # bin edges needs to be iterable
     with pytest.raises(TypeError):
-        gal.histogram_profile(min_radius=10)
-    with pytest.raises(TypeError):
-        gal.histogram_profile(max_radius=10)
-
-    # bins has to be positive
+        gal.histogram_profile(1)
+    # all have to be positive.
     with pytest.raises(ValueError):
-        gal.histogram_profile(num_bins=0)
-    with pytest.raises(ValueError):
-        gal.histogram_profile(num_bins=-10)
-    num_bins = 10
-    # then do one that will work, with no error.
-    gal.histogram_profile(min_radius=0*pc, max_radius=50*pc, num_bins=num_bins)
+        gal.histogram_profile([-1, 0, 1])
 
     # then check that the results have the right number of points
-    assert len(gal.binned_radii) == num_bins
-    assert len(gal.binned_densities) == num_bins
+    assert len(gal.binned_radii) == bin_num
+    assert len(gal.binned_densities) == bin_num
 
 def test_integrated_kde_profile_everything(gal):
     """This is in one mega test because the profile process takes a while,
     and I don't want to have to wait. This makes running tests easier, even
     though I know it's bad practice. """
+    bin_num = 5
+    bin_edges = np.arange(0, bin_num + 1)
     # first check whether a disk has been added
     with pytest.raises(RuntimeError):
-        gal.integrated_kde_profile(min_radius=0*pc, max_radius=100*pc,
-                                   num_bins=100)
+        gal.integrated_kde_profile(bin_edges)
     gal.add_disk(j_radius=30*pc, disk_radius=30*pc, disk_height=30*pc)
 
-    # then check units.
+    # bin_radii has to be non_negative
+    with pytest.raises(ValueError):
+        gal.integrated_kde_profile([-1, 0, 1])
+    # and the bins have to be iterable
     with pytest.raises(TypeError):
-        gal.integrated_kde_profile(min_radius=10, max_radius=100*pc,
-                                   num_bins=100)
-    with pytest.raises(TypeError):
-        gal.integrated_kde_profile(max_radius=10, min_radius=100*pc,
-                                   num_bins=100)
+        gal.integrated_kde_profile(0)
 
-    # bins has to be positive
-    with pytest.raises(ValueError):
-        gal.integrated_kde_profile(min_radius=0*pc, max_radius=100*pc,
-                                   num_bins=0)
-    with pytest.raises(ValueError):
-        gal.integrated_kde_profile(min_radius=0*pc, max_radius=100*pc,
-                                   num_bins=-10)
-    num_bins = 10
     # then do one that will work, with no error.
-    gal.integrated_kde_profile(min_radius=0*pc, max_radius=10*pc,
-                               num_bins=num_bins)
+    gal.integrated_kde_profile(bin_edges)
 
     # then check that the results have the right number of points
-    assert len(gal.integrated_kde_radii) == num_bins
-    assert len(gal.integrated_kde_densities) == num_bins
+    assert len(gal.integrated_kde_radii) == bin_num
+    assert len(gal.integrated_kde_densities) == bin_num
 
     # check that the central bin did work correctly
     assert np.isclose(gal.integrated_kde_radii[0], 0.5)
@@ -397,11 +382,11 @@ def test_half_mass_radius_actually_worked(read_in_gal):
 #
 # -----------------------------------------------------------------------------
 
-def test_reading_writing(read_in_gal):
+def test_reading_writing(real_gal):
     """The only thing we need is that the object needs to be the same after
     we write then read it in. There is a lot of checking here, though."""
 
-    old_gal = read_in_gal  # needed to easily switch from original to read in
+    old_gal = real_gal  # needed to easily switch from original to read in
     file = open("./real_gal_save.txt", "w")
     old_gal.write(file)
     file.close()
