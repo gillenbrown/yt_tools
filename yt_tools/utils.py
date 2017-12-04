@@ -484,8 +484,8 @@ def surface_density_annulus(density_func, radius_a, radius_b, error_tolerance,
     evenly within the annulus, then average the points together.
 
     :param density_func: Function that encodes the surface density at each
-                         points. This must take x and y as the first two
-                         parameters, then can take other keyword arguments.
+                         points. This must take (x, y) as the first
+                         parameter, then can take other keyword arguments.
     :param radius_a: Inner radius of integration.
     :type radius_a: float
     :param radius_b: Outer radius of integration.
@@ -515,7 +515,7 @@ def surface_density_annulus(density_func, radius_a, radius_b, error_tolerance,
         # create random ponts within the annulus.
         xs, ys = generate_random_xy_annulus(radius_a, radius_b, number)
         # get the density at all these points
-        new_values = np.array([density_func(x, y, **density_func_kwargs)
+        new_values = np.array([density_func([x, y], **density_func_kwargs)
                                for x, y in zip(xs, ys)])
         # add to existing points from previous iterations.
         values = np.concatenate([values, new_values])

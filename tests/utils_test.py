@@ -689,19 +689,19 @@ def test_surface_density_positive_error():
 def test_surface_density_positive_radii():
     # should be takes care of by annulus point generation
     with pytest.raises(ValueError):
-        utils.surface_density_annulus(lambda x, y:1, -1, 2, 1)
+        utils.surface_density_annulus(lambda loc:1, -1, 2, 1)
     with pytest.raises(ValueError):
-        utils.surface_density_annulus(lambda x, y:1, -1, -2, 1)
+        utils.surface_density_annulus(lambda loc:1, -1, -2, 1)
     with pytest.raises(ValueError):
-        utils.surface_density_annulus(lambda x, y:1, 1, -2, 1)
-    utils.surface_density_annulus(lambda x, y:1, 1, 2, 1) # no error
+        utils.surface_density_annulus(lambda loc:1, 1, -2, 1)
+    utils.surface_density_annulus(lambda loc:1, 1, 2, 1) # no error
 
 @pytest.mark.parametrize("r_a,r_b,result", [
     (0, 1, 1),
     (1, 10, 1)
 ])
 def test_surface_density_annulus_constant_density(r_a, r_b, result):
-    def flat(x, y):
+    def flat(loc):
         return 1
     tolerance = 0.01
     integral = utils.surface_density_annulus(flat, r_a, r_b,
@@ -713,7 +713,8 @@ def test_surface_density_annulus_constant_density(r_a, r_b, result):
     (3, 8, 5.87878787)
 ])
 def test_surface_density_annulus_r(r_a, r_b, result):
-    def radius(x, y):
+    def radius(loc):
+        x, y = loc
         return np.sqrt(x**2 + y**2)
 
     tolerance = 0.01
@@ -726,7 +727,8 @@ def test_surface_density_annulus_r(r_a, r_b, result):
     (3, 8, 36.5)
 ])
 def test_surface_density_annulus_r_squared(r_a, r_b, result):
-    def radius_squared(x, y):
+    def radius_squared(loc):
+        x, y = loc
         return x ** 2 + y ** 2
 
     tolerance = 0.01
@@ -740,7 +742,7 @@ def test_surface_density_annulus_r_squared(r_a, r_b, result):
 ])
 def test_surface_density_annulus_constant_density_args(r_a, r_b, dens):
     # make sure this works with an argument.
-    def flat(x, y, k):
+    def flat(loc, k):
         return k
     tolerance = 0.01
     integral = utils.surface_density_annulus(flat, r_a, r_b,

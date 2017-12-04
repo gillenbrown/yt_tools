@@ -727,7 +727,7 @@ class Galaxy(object):
         if "mass_kde_2D" not in self.kde_radii_smoothed:
             self.kde_profile("MASS", dimension=2,
                              outer_radius=50 * yt.units.pc)
-        if self.integrated_kde_densities is None
+        if self.integrated_kde_densities is None:
             self.integrated_kde_profile(min_radius=0*yt.units.pc,
                                         max_radius=50*yt.units.pc,
                                         num_bins=50)

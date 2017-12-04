@@ -125,125 +125,77 @@ def single_point_at_zero_3d_weighted():
 
 # -----------------------------------------------------------
 
-def test_density_error_checking_points_1d(single_point_at_zero_1d):
+def test_density_error_checking_dimension_1d(single_point_at_zero_1d):
     """Test that a 1D point needs 1D coordinates"""
     with pytest.raises(ValueError):
-        single_point_at_zero_1d.density(inner_kernel_size=1, x=1, y=1)
+        single_point_at_zero_1d.density([1, 2, 3], 1)
     with pytest.raises(ValueError):
-        single_point_at_zero_1d.density(inner_kernel_size=1, x=1, z=1)
-    with pytest.raises(ValueError):
-        single_point_at_zero_1d.density(inner_kernel_size=1, x=1, y=1, z=1)
-    with pytest.raises(ValueError):
-        single_point_at_zero_1d.density(inner_kernel_size=1, x=None)
+        single_point_at_zero_1d.density([1, 2], 1)
     # no error
-    single_point_at_zero_1d.density(inner_kernel_size=1, x=1)
+    single_point_at_zero_1d.density([1], 1)
 
-def test_density_error_checking_points_2d(single_point_at_zero_2d):
+def test_density_error_checking_dimension_2d(single_point_at_zero_2d):
     """Test that a 2D point needs 2D coordinates"""
     with pytest.raises(ValueError):
-        single_point_at_zero_2d.density(inner_kernel_size=1, x=1, y=1, z=1)
+        single_point_at_zero_2d.density([1, 2, 3], 1)
     with pytest.raises(ValueError):
-        single_point_at_zero_2d.density(inner_kernel_size=1, x=None, y=1)
-    with pytest.raises(ValueError):
-        single_point_at_zero_2d.density(inner_kernel_size=1, x=1, y=None)
-    with pytest.raises(ValueError):
-        single_point_at_zero_2d.density(inner_kernel_size=1, x=None, y=None)
-
+        single_point_at_zero_2d.density([1], 1)
     # no error
-    single_point_at_zero_2d.density(inner_kernel_size=1, x=1, y=1)
+        single_point_at_zero_2d.density([1, 2], 1)
 
-def test_density_error_checking_points_3d(single_point_at_zero_3d):
+def test_density_error_checking_dimension_3d(single_point_at_zero_3d):
     """Test that a 3D point needs 3D coordinates"""
     with pytest.raises(ValueError):
-        single_point_at_zero_3d.density(inner_kernel_size=1, x=1, y=1, z=None)
+        single_point_at_zero_3d.density([1, 2], 1)
     with pytest.raises(ValueError):
-        single_point_at_zero_3d.density(inner_kernel_size=1, x=1, y=None, z=1)
-    with pytest.raises(ValueError):
-        single_point_at_zero_3d.density(inner_kernel_size=1, x=None, y=1, z=1)
-    with pytest.raises(ValueError):
-        single_point_at_zero_3d.density(inner_kernel_size=1, x=None, y=None,
-                                        z=1)
-    with pytest.raises(ValueError):
-        single_point_at_zero_3d.density(inner_kernel_size=1, x=None, y=1,
-                                        z=None)
-    with pytest.raises(ValueError):
-        single_point_at_zero_3d.density(inner_kernel_size=1, x=1, y=None,
-                                        z=None)
-    with pytest.raises(ValueError):
-        single_point_at_zero_3d.density(inner_kernel_size=1, x=None, y=None,
-                                        z=None)
-
+        single_point_at_zero_3d.density([1], 1)
     # no error
-    single_point_at_zero_3d.density(inner_kernel_size=1, x=1, y=1, z=1)
+    single_point_at_zero_3d.density([1, 2, 3], 1)
 
-def test_density_error_checking_no_arrays_1d(single_point_at_zero_1d):
+def test_density_error_checking_no_scalar_locs(single_point_at_zero_1d):
     with pytest.raises(TypeError):
-        single_point_at_zero_1d.density(inner_kernel_size=5, x=[1, 2])
-    with pytest.raises(TypeError):
-        single_point_at_zero_1d.density(inner_kernel_size=5,
-                                        x=np.array([1, 2]))
-    single_point_at_zero_1d.density(inner_kernel_size=5, x=2)# no error
+        single_point_at_zero_1d.density(0, 1)
 
-def test_density_error_checking_no_arrays_2d(single_point_at_zero_2d):
+def test_density_error_checking_no_iterable_points(single_point_at_zero_1d):
     with pytest.raises(TypeError):
-        single_point_at_zero_2d.density(inner_kernel_size=5, x=1,
-                                        y=[1, 2])
-    with pytest.raises(TypeError):
-        single_point_at_zero_2d.density(inner_kernel_size=5, x=[1, 2],
-                                        y=[1, 2])
-    with pytest.raises(TypeError):
-        single_point_at_zero_2d.density(inner_kernel_size=5, x=[1, 2],
-                                        y=[1, 2])
-    with pytest.raises(TypeError):
-        single_point_at_zero_2d.density(inner_kernel_size=5,
-                                        x=np.array([1, 2]),
-                                        y=1)
-    with pytest.raises(TypeError):
-        single_point_at_zero_2d.density(inner_kernel_size=5,
-                                        x=np.array([1, 2]),
-                                        y=np.array([1, 2]))
-    with pytest.raises(TypeError):
-        single_point_at_zero_2d.density(inner_kernel_size=5,
-                                        x=1,
-                                        y=np.array([1, 2]))
-    single_point_at_zero_2d.density(inner_kernel_size=5, x=2, y=2)# no error
+        single_point_at_zero_1d.density([[1, 2, 3]], 1)
 
 def test_density_single_point_1d_zero_zero_dist(single_point_at_zero_1d):
     """Test a simple density calculation in 2D"""
     sigma = 5
     density = utils.gaussian_1d(0, sigma)
-    assert np.isclose(density, single_point_at_zero_1d.density(sigma, 0))
+    assert np.isclose(density, single_point_at_zero_1d.density([0], sigma))
 
 def test_density_single_point_1d_one_zero_dist(single_point_at_one_1d):
     """Test a simple density calculation in 2D"""
     sigma = 5
     density = utils.gaussian_1d(0, sigma)
-    assert np.isclose(density, single_point_at_one_1d.density(sigma, 1))
+    assert np.isclose(density, single_point_at_one_1d.density([1], sigma))
 
 def test_density_single_point_2d_zero_zero_dist(single_point_at_zero_2d):
     """Test a simple density calculation in 2D"""
     sigma = 5
     density = utils.gaussian_2d_radial(0, sigma)
-    assert np.isclose(density, single_point_at_zero_2d.density(sigma, 0, 0))
+    assert np.isclose(density, single_point_at_zero_2d.density([0, 0], sigma))
 
 def test_density_single_point_2d_one_zero_dist(single_point_at_one_2d):
     """Test a simple density calculation in 2D"""
     sigma = 5
     density = utils.gaussian_2d_radial(0, sigma)
-    assert np.isclose(density, single_point_at_one_2d.density(sigma, 1, 1))
+    assert np.isclose(density, single_point_at_one_2d.density([1, 1], sigma))
 
 def test_density_single_point_3d_zero_zero_dist(single_point_at_zero_3d):
     """Test a simple density calculation in 2D"""
     sigma = 5
     density = utils.gaussian_3d_radial(0, sigma)
-    assert np.isclose(density, single_point_at_zero_3d.density(sigma, 0, 0, 0))
+    assert np.isclose(density, single_point_at_zero_3d.density([0, 0, 0],
+                                                               sigma))
 
 def test_density_single_point_3d_one_zero_dist(single_point_at_one_3d):
     """Test a simple density calculation in 2D"""
     sigma = 5
     density = utils.gaussian_3d_radial(0, sigma)
-    assert np.isclose(density, single_point_at_one_3d.density(sigma, 1, 1, 1))
-
+    assert np.isclose(density, single_point_at_one_3d.density([1, 1, 1], sigma))
 
 # Now with nonzero distance, at any location.
 
@@ -251,37 +203,39 @@ def test_density_single_point_1d_zero_nonzero_dist(single_point_at_zero_1d):
     """Test a simple density calculation in 2D"""
     sigma = 5
     density = utils.gaussian_1d(1, sigma)
-    assert np.isclose(density, single_point_at_zero_1d.density(sigma, 1))
+    assert np.isclose(density, single_point_at_zero_1d.density([1], sigma))
 
 def test_density_single_point_1d_one_nonzero_dist(single_point_at_one_1d):
     """Test a simple density calculation in 2D"""
     sigma = 5
     density = utils.gaussian_1d(2, sigma)
-    assert np.isclose(density, single_point_at_one_1d.density(sigma, 3))
+    assert np.isclose(density, single_point_at_one_1d.density([3], sigma))
 
 def test_density_single_point_2d_zero_nonzero_dist(single_point_at_zero_2d):
     """Test a simple density calculation in 2D"""
     sigma = 5
     density = utils.gaussian_2d_radial(1, sigma)
-    assert np.isclose(density, single_point_at_zero_2d.density(sigma, 0, 1))
+    assert np.isclose(density, single_point_at_zero_2d.density([0, 1], sigma))
 
 def test_density_single_point_2d_one_nonzero_dist(single_point_at_one_2d):
     """Test a simple density calculation in 2D"""
     sigma = 5
     density = utils.gaussian_2d_radial(2, sigma)
-    assert np.isclose(density, single_point_at_one_2d.density(sigma, 3, 1))
+    assert np.isclose(density, single_point_at_one_2d.density([3, 1], sigma))
 
 def test_density_single_point_3d_zero_nonzero_dist(single_point_at_zero_3d):
     """Test a simple density calculation in 2D"""
     sigma = 5
     density = utils.gaussian_3d_radial(5, sigma)
-    assert np.isclose(density, single_point_at_zero_3d.density(sigma, 0, 5, 0))
+    assert np.isclose(density, single_point_at_zero_3d.density([0, 5, 0],
+                                                               sigma))
 
 def test_density_single_point_3d_one_nonzero_dist(single_point_at_one_3d):
     """Test a simple density calculation in 2D"""
     sigma = 5
     density = utils.gaussian_3d_radial(3, sigma)
-    assert np.isclose(density, single_point_at_one_3d.density(sigma, 1, 1, -2))
+    assert np.isclose(density, single_point_at_one_3d.density([1, 1, -2],
+                                                              sigma))
 
 # now with weighting
 
@@ -290,7 +244,7 @@ def test_density_single_point_1d_weighted(single_point_at_zero_1d_weighted):
     sigma = 5.357
     density = utils.gaussian_1d(0, sigma)
 
-    kde_density = single_point_at_zero_1d_weighted.density(sigma, 0)
+    kde_density = single_point_at_zero_1d_weighted.density([0], sigma)
     weight = np.sum(single_point_at_zero_1d_weighted.values)
     assert np.isclose(density * weight, kde_density)
 
@@ -299,7 +253,7 @@ def test_density_single_point_2d_weighted(single_point_at_zero_2d_weighted):
     sigma = 5.357
     density = utils.gaussian_2d_radial(0, sigma)
 
-    kde_density = single_point_at_zero_2d_weighted.density(sigma, 0, 0)
+    kde_density = single_point_at_zero_2d_weighted.density([0, 0], sigma)
     weight = np.sum(single_point_at_zero_2d_weighted.values)
     assert np.isclose(density * weight, kde_density)
 
@@ -308,7 +262,7 @@ def test_density_single_point_3d_weighted(single_point_at_zero_3d_weighted):
     sigma = 5.357
     density = utils.gaussian_3d_radial(0, sigma)
 
-    kde_density = single_point_at_zero_3d_weighted.density(sigma, 0, 0, 0)
+    kde_density = single_point_at_zero_3d_weighted.density([0, 0, 0], sigma)
     weight = np.sum(single_point_at_zero_3d_weighted.values)
     assert np.isclose(density * weight, kde_density)
 
@@ -326,7 +280,7 @@ def test_density_2_points_1d():
     true_density = np.sum(weights * density)
 
     # then compare that to the real result
-    assert np.isclose(true_density, kde_obj.density(sigma, 0))
+    assert np.isclose(true_density, kde_obj.density([0], sigma))
 
 def test_density_4_points_2d():
     """Test a density calculation with multiple points in 2D. I made a plus
@@ -343,7 +297,7 @@ def test_density_4_points_2d():
     # the same distance away, so should have the same density.
     total_density = density * np.sum(weights)
     # then compare that to the real result
-    assert np.isclose(total_density, kde_obj.density(sigma, 0, 0))
+    assert np.isclose(total_density, kde_obj.density([0, 0], sigma))
 
 def test_density_6_points_3d():
     """Test a density calculation in 3D with multiple points. Each point is
@@ -361,7 +315,7 @@ def test_density_6_points_3d():
     # same distance away from the center, so they should have the same density.
     total_density = density * np.sum(weights)
     # then compare that to the real result
-    assert np.isclose(total_density, kde_obj.density(sigma, 0, 0, 0))
+    assert np.isclose(total_density, kde_obj.density([0, 0, 0], sigma))
 
 # -----------------------------------------------------------
 
@@ -374,21 +328,18 @@ def test_density_break_radius_error_checking(single_point_at_zero_2d):
     # only error checking is that the outer kernel has to be specific if the
     # break radius is not infinite.
     # no error
-    single_point_at_zero_2d.density(inner_kernel_size=1, x=1, y=1,
-                                    break_radius=np.inf)
+    single_point_at_zero_2d.density([0, 1], 1, break_radius=np.inf)
     with pytest.raises(ValueError):
-        single_point_at_zero_2d.density(inner_kernel_size=1, x=1, y=1,
-                                        break_radius=5)
+        single_point_at_zero_2d.density([0, 1], 1,break_radius=5)
     # no error
-    single_point_at_zero_2d.density(inner_kernel_size=1, x=1, y=1,
-                                    break_radius=5, outer_kernel=2)
+    single_point_at_zero_2d.density([0, 1], 1, break_radius=5, outer_kernel=2)
 
 def test_density_using_break_radius_inside(single_point_at_zero_2d):
     inner_sigma = 5
     outer_sigma = 100
     distance = 2
     true_density = utils.gaussian_2d_radial(distance, inner_sigma)
-    test_density = single_point_at_zero_2d.density(inner_sigma, x=0, y=2,
+    test_density = single_point_at_zero_2d.density([0, 2], inner_sigma,
                                                    break_radius=100,
                                                    outer_kernel=outer_sigma)
     assert np.isclose(true_density, test_density)
@@ -398,7 +349,7 @@ def test_density_using_break_radius_outside(single_point_at_zero_2d):
     outer_sigma = 10
     distance = 2
     true_density = utils.gaussian_2d_radial(distance, outer_sigma)
-    test_density = single_point_at_zero_2d.density(inner_sigma, x=0, y=2,
+    test_density = single_point_at_zero_2d.density([0, 2], inner_sigma,
                                                    break_radius=0,
                                                    outer_kernel=outer_sigma)
     assert np.isclose(true_density, test_density)
@@ -412,8 +363,7 @@ def test_density_using_break_radius_multiple_1D():
     # won't have to worry about the bleed over into negatives.
     true_density = utils.gaussian_1d(1, inner_sigma) + \
                    utils.gaussian_1d(9, outer_sigma)
-    test_density = this_kde.density(inner_kernel_size=inner_sigma,
-                                    x=221, break_radius=225,
+    test_density = this_kde.density([221], inner_sigma, break_radius=225,
                                     outer_kernel=outer_sigma)
     assert np.isclose(true_density, test_density)
 
@@ -427,8 +377,7 @@ def test_density_using_break_radius_multiple_weighted_1D():
     # weights
     true_density = utils.gaussian_1d(1, inner_sigma) * 2 + \
                    utils.gaussian_1d(9, outer_sigma) * 5
-    test_density = this_kde.density(inner_kernel_size=inner_sigma,
-                                    x=21, break_radius=25,
+    test_density = this_kde.density([21], inner_sigma, break_radius=25,
                                     outer_kernel=outer_sigma)
     assert np.isclose(true_density, test_density)
 
@@ -441,8 +390,7 @@ def test_density_using_break_radius_multiple_2D():
     # will do this at x=1
     true_density = utils.gaussian_2d_radial(1, inner_sigma) + \
                    utils.gaussian_2d_radial(9, outer_sigma)
-    test_density = this_kde.density(inner_kernel_size=inner_sigma,
-                                    x=1, y=0, break_radius=5,
+    test_density = this_kde.density([1, 0], inner_sigma, break_radius=5,
                                     outer_kernel=outer_sigma)
     assert np.isclose(true_density, test_density)
 
@@ -455,8 +403,7 @@ def test_density_using_break_radius_multiple_weighted_2D():
     # will do this at x=1. Also account for weights.
     true_density = utils.gaussian_2d_radial(1, inner_sigma) * 2 + \
                    utils.gaussian_2d_radial(9, outer_sigma) * 5
-    test_density = this_kde.density(inner_kernel_size=inner_sigma,
-                                    x=1, y=0, break_radius=5,
+    test_density = this_kde.density([1, 0], inner_sigma, break_radius=5,
                                     outer_kernel=outer_sigma)
     assert np.isclose(true_density, test_density)
 
@@ -473,12 +420,14 @@ def test_density_speedup():
     y_loc = 67
 
     time_a = time.time()
-    test_dens_a = this_kde.density(inner_kernel_size=inner_sigma, x=x_loc,
-                                   y=y_loc, break_radius=break_radius,
+    test_dens_a = this_kde.density(loc=[x_loc, y_loc],
+                                   inner_kernel=inner_sigma,
+                                   break_radius=break_radius,
                                    outer_kernel=outer_sigma)
     time_b = time.time()
-    test_dens_b = this_kde.density(inner_kernel_size=inner_sigma, x=x_loc,
-                                   y=y_loc, break_radius=break_radius,
+    test_dens_b = this_kde.density(loc=[x_loc, y_loc],
+                                   inner_kernel=inner_sigma,
+                                   break_radius=break_radius,
                                    outer_kernel=outer_sigma)
     time_c = time.time()
 
@@ -769,7 +718,6 @@ def test_radial_profile_error_checking_outer_kernel(single_point_at_zero_2d):
     # v no error
     single_point_at_zero_2d.radial_profile(radii, kernel=1, break_radius=5,
                                            outer_kernel=5)
-
 
 def test_radial_profile_error_check_positive_radii_1D(single_point_at_zero_1d):
     for radius in [-2, -1, 0, 1, 2]:

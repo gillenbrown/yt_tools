@@ -169,7 +169,7 @@ class KDE(object):
         self._kernels = np.array(kernel_sizes)
         return self._kernels
 
-    def density(self, x, y=None, z=None, inner_kernel=-1, break_radius=10**99,
+    def density(self, loc, inner_kernel, break_radius=10**99,
                 outer_kernel=-1):
         """
         Calculates the KDE density at a given location.
@@ -178,14 +178,11 @@ class KDE(object):
         different radii. Points inside some radius can be given a smaller
         kernel.
 
-        :param inner_kernel_size: kernel size used for points in the center,
-                                  that have a distance from the point of
-                                  interest less than break_radius
-        :param x: X location of the point at which to calculate the density
-        :param y: Y location of the point at which to calculate the density.
-                  Only a valid option when doing in 2D or 3D.
-        :param z: Z location of the point at which to calculate the density.
-                  Only a valid option when doing in 3D.
+        :param loc: tuple containing the location of the point. It should have
+                    one item for each dimension (x, y, z).
+        :param inner_kernel: kernel size used for points in the center,
+                             that have a distance from the point of
+                             interest less than break_radius
         :param break_radius: Radius at which to switch to the other kernel.
                              This value has the same units as x, y, and z.
         :param outer_kernel: Kernel size to be used in the outer regions,
@@ -193,33 +190,22 @@ class KDE(object):
         :return: KDE density at the point of interest, which is the sum of the
                  Gaussian density at this point from all points.
         """
-        # first check if the location passed in matches the dimensions we have
-        if self.dimension == 3 and (x is None or y is None or z is None):
-            raise ValueError("In 3D, we need x, y, and z coordinates.")
-
-        if self.dimension == 2 and (x is None or y is None):
-            raise ValueError("In 2D, we need x and y coordinates.")
-        if self.dimension == 2 and z is not None:
-            raise ValueError("In 2D, we can't use a z coordinate.")
-
-        if self.dimension == 1 and x is None:
-            raise ValueError("In 1D we need an x coordinate")
-        if self.dimension == 1 and (y is not None or z is not None):
-            raise ValueError("In 1D we cannot use y or z coordinates.")
+        # first check if loc is iterable
+        utils.test_iterable(loc, "loc")
+        # then that the location passed in matches the dimensions we have
+        if len(loc) != self.dimension:
+            raise ValueError("The size of loc needs to match the dimension "
+                             "being used. ")
 
         # check the the user specified the outer kernel correctly
         if break_radius < 10**99 and outer_kernel < 0:
             raise ValueError("Have to specify an outer kernel size if using "
                              "break radius")
-        if inner_kernel == -1:
-            raise ValueError("Even though inner_kernel has a default argument, "
-                             "that isn't really the case. Please pass in "
-                             "something for this. ")
 
         # then check that the locations are a single value, not iterables. This
         # will be a little weird, since checking for iterability will require
         # checking for an error that only happens if it's not iterable
-        for value in [x, y, z]:
+        for value in loc:
             try:
                 iter(value)
             except TypeError:  # not iterable
@@ -230,11 +216,14 @@ class KDE(object):
         # get the distances from the location the user passed in to the
         # location of all the points
         if self.dimension == 1:
-            distances = utils.distance(self.x, x)
+            distances = utils.distance(self.x, loc[0])
         elif self.dimension == 2:
-            distances = utils.distance(self.x, x, self.y, y)
+            distances = utils.distance(self.x, loc[0],
+                                       self.y, loc[1])
         elif self.dimension == 3:
-            distances = utils.distance(self.x, x, self.y, y, self.z, z)
+            distances = utils.distance(self.x, loc[0],
+                                       self.y, loc[1],
+                                       self.z, loc[2])
 
         # then get the kernels
         kernel_sizes = self._get_kernel_sizes(inner_kernel, break_radius,
@@ -315,7 +304,7 @@ class KDE(object):
             # we have to do this iteratively at each location, since the 
             # calculation at each location is vectorized over each data point
             # in the KDE class
-            densities = [self.density(*loc, inner_kernel=this_kernel_size)
+            densities = [self.density(loc, inner_kernel=this_kernel_size)
                          for loc in locations]
             densities = np.array(densities)
 
@@ -410,22 +399,22 @@ class KDE(object):
                 # necessary to make sure the profile actually integrates to the
                 # correct value
                 if loc[0] < big_kernel * 10:  # loc is 1D
-                    dens_pos = self.density(*loc, inner_kernel=kernel,
+                    dens_pos = self.density(loc, inner_kernel=kernel,
                                             break_radius=break_radius,
                                             outer_kernel=outer_kernel)
-                    neg_loc = -1 * loc[0]
+                    neg_loc = [-1 * loc[0]]
                     dens_neg = self.density(neg_loc, inner_kernel=kernel,
                                             break_radius=break_radius,
                                             outer_kernel=outer_kernel)
                     density_profile.append(dens_neg + dens_pos)
                 else:
-                    dens = self.density(*loc, inner_kernel=kernel,
+                    dens = self.density(loc, inner_kernel=kernel,
                                         break_radius=break_radius,
                                         outer_kernel=outer_kernel)
                     density_profile.append(dens)
 
         else:  # 2D or 3D
-            density_profile = np.array([self.density(*loc, inner_kernel=kernel,
+            density_profile = np.array([self.density(loc, inner_kernel=kernel,
                                                      break_radius=break_radius,
                                                      outer_kernel=outer_kernel)
                                         for loc in locations])
