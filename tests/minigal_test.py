@@ -143,6 +143,14 @@ def test_binned_densities(new_gal):
     densities = read_in_gal.binned_densities
     assert np.allclose(densities, new_gal.binned_densities)
 
+def test_integrated_kde_radii(new_gal):
+    radii = read_in_gal.integrated_kde_radii
+    assert np.allclose(radii, new_gal.integrated_kde_radii)
+
+def test_integrated_kde_densities_densities(new_gal):
+    densities = read_in_gal.integrated_kde_densities
+    assert np.allclose(densities, new_gal.integrated_kde_densities)
+
 def test_fit_components_disk_mass(new_gal):
     M_d = read_in_gal.nsc.M_d_parametric
     assert np.isclose(M_d, new_gal.component_fit_disk_mass)

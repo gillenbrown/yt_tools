@@ -210,6 +210,10 @@ def read_gal(ds, file_obj):
                                    units=False, multiple=True)
     gal.binned_densities = _parse_line(file_obj.readline(),
                                        units=False, multiple=True)
+    gal.integrated_kde_radii = _parse_line(file_obj.readline(),
+                                           units=False, multiple=True)
+    gal.integrated_kde_densities = _parse_line(file_obj.readline(),
+                                               units=False, multiple=True)
 
     # then we get to the KDE values.
     while True:
@@ -310,10 +314,8 @@ class Galaxy(object):
         self.kde_densities_smoothed = dict()  # used for radial profiles
         self.binned_radii = None  # used for radial profiles
         self.binned_densities = None  # used for radial profiles
-        self.integrated_kde_radii_quad = None  # used for radial profiles
-        self.integrated_kde_densities_quad = None  # used for radial profiles
-        self.integrated_kde_radii_simps = None  # used for radial profiles
-        self.integrated_kde_densities_simps = None  # used for radial profiles
+        self.integrated_kde_radii = None  # used for radial profiles
+        self.integrated_kde_densities = None  # used for radial profiles
         self.surface_1D_radii = None  # used for radial profiles
         self.surface_1D_densities = None  # used for radial profiles
         self.disk_kde = None  # used for cylindrical plots
@@ -725,13 +727,17 @@ class Galaxy(object):
         if "mass_kde_2D" not in self.kde_radii_smoothed:
             self.kde_profile("MASS", dimension=2,
                              outer_radius=50 * yt.units.pc)
+        if self.integrated_kde_densities is None
+            self.integrated_kde_profile(min_radius=0*yt.units.pc,
+                                        max_radius=50*yt.units.pc,
+                                        num_bins=50)
         if self.binned_densities is None:
             self.histogram_profile(50*yt.units.pc, 1000*yt.units.pc,
-                                   num_bins=100)
+                                   num_bins=150)
         # then concatenate the bins together
-        fit_radii = np.concatenate([self.kde_radii_smoothed["mass_kde_2D"],
+        fit_radii = np.concatenate([self.integrated_kde_radii,
                                     self.binned_radii])
-        fit_densities = np.concatenate([self.kde_densities_smoothed["mass_kde_2D"],
+        fit_densities = np.concatenate([self.integrated_kde_densities,
                                         self.binned_densities])
         self.nsc = nsc_structure.NscStructure(fit_radii, fit_densities)
 
@@ -880,6 +886,15 @@ class Galaxy(object):
 
     def histogram_profile(self, min_radius=50*yt.units.pc,
                           max_radius=1000*yt.units.pc, num_bins=100):
+        # error checking
+        if self.disk_whole is None:
+            raise RuntimeError("Need to add disk before doing histogram "
+                               "profile.")
+        if num_bins <= 0:
+            raise ValueError("number of bins has to be positive.")
+        utils.test_for_units(min_radius, "min_radius")
+        utils.test_for_units(max_radius, "max_radius")
+
         start_time = time.time()
         # first get the values. We bin in radius, and weight by mass.
         container = self.disk_whole  # contains the whole galaxy.
@@ -906,6 +921,83 @@ class Galaxy(object):
 
         end_time = time.time()
         print("{} seconds for binning profile".format(end_time - start_time))
+
+    def integrated_kde_profile(self, min_radius, max_radius, num_bins):
+        """
+        Create a radial profile by integrating the 2D KDE density.
+
+        This will use the function in utils that calculates the surface mass
+        density in an annulus. This will do Monte Carlo integration within that
+        annulus to get the mass, then divide by the area to get surface
+        density.
+
+        :param min_radius: Minimum radius at which start the profile.
+        :param max_radius: Maximum radius at which the profile ends.
+        :param num_bins: Number of bins, which will be spaced equally in log
+                         space between min and max.
+        :return: None, but sets th
+        """
+        # error checking
+        if self.disk_kde is None:
+            raise RuntimeError("Need to add disk before doing histogram "
+                               "profile.")
+        if num_bins <= 0:
+            raise ValueError("number of bins has to be positive.")
+        utils.test_for_units(min_radius, "min_radius")
+        utils.test_for_units(max_radius, "max_radius")
+
+        start_time = time.time()
+        # create the bins. We have a special case if we start at the center
+        max_log_r = np.log10(max_radius.to("pc").value)
+        if np.isclose(min_radius.to("pc").value, 0):
+            # the central bin will be from 0 to 1 parsecs. Then we will be
+            # evenly spaced in log outside of this.
+            central_bin_edges = [0]
+            # we have num_bins -1 bins in the outer region, so there are
+            # num_bins edges for those bins.
+            main_edges = np.logspace(0, max_log_r, num_bins)
+            bin_edges = np.concatenate([central_bin_edges, main_edges])
+        else:
+            min_log_r = np.log10(min_radius.to("pc").value)
+            bin_edges = np.logspace(min_log_r, max_log_r, num_bins + 1)
+
+        # the smoothing kernel we will use in the KDE process is half the size
+        # of the smallest cell in the sphere when we are inside 12pc, but
+        # twice this when outside of that distance.
+        inner_kernel = float(self.kernel_size.in_units("pc").value)
+        outer_kernel = inner_kernel * 2
+        break_radius = inner_kernel * 4
+
+        # then do the actual profile creation.
+        self.integrated_kde_densities = []
+        # iterate through the bin edges, which will be used for the inner and
+        # outer radii of integration
+        # create the KDE objects if needed
+        if self._star_kde_mass_2d is None:
+            self._star_kde_mass_2d = self._create_kde_object(2, "mass")
+        density_integrand = self._star_kde_mass_2d.density
+        for lower_idx in range(len(bin_edges) - 1):
+            lower_radius = bin_edges[lower_idx]
+            upper_radius = bin_edges[lower_idx + 1]
+
+            kwargs = {"inner_kernel": inner_kernel,
+                      "break_radius": break_radius,
+                      "outer_kernel": outer_kernel}
+            dens = utils.surface_density_annulus(density_func=density_integrand,
+                                                 radius_a=lower_radius,
+                                                 radius_b=upper_radius,
+                                                 error_tolerance=0.01,
+                                                 density_func_kwargs=kwargs)
+            self.integrated_kde_densities.append(dens)
+
+        # then turn the bin edges to bin_centers.
+        centers = [np.mean([bin_edges[idx], bin_edges[idx + 1]])
+                   for idx in range(len(bin_edges) - 1)]
+
+        self.integrated_kde_radii = centers
+
+        end_time = time.time()
+        print("{} seconds for integrated profile".format(end_time - start_time))
 
     def write(self, file_obj):
         """Writes the galaxy object to a file, to be read in later.
@@ -970,6 +1062,10 @@ class Galaxy(object):
                            "binned_radii", multiple=True)
         _write_single_item(file_obj, self.binned_densities,
                            "binned_densities", multiple=True)
+        _write_single_item(file_obj, self.integrated_kde_radii,
+                           "binned_radii", multiple=True)
+        _write_single_item(file_obj, self.integrated_kde_radii,
+                           "binned_densities", multiple=True)
 
         # then all we need are the KDE values. Only write the smoothed ones,
         # since those are what we really use anyway.
@@ -984,7 +1080,6 @@ class Galaxy(object):
             _write_single_item(file_obj, self.kde_densities_smoothed[key],
                                "smoothed_densities_{}".format(key),
                                multiple=True)
-
 
         file_obj.write("end_of_galaxy\n")  # tag so later read-in is easier
 
@@ -1019,6 +1114,10 @@ class Galaxy(object):
                            "binned_radii", multiple=True)
         _write_single_item(file_obj, self.binned_densities,
                            "binned_densities", multiple=True)
+        _write_single_item(file_obj, self.integrated_kde_radii,
+                           "integrated_kde_radii", multiple=True)
+        _write_single_item(file_obj, self.integrated_kde_densities,
+                           "integrated_kde_densities", multiple=True)
 
         # fit components
         _write_single_item(file_obj, self.nsc.M_d_parametric,

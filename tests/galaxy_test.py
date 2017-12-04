@@ -74,7 +74,7 @@ def read_in_gal():
 
 # -----------------------------------------------------------------------------
 
-# test the KDE process
+# test the profiles process
 
 # -----------------------------------------------------------------------------
 
@@ -163,6 +163,73 @@ def test_kde_profile_everything(gal):
            gal.kde_densities_smoothed["mass_kde_2D"][9]
     # metallicity should be between zero and one
     assert 0 < gal.kde_densities_smoothed["z_kde_2D"][0] < 1
+
+def test_histogram_profile_everything(gal):
+    """This is in one mega test because the histogram process takes a while,
+    and I don't want to have to wait. This makes running tests easier, even
+    though I know it's bad practice. """
+    # first check whether a disk has been added
+    with pytest.raises(RuntimeError):
+        gal.histogram_profile(min_radius=0*pc)
+    gal.add_disk(j_radius=30*pc, disk_radius=30*pc, disk_height=30*pc)
+    gal.histogram_profile(min_radius=0*pc)  # no error
+
+    # then check units.
+    with pytest.raises(TypeError):
+        gal.histogram_profile(min_radius=10)
+    with pytest.raises(TypeError):
+        gal.histogram_profile(max_radius=10)
+
+    # bins has to be positive
+    with pytest.raises(ValueError):
+        gal.histogram_profile(num_bins=0)
+    with pytest.raises(ValueError):
+        gal.histogram_profile(num_bins=-10)
+    num_bins = 10
+    # then do one that will work, with no error.
+    gal.histogram_profile(min_radius=0*pc, max_radius=50*pc, num_bins=num_bins)
+
+    # then check that the results have the right number of points
+    assert len(gal.binned_radii) == num_bins
+    assert len(gal.binned_densities) == num_bins
+
+def test_integrated_kde_profile_everything(gal):
+    """This is in one mega test because the profile process takes a while,
+    and I don't want to have to wait. This makes running tests easier, even
+    though I know it's bad practice. """
+    # first check whether a disk has been added
+    with pytest.raises(RuntimeError):
+        gal.integrated_kde_profile(min_radius=0*pc, max_radius=100*pc,
+                                   num_bins=100)
+    gal.add_disk(j_radius=30*pc, disk_radius=30*pc, disk_height=30*pc)
+
+    # then check units.
+    with pytest.raises(TypeError):
+        gal.integrated_kde_profile(min_radius=10, max_radius=100*pc,
+                                   num_bins=100)
+    with pytest.raises(TypeError):
+        gal.integrated_kde_profile(max_radius=10, min_radius=100*pc,
+                                   num_bins=100)
+
+    # bins has to be positive
+    with pytest.raises(ValueError):
+        gal.integrated_kde_profile(min_radius=0*pc, max_radius=100*pc,
+                                   num_bins=0)
+    with pytest.raises(ValueError):
+        gal.integrated_kde_profile(min_radius=0*pc, max_radius=100*pc,
+                                   num_bins=-10)
+    num_bins = 10
+    # then do one that will work, with no error.
+    gal.integrated_kde_profile(min_radius=0*pc, max_radius=10*pc,
+                               num_bins=num_bins)
+
+    # then check that the results have the right number of points
+    assert len(gal.integrated_kde_radii) == num_bins
+    assert len(gal.integrated_kde_densities) == num_bins
+
+    # check that the central bin did work correctly
+    assert np.isclose(gal.integrated_kde_radii[0], 0.5)
+    assert gal.integrated_kde_radii[1] > 1.0
 
 # -----------------------------------------------------------------------------
 

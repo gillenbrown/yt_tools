@@ -169,8 +169,8 @@ class KDE(object):
         self._kernels = np.array(kernel_sizes)
         return self._kernels
 
-    def density(self, inner_kernel_size, x, y=None, z=None,
-                break_radius=10**99, outer_kernel=-1):
+    def density(self, x, y=None, z=None, inner_kernel=-1, break_radius=10**99,
+                outer_kernel=-1):
         """
         Calculates the KDE density at a given location.
 
@@ -211,6 +211,10 @@ class KDE(object):
         if break_radius < 10**99 and outer_kernel < 0:
             raise ValueError("Have to specify an outer kernel size if using "
                              "break radius")
+        if inner_kernel == -1:
+            raise ValueError("Even though inner_kernel has a default argument, "
+                             "that isn't really the case. Please pass in "
+                             "something for this. ")
 
         # then check that the locations are a single value, not iterables. This
         # will be a little weird, since checking for iterability will require
@@ -233,7 +237,7 @@ class KDE(object):
             distances = utils.distance(self.x, x, self.y, y, self.z, z)
 
         # then get the kernels
-        kernel_sizes = self._get_kernel_sizes(inner_kernel_size, break_radius,
+        kernel_sizes = self._get_kernel_sizes(inner_kernel, break_radius,
                                               outer_kernel)
 
         # then we can calculate the Gaussian density at these distances
@@ -311,7 +315,7 @@ class KDE(object):
             # we have to do this iteratively at each location, since the 
             # calculation at each location is vectorized over each data point
             # in the KDE class
-            densities = [self.density(this_kernel_size, *loc)
+            densities = [self.density(*loc, inner_kernel=this_kernel_size)
                          for loc in locations]
             densities = np.array(densities)
 
@@ -406,22 +410,22 @@ class KDE(object):
                 # necessary to make sure the profile actually integrates to the
                 # correct value
                 if loc[0] < big_kernel * 10:  # loc is 1D
-                    dens_pos = self.density(kernel, *loc,
+                    dens_pos = self.density(*loc, inner_kernel=kernel,
                                             break_radius=break_radius,
                                             outer_kernel=outer_kernel)
                     neg_loc = -1 * loc[0]
-                    dens_neg = self.density(kernel, neg_loc,
+                    dens_neg = self.density(neg_loc, inner_kernel=kernel,
                                             break_radius=break_radius,
                                             outer_kernel=outer_kernel)
                     density_profile.append(dens_neg + dens_pos)
                 else:
-                    dens = self.density(kernel, *loc,
+                    dens = self.density(*loc, inner_kernel=kernel,
                                         break_radius=break_radius,
                                         outer_kernel=outer_kernel)
                     density_profile.append(dens)
 
         else:  # 2D or 3D
-            density_profile = np.array([self.density(kernel, *loc,
+            density_profile = np.array([self.density(*loc, inner_kernel=kernel,
                                                      break_radius=break_radius,
                                                      outer_kernel=outer_kernel)
                                         for loc in locations])

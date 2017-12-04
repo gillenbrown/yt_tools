@@ -528,5 +528,6 @@ def surface_density_annulus(density_func, radius_a, radius_b, error_tolerance,
         fractional_error = error_term / mean_values
         # then double the amount of values for the next iteration, if needed
         number = n
+    print(n)
     return mean_values
 
