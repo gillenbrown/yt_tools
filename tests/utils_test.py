@@ -635,6 +635,26 @@ def test_annulus_area_symmetry():
     backwards = utils.annulus_area(radius_b, radius_a)
     assert np.isclose(forwards, backwards)
 
+# -----------------------------------------------------------------------------
+
+# test annulus random points
+
+# -----------------------------------------------------------------------------
+
+def test_annulus_random_distribution_error_checking_positive_radii():
+    with pytest.raises(ValueError):
+        utils.generate_random_xy_annulus(-1, 1, 100)
+    with pytest.raises(ValueError):
+        utils.generate_random_xy_annulus(1, -1, 100)
+    with pytest.raises(ValueError):
+        utils.generate_random_xy_annulus(-1, -2, 100)
+    utils.generate_random_xy_annulus(1, 2, 100)  # no error
+
+def test_annulus_random_distibution_postive_number():
+    with pytest.raises(ValueError):
+        utils.generate_random_xy_annulus(1, 2, -100)
+    utils.generate_random_xy_annulus(1, 2, 100)  # no error
+
 def test_annulus_random_distribution_radii():
     inner_radius = np.random.uniform(1, 5, 1)
     outer_radius = np.random.uniform(5, 8, 1)
@@ -653,4 +673,77 @@ def test_annulus_random_distribution_lengths():
 
 # then checked the evenness by eye.
 
+# -----------------------------------------------------------------------------
 
+# test annulus integration
+
+# -----------------------------------------------------------------------------
+def test_surface_density_error_checking_no_function():
+    with pytest.raises(TypeError):
+        utils.surface_density_annulus(1, 1, 2, 0.1)
+
+def test_surface_density_positive_error():
+    with pytest.raises(ValueError):
+        utils.surface_density_annulus(lambda x, y:1, 1, 2, -1)
+
+def test_surface_density_positive_radii():
+    # should be takes care of by annulus point generation
+    with pytest.raises(ValueError):
+        utils.surface_density_annulus(lambda x, y:1, -1, 2, 1)
+    with pytest.raises(ValueError):
+        utils.surface_density_annulus(lambda x, y:1, -1, -2, 1)
+    with pytest.raises(ValueError):
+        utils.surface_density_annulus(lambda x, y:1, 1, -2, 1)
+    utils.surface_density_annulus(lambda x, y:1, 1, 2, 1) # no error
+
+@pytest.mark.parametrize("r_a,r_b,result", [
+    (0, 1, 1),
+    (1, 10, 1)
+])
+def test_surface_density_annulus_constant_density(r_a, r_b, result):
+    def flat(x, y):
+        return 1
+    tolerance = 0.01
+    integral = utils.surface_density_annulus(flat, r_a, r_b,
+                                             error_tolerance=tolerance)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+
+@pytest.mark.parametrize("r_a,r_b,result", [
+    (0, 1, 2.0/3.0),
+    (3, 8, 5.87878787)
+])
+def test_surface_density_annulus_r(r_a, r_b, result):
+    def radius(x, y):
+        return np.sqrt(x**2 + y**2)
+
+    tolerance = 0.01
+    integral = utils.surface_density_annulus(radius, r_a, r_b,
+                                             error_tolerance=tolerance)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+
+@pytest.mark.parametrize("r_a,r_b,result", [
+    (0, 1, 0.5),
+    (3, 8, 36.5)
+])
+def test_surface_density_annulus_r_squared(r_a, r_b, result):
+    def radius_squared(x, y):
+        return x ** 2 + y ** 2
+
+    tolerance = 0.01
+    integral = utils.surface_density_annulus(radius_squared, r_a, r_b,
+                                             error_tolerance=tolerance)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+
+@pytest.mark.parametrize("r_a,r_b,dens", [
+    (0, 1, 3.14234872),
+    (1, 10, 8.64738)
+])
+def test_surface_density_annulus_constant_density_args(r_a, r_b, dens):
+    # make sure this works with an argument.
+    def flat(x, y, k):
+        return k
+    tolerance = 0.01
+    integral = utils.surface_density_annulus(flat, r_a, r_b,
+                                             error_tolerance=tolerance,
+                                             density_func_kwargs={"k": dens})
+    assert np.isclose(integral, dens, rtol=2*tolerance, atol=0)

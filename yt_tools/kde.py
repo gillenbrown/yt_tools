@@ -430,7 +430,7 @@ class KDE(object):
         return repeated_radii, density_profile
 
     def radial_profile_wrapper(self, radii, kernel, num_each=1,
-                               break_radius=10*99, outer_kernel=None):
+                               break_radius=10*99, outer_kernel=-1):
         """Only used so we can integrate the radial profile."""
         radii, densities = self.radial_profile(radii=radii, kernel=kernel,
                                                num_each=num_each,

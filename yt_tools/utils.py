@@ -142,6 +142,13 @@ def generate_random_xy_annulus(inner_radius, outer_radius, number):
     :return: two lists containing x, y values of points inside this annulus,
              distubuted uniformly.
     """
+    # radii must be positive
+    if inner_radius < 0 or outer_radius < 0:
+        raise ValueError("Radii must be non-negative.")
+    # so must number
+    if number <= 0:
+        raise ValueError("Number must be positive.")
+
     r = np.random.uniform(inner_radius**2, outer_radius**2, number)
     theta = np.random.uniform(0, 2 * np.pi, number)
 
@@ -465,3 +472,61 @@ def annulus_area(radius_a, radius_b):
     if min([radius_a, radius_b]) < 0:
         raise ValueError("Both radii in annulus_area have to be positive.")
     return abs(np.pi * (radius_a**2 - radius_b**2))
+
+def surface_density_annulus(density_func, radius_a, radius_b, error_tolerance,
+                            density_func_kwargs=None):
+    """
+    Uses Monte Carlo integration to find the surface density within an annulus.
+
+    Conceptually, this integrates over the density to get the mass within an
+    annulus, then divides by the area to get the surface density. This uses
+    Monte Carlo integration to do that, though, so all we really do it sample
+    evenly within the annulus, then average the points together.
+
+    :param density_func: Function that encodes the surface density at each
+                         points. This must take x and y as the first two
+                         parameters, then can take other keyword arguments.
+    :param radius_a: Inner radius of integration.
+    :type radius_a: float
+    :param radius_b: Outer radius of integration.
+    :type radius_b: float
+    :param error_tolerance: Maximum fractional error to allow on the result.
+                            The error will be approximated in a Gaussian fashion
+    :param density_func_kwargs: keyword arguments that will be passed on to
+                                `density_func`.
+    :type density_func_kwargs: dict
+    :return: Surface density within an annulus.
+    :rtype: float
+    """
+    if error_tolerance <= 0:
+        raise ValueError("Error tolerance must be positive.")
+    # If there are no kwargs, make them an empty dictionary. I did the None
+    # value as the default because I did not want a mutable default parameter.
+    if density_func_kwargs is None:
+        density_func_kwargs = dict()
+
+    # define some initial quantities
+    number = 100  # number of samples for the next iteration
+    fractional_error = 10**99
+    values = np.array([])
+    # We add points to our sample while our fractional error is larger than
+    # the desired error.
+    while error_tolerance < fractional_error:
+        # create random ponts within the annulus.
+        xs, ys = generate_random_xy_annulus(radius_a, radius_b, number)
+        # get the density at all these points
+        new_values = np.array([density_func(x, y, **density_func_kwargs)
+                               for x, y in zip(xs, ys)])
+        # add to existing points from previous iterations.
+        values = np.concatenate([values, new_values])
+
+        # calculate the mean and error
+        n = len(values)
+        mean_values = np.sum(values) / n
+        mean_values_squared = np.sum(values**2) / n
+        error_term = np.sqrt((mean_values_squared - mean_values**2) / n)
+        fractional_error = error_term / mean_values
+        # then double the amount of values for the next iteration, if needed
+        number = n
+    return mean_values
+
