@@ -727,13 +727,18 @@ class Galaxy(object):
         if "mass_kde_2D" not in self.kde_radii_smoothed:
             self.kde_profile("MASS", dimension=2,
                              outer_radius=50 * yt.units.pc)
+        # create the bins. We want them evenly space in log space from 1pc to
+        # 1000 pc. There will be one central bin from zero to one parsec, but
+        # this won't work for the logspace, so we put it in by hand
+        bins = np.concatenate([[0],
+                               np.logspace(0, 3, 200)])
+        # then we parse those into bins to be used in in the inner and outer
+        inner_bins = bins[np.where(bins <= 100)]
+        outer_bins = bins[np.where(bins >= 10)]
         if self.integrated_kde_densities is None:
-            self.integrated_kde_profile(min_radius=0*yt.units.pc,
-                                        max_radius=50*yt.units.pc,
-                                        num_bins=50)
+            self.integrated_kde_profile(inner_bins)
         if self.binned_densities is None:
-            self.histogram_profile(50*yt.units.pc, 1000*yt.units.pc,
-                                   num_bins=150)
+            self.histogram_profile(outer_bins)
         # then concatenate the bins together
         fit_radii = np.concatenate([self.integrated_kde_radii,
                                     self.binned_radii])
