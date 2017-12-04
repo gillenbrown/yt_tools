@@ -211,12 +211,6 @@ def read_gal(ds, file_obj):
     gal.binned_densities = _parse_line(file_obj.readline(),
                                        units=False, multiple=True)
 
-    # then the surface densities
-    gal.surface_1D_radii = _parse_line(file_obj.readline(),
-                                       units=False, multiple=True)
-    gal.surface_1D_densities = _parse_line(file_obj.readline(),
-                                           units=False, multiple=True)
-
     # then we get to the KDE values.
     while True:
         line = file_obj.readline()
@@ -243,7 +237,6 @@ def read_gal(ds, file_obj):
         gal.find_nsc_radius()
         gal.create_axis_ratios()
         gal.create_abundances()
-        gal.nsc_rotation()
     except AttributeError:  # will happen if no NSC
         pass
 
@@ -342,7 +335,7 @@ class Galaxy(object):
         # of everything that comes after that.
         if (j_radius is not None) or (disk_height is not None) or \
                 (disk_radius is not None):
-            self.add_disk(j_radius, disk_radius, disk_height)
+            self.add_disk(j_radius, disk_radius, disk_height, disk_type="kde")
             self.find_nsc_radius()
             self.create_axis_ratios()
             self.nsc_rotation()
@@ -627,16 +620,19 @@ class Galaxy(object):
         # it is in Cartesian coords, but in 2D we use 0, since the transform to
         # xy from cylindrical already subtracts off the center
         if dimension == 1:
-            center = [0]
-            # create the KDE objects if needed
-            if self._star_kde_mass_1d is None:
-                self._star_kde_mass_1d = self._create_kde_object(1, "mass")
-            mass_kde = self._star_kde_mass_1d
-            # only assign metals if needed
-            if quantity == "Z":
-                if self._star_kde_metals_1d is None:
-                    self._star_kde_metals_1d = self._create_kde_object(1, "Z")
-                metals_kde = self._star_kde_metals_1d
+            # We'll say the 1D KDE isn't supported, although it really is. It
+            # just isn't useful, so we won't include it.
+            raise ValueError("1D KDE profile not supported now.")
+            # center = [0]
+            # # create the KDE objects if needed
+            # if self._star_kde_mass_1d is None:
+            #     self._star_kde_mass_1d = self._create_kde_object(1, "mass")
+            # mass_kde = self._star_kde_mass_1d
+            # # only assign metals if needed
+            # if quantity == "Z":
+            #     if self._star_kde_metals_1d is None:
+            #         self._star_kde_metals_1d = self._create_kde_object(1, "Z")
+            #     metals_kde = self._star_kde_metals_1d
         elif dimension == 2:
             center = [0, 0]
             # create the KDE objects if needed
@@ -654,14 +650,7 @@ class Galaxy(object):
         # then create the radii
         # we will do linear spacing within 100 pc, then log spacing outside
         # of that.
-        if dimension == 1:
-            inner_radii = np.arange(0, 100, 0.1)
-            outer_radii = np.logspace(2, np.log10(outer_radius), 1000)
-        else:
-            inner_radii = np.arange(0, 100, 1)
-            outer_radii = np.logspace(2, np.log10(outer_radius), 100)
-        radii = np.concatenate([inner_radii, outer_radii])
-
+        radii = np.arange(0, outer_radius, 1)
 
         # the smoothing kernel we will use in the KDE process is half the size
         # of the smallest cell in the sphere when we are inside 12pc, but
@@ -712,17 +701,13 @@ class Galaxy(object):
         key = "{}_kde_{}D".format(quantity.lower(), dimension)
         self.kde_radii[key] = full_radii
         self.kde_densities[key] = final_densities
-        if dimension == 1:
-            self.surface_1D_densities = surface_densities
-            self.surface_1D_radii = full_radii
 
-        if dimension > 1:
-            # store the binned radii too, since I will be using those
-            bin_radii = utils.bin_values(full_radii, num_azimuthal)
-            bin_density = utils.bin_values(final_densities, num_azimuthal)
+        # store the binned radii too, since I will be using those
+        bin_radii = utils.bin_values(full_radii, num_azimuthal)
+        bin_density = utils.bin_values(final_densities, num_azimuthal)
 
-            self.kde_radii_smoothed[key] = bin_radii
-            self.kde_densities_smoothed[key] = bin_density
+        self.kde_radii_smoothed[key] = bin_radii
+        self.kde_densities_smoothed[key] = bin_density
 
         end_time = time.time()
         print("{} seconds for {}D initial KDE".format(end_time - start_time,
@@ -737,11 +722,11 @@ class Galaxy(object):
         """
 
         # first need to to the KDE fitting procedure, possibly.
-        if "mass_kde_2D" not in self.kde_radii:
+        if "mass_kde_2D" not in self.kde_radii_smoothed:
             self.kde_profile("MASS", dimension=2,
-                             outer_radius=1000 * yt.units.pc)
+                             outer_radius=50 * yt.units.pc)
         if self.binned_densities is None:
-            self.histogram_profile(100*yt.units.pc, 1000*yt.units.pc,
+            self.histogram_profile(50*yt.units.pc, 1000*yt.units.pc,
                                    num_bins=100)
         # then concatenate the bins together
         fit_radii = np.concatenate([self.kde_radii_smoothed["mass_kde_2D"],
@@ -893,7 +878,7 @@ class Galaxy(object):
 
         return utils.sphere_containment(cen_1, cen_2, radius_1, radius_2)
 
-    def histogram_profile(self, min_radius=100*yt.units.pc,
+    def histogram_profile(self, min_radius=50*yt.units.pc,
                           max_radius=1000*yt.units.pc, num_bins=100):
         start_time = time.time()
         # first get the values. We bin in radius, and weight by mass.
@@ -921,76 +906,6 @@ class Galaxy(object):
 
         end_time = time.time()
         print("{} seconds for binning profile".format(end_time - start_time))
-
-    def quad_integrate_kde(self):
-        start_time = time.time()
-        # do the KDE error checking
-        self._kde_profile_error_checking("mass", 1)
-
-        # the KDE objects that we want to use depend on the coordinate system,
-        # as does the center. In 3D we just use the center of the galaxy, since
-        # it is in Cartesian coords, but in 2D we use 0, since the transform to
-        # xy from cylindrical already subtracts off the center
-        # create the KDE objects if needed
-        if self._star_kde_mass_1d is None:
-            self._star_kde_mass_1d = self._create_kde_object(1, "mass")
-        mass_kde = self._star_kde_mass_1d
-
-        # the smoothing kernel we will use in the KDE process is half the size
-        # of the smallest cell in the sphere when we are inside 12pc, but
-        # twice this when outside of that distance.
-        inner_kernel = self.kernel_size.in_units("pc").value
-        outer_kernel = inner_kernel * 2
-        break_radius = inner_kernel * 4
-
-        # then do the setup for the actual profiles
-        self.integrated_kde_radii_quad = []
-        self.integrated_kde_densities_quad = []
-        spacing = 1.0
-        lower_radii = np.arange(0, 99, spacing)
-        higher_radii = lower_radii + spacing
-
-        for lower, higher in zip(lower_radii, higher_radii):
-            args = (inner_kernel, 1, break_radius, outer_kernel)
-            this_mass = integrate.quad(mass_kde.radial_profile_wrapper,
-                                       lower, higher, args=args)[0]
-
-            annnulus_area = utils.annulus_area(lower, higher)
-
-            self.integrated_kde_radii_quad.append(np.mean([lower, higher]))
-            self.integrated_kde_densities_quad.append(this_mass / annnulus_area)
-
-        end_time = time.time()
-        print("{} seconds for quad integral".format(end_time - start_time))
-
-    def simps_integrate_kde(self):
-        start_time = time.time()
-
-        self.integrated_kde_radii_simps = []
-        self.integrated_kde_densities_simps = []
-
-        full_radii = self.kde_radii["mass_kde_1D"]
-        full_dens = self.kde_densities["mass_kde_1D"]
-
-        # these are spaced from 0 to 100 with gap of 0.1
-        low_idx = np.arange(0, 1000, 10)
-        high_idx = low_idx + 11  # have to include the edges
-        for l_idx, h_idx in zip(low_idx, high_idx):
-            this_radii = full_radii[l_idx:h_idx]
-            this_dens = full_dens[l_idx:h_idx]
-
-            avg_radius = np.mean(this_radii)
-            this_mass = integrate.simps(y=this_dens, x=this_radii)
-
-            annulus_area = utils.annulus_area(this_radii[0],
-                                              this_radii[-1])
-
-            self.integrated_kde_radii_simps.append(avg_radius)
-            self.integrated_kde_densities_simps.append(this_mass / annulus_area)
-
-
-        end_time = time.time()
-        print("{} seconds for simps integral".format(end_time - start_time))
 
     def write(self, file_obj):
         """Writes the galaxy object to a file, to be read in later.
@@ -1056,18 +971,13 @@ class Galaxy(object):
         _write_single_item(file_obj, self.binned_densities,
                            "binned_densities", multiple=True)
 
-        # then the 1D surface densities
-        _write_single_item(file_obj, self.surface_1D_radii,
-                           "surface_density_radii", multiple=True)
-        _write_single_item(file_obj, self.surface_1D_densities,
-                           "surface_density_radii", multiple=True)
-
-        # then all we need are the KDE values
-        for key in self.kde_radii:
-            _write_single_item(file_obj, self.kde_radii[key],
-                               "radii_{}".format(key), multiple=True)
-            _write_single_item(file_obj, self.kde_densities[key],
-                              "density_{}".format(key), multiple=True)
+        # then all we need are the KDE values. Only write the smoothed ones,
+        # since those are what we really use anyway.
+        # for key in self.kde_radii:
+        #     _write_single_item(file_obj, self.kde_radii[key],
+        #                        "radii_{}".format(key), multiple=True)
+        #     _write_single_item(file_obj, self.kde_densities[key],
+        #                       "density_{}".format(key), multiple=True)
         for key in self.kde_radii_smoothed:
             _write_single_item(file_obj, self.kde_radii_smoothed[key],
                                "smoothed_radii_{}".format(key), multiple=True)
@@ -1097,30 +1007,18 @@ class Galaxy(object):
 
         # KDE lists These need to be written first because they are always
         # used in the plotting, regardless of whether or not there is a NSC
-        _write_single_item(file_obj, self.kde_radii["mass_kde_2D"],
-                           "kde_radii_2D", multiple=True)
-        _write_single_item(file_obj, self.kde_densities["mass_kde_2D"],
-                           "kde_densities_2D", multiple=True)
+        # _write_single_item(file_obj, self.kde_radii["mass_kde_2D"],
+        #                    "kde_radii_2D", multiple=True)
+        # _write_single_item(file_obj, self.kde_densities["mass_kde_2D"],
+        #                    "kde_densities_2D", multiple=True)
         _write_single_item(file_obj, self.kde_radii_smoothed["mass_kde_2D"],
                            "kde_radii_2D_smoothed", multiple=True)
         _write_single_item(file_obj, self.kde_densities_smoothed["mass_kde_2D"],
                            "kde_densities_2D_smoothed", multiple=True)
-        _write_single_item(file_obj, self.surface_1D_radii,
-                           "kde_radii_1D", multiple=True)
-        _write_single_item(file_obj, self.surface_1D_densities,
-                           "kde_densities_1D", multiple=True)
         _write_single_item(file_obj, self.binned_radii,
                            "binned_radii", multiple=True)
         _write_single_item(file_obj, self.binned_densities,
                            "binned_densities", multiple=True)
-        _write_single_item(file_obj, self.integrated_kde_radii_quad,
-                           "integrated_radii_quad", multiple=True)
-        _write_single_item(file_obj, self.integrated_kde_densities_quad,
-                           "integrated_densities_quad", multiple=True)
-        _write_single_item(file_obj, self.integrated_kde_radii_simps,
-                           "integrated_radii_simps", multiple=True)
-        _write_single_item(file_obj, self.integrated_kde_densities_simps,
-                           "integrated_densities_simps", multiple=True)
 
         # fit components
         _write_single_item(file_obj, self.nsc.M_d_parametric,

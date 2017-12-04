@@ -16,7 +16,9 @@ file_loc = "../../../google_drive/research/simulation_outputs/" \
            "fiducial_destroy/continuous_a0.2406.art"
 ds = yt.load(file_loc)
 # then find the densest region, just to have a real galaxy somewhere
-best_loc = yt.YTArray(ds.all_data().argmax("density"))
+# best_loc = yt.YTArray(ds.all_data().argmax("density"))
+best_loc = [848.18993318, 249.52074043, 180.26988714] * kpc
+# to speed things up I ran the line that does this and copied the result
 
 def test_gal_id_generator():
     """This has to be run first, since it depends on the initial state of
@@ -59,12 +61,8 @@ def gal():
 
 @pytest.fixture
 def real_gal():  # has larger radius to actually include everythign we need to
-    gal =  galaxy.Galaxy(ds, best_loc, 1000 * pc, j_radius=30 * pc)
-    gal.find_nsc_radius()
-    gal.kde_profile("MASS", dimension=1, outer_radius=100*pc)
-    gal.histogram_profile(100*pc, 1000*pc, 100)
-    gal.quad_integrate_kde()
-    gal.simps_integrate_kde()
+    gal =  galaxy.Galaxy(ds, best_loc, 1000 * pc, j_radius=30 * pc,
+                         disk_radius=60 * pc)
     return gal
 
 @pytest.fixture
@@ -80,79 +78,70 @@ def read_in_gal():
 
 # -----------------------------------------------------------------------------
 
-def test_kde_creation_simple_error_checking(gal):
+def test_kde_creation_everything(gal):
+    """This is in one mega test because the KDE creation process takes a while,
+    and I don't want to have to wait. It is the access operations, which
+    speed up after the first time. """
     with pytest.raises(ValueError):
         gal._create_kde_object(dimension=4)
     with pytest.raises(ValueError):
         gal._create_kde_object(dimension=0)
     with pytest.raises(ValueError):
         gal._create_kde_object(quantity="test", dimension=3)
-    # then test what should work. We need to add a disk to make cylindrical work
-    gal.add_disk()
+
+    # check that a 2D one won't work without adding a disk
+    with pytest.raises(RuntimeError):
+        gal._create_kde_object(dimension=2)
+
+    # then add the disk so everything should work.
+    gal.add_disk(j_radius=30*pc, disk_radius=30*pc, disk_height=30*pc)
+    # nothing below should raise an error, and the assert should work too.
     gal._create_kde_object()
-    gal._create_kde_object(dimension=1)
-    gal._create_kde_object(dimension=2)
-    gal._create_kde_object(dimension=3)
+    # kde objects should have the right dimensions
+    assert gal._create_kde_object(dimension=1).dimension == 1
+    assert gal._create_kde_object(dimension=2).dimension == 2
+    assert gal._create_kde_object(dimension=3).dimension == 3
+    # mass and metallicity should work
     gal._create_kde_object(quantity="mass")
     gal._create_kde_object(quantity="Z")
 
-def test_kde_creation_no_disk_error_checking(gal):
-    with pytest.raises(RuntimeError):
-        gal._create_kde_object(dimension=2)
-    gal.add_disk()
-    gal._create_kde_object(dimension=2)  # will work now
-
-def test_kde_creation_dimensions(gal):
-    assert gal._create_kde_object(dimension=3).dimension == 3
-    gal.add_disk()  # so we can get cartesian
-    assert gal._create_kde_object(dimension=2).dimension == 2
-    assert gal._create_kde_object(dimension=1).dimension == 1
-
-def test_kde_profile_units(gal):
+def test_kde_profile_everything(gal):
+    """This is in one mega test because the KDE creation process takes a while,
+    and I don't want to have to wait. This makes running tests easier, even
+    though I know it's bad practice. """
+    # first check units.
     with pytest.raises(TypeError):
         gal.kde_profile(outer_radius=10, dimension=2)
-    gal.add_disk()
-    gal.kde_profile(outer_radius=10 * pc, dimension=2)  # no error
-
-def test_kde_profile_coords_error_checking(gal):
+    # dimension has to be an integer
     with pytest.raises(ValueError):
         gal.kde_profile(dimension="sdf", outer_radius=10*pc)
     with pytest.raises(RuntimeError):  # no disk
         gal.kde_profile(dimension=2, outer_radius=10*pc)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # 3D won't work
         gal.kde_profile(dimension=3, outer_radius=10*pc)
-    gal.add_disk()
-    gal.kde_profile(dimension=2, outer_radius=10*pc)  # no error now.
-    gal.kde_profile(dimension=1, outer_radius=10*pc)  # no error
-    gal.kde_profile(outer_radius=10*pc)  # no error
 
-def test_kde_profile_quantity_check(gal):
-    # we need spherical on all of this to avoid runtime errors from no disk
-    gal.add_disk()
-    gal.kde_profile(dimension=2, outer_radius=10*pc)
-    gal.kde_profile("MASS", dimension=2, outer_radius=10*pc)
-    gal.kde_profile("Mass", dimension=2, outer_radius=10*pc)
-    gal.kde_profile("mass", dimension=2, outer_radius=10*pc)
-    gal.kde_profile("Z", dimension=2, outer_radius=10*pc)
-    with pytest.raises(ValueError):
-        gal.kde_profile("test", dimension=2, outer_radius=10*pc)
+    # have to add disk to get this in 2D
+    gal.add_disk(j_radius=30*pc, disk_radius=30*pc, disk_height=30*pc)
+    gal.kde_profile(outer_radius=10 * pc, dimension=2)  # no error
+    gal.kde_profile(outer_radius=10 * pc)  # defaults, no error
+    with pytest.raises(ValueError):  # 1D won't work even after adding disk.
+        gal.kde_profile(dimension=1, outer_radius=10*pc)
 
-# def test_kde_profile_results_exist_and_right_length(gal):
-#     """Check whether the results exist where they should and have right size."""
-#     # we need spherical on all of this to avoid runtime errors from no disk.
-#     # gal.kde_profile("MASS", dimension=3, outer_radius=2.0 * pc)
-#     # gal.kde_profile("Z", dimension=3, outer_radius=2.0 * pc)
-#     gal.add_disk()
-#     gal.kde_profile("MASS", dimension=2, outer_radius=2.0 * pc)
-#     gal.kde_profile("Z", dimension=2, outer_radius=2.0 * pc)
-#     # assert len(gal.densities["mass_kde_3D"]) == 2
-#     assert len(gal.densities["mass_kde_2D"]) == 2
-#     # assert len(gal.densities["z_kde_3D"]) == 2
-#     assert len(gal.densities["z_kde_2D"]) == 2
-
-def test_kde_profile_radii_values(gal):
-    gal.add_disk()
+    # then check which keys work.
     gal.kde_profile("MASS", dimension=2, outer_radius=10 * pc)
+    gal.kde_profile("Mass", dimension=2, outer_radius=10 * pc)
+    gal.kde_profile("mass", dimension=2, outer_radius=10 * pc)
+    gal.kde_profile("Z", dimension=2, outer_radius=10 * pc)
+    with pytest.raises(ValueError):
+        gal.kde_profile("test", dimension=2, outer_radius=10 * pc)
+
+    # then check that the results have the right number of points
+    assert len(gal.kde_densities["mass_kde_2D"]) == 10 * 100
+    assert len(gal.kde_densities["z_kde_2D"]) == 10 * 100
+    assert len(gal.kde_densities_smoothed["mass_kde_2D"]) == 10
+    assert len(gal.kde_densities_smoothed["z_kde_2D"]) == 10
+
+    # then check that the binning worked properly
     assert np.allclose(gal.kde_radii["mass_kde_2D"][::100],
                        gal.kde_radii_smoothed["mass_kde_2D"])
     assert np.isclose(gal.kde_radii_smoothed["mass_kde_2D"][0], 0.0)
@@ -162,33 +151,18 @@ def test_kde_profile_radii_values(gal):
     assert len(gal.kde_densities["mass_kde_2D"]) == \
            100 * len(gal.kde_densities_smoothed["mass_kde_2D"])
 
-# def test_kde_profile_results_reasonable(gal):
-#     """Check whether the results have roughtly correct values."""
-#     # we need spherical on all of this to avoid runtime errors from no disk.
-#     gal.kde_profile("MASS", dimension=3,
-#                     spacing=40.0 * pc, outer_radius=50.0 * pc)
-#     gal.kde_profile("Z", dimension=3,
-#                     spacing=40.0 * pc, outer_radius=50.0 * pc)
-#     gal.add_disk()
-#     gal.kde_profile("MASS", dimension=2,
-#                     spacing=40.0 * pc, outer_radius=50.0 * pc)
-#     gal.kde_profile("Z", dimension=2,
-#                     spacing=40.0 * pc, outer_radius=50.0 * pc)
-#     # there should be high density at the center here
-#     assert gal.densities["mass_kde_3D"][0] > 10**3
-#     assert gal.densities["mass_kde_2D"][0] > 10**5
-#     # the cylindrical should be a higher value than the spherical, since it
-#     # only is in 2D, not three
-#     assert gal.densities["mass_kde_2D"][0] > \
-#            gal.densities["mass_kde_3D"][0]
-#     # the stellar density should decrease outwards
-#     assert gal.densities["mass_kde_3D"][0] > \
-#            gal.densities["mass_kde_3D"][1]
-#     assert gal.densities["mass_kde_2D"][0] > \
-#            gal.densities["mass_kde_2D"][1]
-#     # metallicity should be between zero and one
-#     assert 0 < gal.densities["z_kde_3D"][0] < 1
-#     assert 0 < gal.densities["z_kde_2D"][0] < 1
+    # then see if the values are reasonable
+    # there should be high density at the center here
+    assert gal.kde_densities_smoothed["mass_kde_2D"][0] > 10**5
+    # # the cylindrical should be a higher value than the spherical, since it
+    # # only is in 2D, not three
+    # assert gal.densities["mass_kde_2D"][0] > \
+    #        gal.densities["mass_kde_3D"][0]
+    # the stellar density should decrease outwards
+    assert gal.kde_densities_smoothed["mass_kde_2D"][0] > \
+           gal.kde_densities_smoothed["mass_kde_2D"][9]
+    # metallicity should be between zero and one
+    assert 0 < gal.kde_densities_smoothed["z_kde_2D"][0] < 1
 
 # -----------------------------------------------------------------------------
 
@@ -209,23 +183,26 @@ def test_add_disk_units(gal):
 def test_add_disk_result_type(gal):
     """We should have an actual disk when done. """
     assert gal.disk_kde is None
-    gal.add_disk()
+    gal.add_disk(j_radius=30*pc, disk_radius=30*pc, disk_height=30*pc)
     assert isinstance(gal.disk_kde,
                       yt.data_objects.selection_data_containers.YTDisk)
 
     assert gal.disk_nsc is None
-    gal.add_disk(disk_type="nsc")
+    gal.add_disk(j_radius=30*pc, disk_radius=30*pc, disk_height=30*pc,
+                 disk_type="nsc")
     assert isinstance(gal.disk_nsc,
                       yt.data_objects.selection_data_containers.YTDisk)
 
     with pytest.raises(ValueError):
-        gal.add_disk(disk_type="wer")
+        gal.add_disk(j_radius=30*pc, disk_radius=30*pc, disk_height=30*pc,
+                     disk_type="wer")
 
 def test_add_disk_properties(gal):
     """Check that the disk has the properties we want. """
     disk_height = 29.3 * pc
     disk_radius = 22.5 * pc
-    gal.add_disk(disk_radius=disk_radius, disk_height=disk_height)
+    gal.add_disk(disk_radius=disk_radius, disk_height=disk_height,
+                 j_radius=30*pc)
     assert gal.disk_kde.height == disk_height
     assert gal.disk_kde.radius == disk_radius
     # test that it's not in the default orientation
@@ -356,98 +333,101 @@ def test_half_mass_radius_actually_worked(read_in_gal):
 def test_reading_writing(read_in_gal):
     """The only thing we need is that the object needs to be the same after
     we write then read it in. There is a lot of checking here, though."""
+
+    old_gal = read_in_gal  # needed to easily switch from original to read in
     file = open("./real_gal_save.txt", "w")
-    read_in_gal.write(file)
+    old_gal.write(file)
     file.close()
 
     file = open("./real_gal_save.txt", "r")
     new_gal = galaxy.read_gal(ds, file)
 
     # then compare things. First basic stuff:
-    assert read_in_gal.id == new_gal.id
-    assert np.allclose(read_in_gal.center.in_units("pc").value,
+    assert old_gal.id == new_gal.id
+    assert np.allclose(old_gal.center.in_units("pc").value,
                        new_gal.center.in_units("pc").value)
     # ^ the .value is needed to make yt arrays play nice with allclose
-    assert read_in_gal.radius == new_gal.radius
-    assert read_in_gal.ds == new_gal.ds
+    assert old_gal.radius == new_gal.radius
+    assert old_gal.ds == new_gal.ds
 
     # spheres should be the same
-    assert np.allclose(read_in_gal.sphere.center.in_units("pc").value,
+    assert np.allclose(old_gal.sphere.center.in_units("pc").value,
                        new_gal.sphere.center.in_units("pc").value)
-    assert read_in_gal.sphere.radius == new_gal.sphere.radius
+    assert old_gal.sphere.radius == new_gal.sphere.radius
 
     # disk stuff
-    assert read_in_gal.disk_kde.radius == new_gal.disk_kde.radius
-    assert np.allclose(read_in_gal.disk_kde._norm_vec,
+    assert old_gal.disk_kde.radius == new_gal.disk_kde.radius
+    assert np.allclose(old_gal.disk_kde._norm_vec,
                        new_gal.disk_kde._norm_vec)
-    assert read_in_gal.disk_kde.height == new_gal.disk_kde.height
-    assert read_in_gal.disk_nsc.radius == new_gal.disk_nsc.radius
-    assert np.allclose(read_in_gal.disk_nsc._norm_vec,
+    assert old_gal.disk_kde.height == new_gal.disk_kde.height
+    assert old_gal.disk_nsc.radius == new_gal.disk_nsc.radius
+    assert np.allclose(old_gal.disk_nsc._norm_vec,
                        new_gal.disk_nsc._norm_vec)
-    assert read_in_gal.disk_nsc.height == new_gal.disk_nsc.height
+    assert old_gal.disk_nsc.height == new_gal.disk_nsc.height
 
     # NSC indexes should be the same
-    assert np.array_equal(read_in_gal.nsc_idx_sphere, new_gal.nsc_idx_sphere)
-    assert np.array_equal(read_in_gal.nsc_idx_disk_nsc,
+    assert np.array_equal(old_gal.nsc_idx_sphere,
+                          new_gal.nsc_idx_sphere)
+    assert np.array_equal(old_gal.nsc_idx_disk_nsc,
                           new_gal.nsc_idx_disk_nsc)
-    assert np.array_equal(read_in_gal.nsc_idx_disk_kde,
+    assert np.array_equal(old_gal.nsc_idx_disk_kde,
                           new_gal.nsc_idx_disk_kde)
 
     # KDE profiles should be the same too.
-    assert len(read_in_gal.kde_radii) > 0  # should have multiple keys
-    assert len(new_gal.kde_radii) > 0  # should have multiple keys
-    assert "mass_kde_1D" in new_gal.kde_radii
-    assert "mass_kde_1D" in new_gal.kde_densities
-    assert "mass_kde_1D" not in new_gal.kde_radii_smoothed
-    assert "mass_kde_1D" not in new_gal.kde_densities_smoothed
-    for key in read_in_gal.kde_radii:
-        assert len(read_in_gal.kde_radii[key]) > 0
-        assert len(read_in_gal.kde_densities[key]) > 0
+    assert len(new_gal.kde_radii) == 0  # should have multiple keys
+    for key in new_gal.kde_radii:   # shouldn't happen, but I'll keep this
+        assert len(new_gal.kde_radii[key]) > 0
+        assert len(new_gal.kde_densities[key]) > 0
         # by asserting they match below, we also check new gal length
-        assert np.allclose(read_in_gal.kde_radii[key],
+        assert np.allclose(old_gal.kde_radii[key],
                            new_gal.kde_radii[key])
-        assert np.allclose(read_in_gal.kde_densities[key],
+        assert np.allclose(old_gal.kde_densities[key],
                            new_gal.kde_densities[key])
     # then do the same for the smoothed values.
-    for key in read_in_gal.kde_radii_smoothed:
-        assert len(read_in_gal.kde_radii_smoothed[key]) > 0
-        assert len(read_in_gal.kde_densities_smoothed[key]) > 0
-        assert np.allclose(read_in_gal.kde_radii_smoothed[key],
+    for key in new_gal.kde_radii_smoothed:
+        assert len(new_gal.kde_radii_smoothed[key]) > 0
+        assert len(new_gal.kde_densities_smoothed[key]) > 0
+        assert np.allclose(old_gal.kde_radii_smoothed[key],
                            new_gal.kde_radii_smoothed[key])
-        assert np.allclose(read_in_gal.kde_densities_smoothed[key],
+        assert np.allclose(old_gal.kde_densities_smoothed[key],
                            new_gal.kde_densities_smoothed[key])
 
     # and the binned radii
-    assert np.allclose(read_in_gal.binned_radii,     new_gal.binned_radii)
-    assert np.allclose(read_in_gal.binned_densities, new_gal.binned_densities)
+    assert np.allclose(old_gal.binned_radii,     new_gal.binned_radii)
+    assert np.allclose(old_gal.binned_densities, new_gal.binned_densities)
 
     # then check some of the derived parameters
-    assert read_in_gal.nsc_axis_ratios.b_over_a == new_gal.nsc_axis_ratios.b_over_a
-    assert read_in_gal.nsc_axis_ratios.c_over_a == new_gal.nsc_axis_ratios.c_over_a
-    assert read_in_gal.nsc_axis_ratios.c_over_b == new_gal.nsc_axis_ratios.c_over_b
-    assert read_in_gal.nsc_radius == new_gal.nsc_radius
-    assert np.array_equal(read_in_gal.nsc_idx_sphere, new_gal.nsc_idx_sphere)
-    assert np.array_equal(read_in_gal.nsc_idx_disk_kde,
+    assert np.isclose(old_gal.nsc_axis_ratios.b_over_a,
+                      new_gal.nsc_axis_ratios.b_over_a)
+    assert np.isclose(old_gal.nsc_axis_ratios.c_over_a,
+                      new_gal.nsc_axis_ratios.c_over_a)
+    assert np.isclose(old_gal.nsc_axis_ratios.c_over_b,
+                      new_gal.nsc_axis_ratios.c_over_b)
+    assert np.isclose(old_gal.nsc_axis_ratios.ellipticity,
+                      new_gal.nsc_axis_ratios.ellipticity)
+    assert old_gal.nsc_radius == new_gal.nsc_radius
+    assert np.array_equal(old_gal.nsc_idx_sphere, new_gal.nsc_idx_sphere)
+    assert np.array_equal(old_gal.nsc_idx_disk_kde,
                           new_gal.nsc_idx_disk_kde)
-    assert np.array_equal(read_in_gal.nsc_idx_disk_nsc,
+    assert np.array_equal(old_gal.nsc_idx_disk_nsc,
                           new_gal.nsc_idx_disk_nsc)
-    assert np.isclose(read_in_gal.mean_rot_vel.in_units("km/s").value,
+    assert np.isclose(old_gal.mean_rot_vel.in_units("km/s").value,
                       new_gal.mean_rot_vel.in_units("km/s").value)
-    assert np.isclose(read_in_gal.nsc_3d_sigma.in_units("km/s").value,
+    assert np.isclose(old_gal.nsc_3d_sigma.in_units("km/s").value,
                       new_gal.nsc_3d_sigma.in_units("km/s").value)
-    assert np.isclose(read_in_gal.nsc_abundances.x_on_fe_total("N"),
+    assert np.isclose(old_gal.nsc_abundances.x_on_fe_total("N"),
                       new_gal.nsc_abundances.x_on_fe_total("N"))
-    assert np.isclose(read_in_gal.nsc_abundances.x_on_h_total("Ca"),
+    assert np.isclose(old_gal.nsc_abundances.x_on_h_total("Ca"),
                       new_gal.nsc_abundances.x_on_h_total("Ca"))
-    assert np.isclose(read_in_gal.nsc_abundances.log_z_over_z_sun_total(),
+    assert np.isclose(old_gal.nsc_abundances.log_z_over_z_sun_total(),
                       new_gal.nsc_abundances.log_z_over_z_sun_total())
-    assert np.isclose(read_in_gal.nsc_abundances.z_on_h_total(),
+    assert np.isclose(old_gal.nsc_abundances.z_on_h_total(),
                       new_gal.nsc_abundances.z_on_h_total())
-    assert np.isclose(read_in_gal.gal_abundances.x_on_fe_total("N"),
+    assert np.isclose(old_gal.gal_abundances.x_on_fe_total("N"),
                       new_gal.gal_abundances.x_on_fe_total("N"))
-    assert np.isclose(read_in_gal.gal_abundances.x_on_h_total("Ca"),
+    assert np.isclose(old_gal.gal_abundances.x_on_h_total("Ca"),
                       new_gal.gal_abundances.x_on_h_total("Ca"))
-    assert np.isclose(read_in_gal.gal_abundances.z_on_h_total(),
+    assert np.isclose(old_gal.gal_abundances.z_on_h_total(),
                       new_gal.gal_abundances.z_on_h_total())
-    assert np.isclose(read_in_gal.gal_abundances.log_z_over_z_sun_total(),
+    assert np.isclose(old_gal.gal_abundances.log_z_over_z_sun_total(),
                       new_gal.gal_abundances.log_z_over_z_sun_total())

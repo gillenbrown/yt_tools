@@ -446,7 +446,7 @@ def max_above_half(values):
              of the total sum of the list.
     :rtype: bool
     """
-    return max(values) > 0.5 * sum(values)
+    return np.max(values) > 0.5 * np.sum(values)
 
 def annulus_area(radius_a, radius_b):
     """Calculates the area of an annulus.
