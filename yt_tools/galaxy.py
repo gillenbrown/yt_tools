@@ -180,8 +180,6 @@ def read_gal(ds, file_obj):
                                  multiple=True, units=False, new_type=int)
     nsc_idx_disk_nsc = _parse_line(file_obj.readline(),
                                  multiple=True, units=False, new_type=int)
-    nsc_idx_disk_kde = _parse_line(file_obj.readline(),
-                                 multiple=True, units=False, new_type=int)
 
     mean_rot_vel = _parse_line(file_obj.readline(), multiple=False, units=True)
     nsc_3d_sigma = _parse_line(file_obj.readline(), multiple=False, units=True)
@@ -201,7 +199,6 @@ def read_gal(ds, file_obj):
     # assign the NSC indices and velocity stuff
     gal.nsc_idx_sphere = nsc_idx_sphere
     gal.nsc_idx_disk_nsc = nsc_idx_disk_nsc
-    gal.nsc_idx_disk_kde = nsc_idx_disk_kde
     gal.mean_rot_vel = mean_rot_vel
     gal.nsc_3d_sigma = nsc_3d_sigma
 
@@ -722,28 +719,26 @@ class Galaxy(object):
 
         :return:
         """
-
-        # first need to to the KDE fitting procedure, possibly.
-        if "mass_kde_2D" not in self.kde_radii_smoothed:
-            self.kde_profile("MASS", dimension=2,
-                             outer_radius=50 * yt.units.pc)
         # create the bins. We want them evenly space in log space from 1pc to
         # 1000 pc. There will be one central bin from zero to one parsec, but
-        # this won't work for the logspace, so we put it in by hand
-        bins = np.concatenate([[0],
-                               np.logspace(0, 3, 200)])
+        # this won't work for the logspace, so we put it in by hand. We have
+        # 201 edges, which makes 200 bins.
+        bins = np.concatenate([[0], np.logspace(0, 3, 200)])
         # then we parse those into bins to be used in in the inner and outer
         inner_bins = bins[np.where(bins <= 100)]
         outer_bins = bins[np.where(bins >= 10)]
+        # then we can create these profiles if needed.
         if self.integrated_kde_densities is None:
             self.integrated_kde_profile(inner_bins)
         if self.binned_densities is None:
             self.histogram_profile(outer_bins)
-        # then concatenate the bins together
+        # then concatenate the profiles together
         fit_radii = np.concatenate([self.integrated_kde_radii,
                                     self.binned_radii])
         fit_densities = np.concatenate([self.integrated_kde_densities,
                                         self.binned_densities])
+
+        # then do the heavy work in the NSC class
         self.nsc = nsc_structure.NscStructure(fit_radii, fit_densities)
 
         if self.nsc.nsc_radius is None:
@@ -890,6 +885,16 @@ class Galaxy(object):
         return utils.sphere_containment(cen_1, cen_2, radius_1, radius_2)
 
     def histogram_profile(self, bin_edges):
+        """
+        Create a radial profile by just binning the star particles.
+
+        This doesn't use any fancy KDE, just does a weighted binning, where
+        each star particle contributes its mass.
+
+        :param bin_edges: List of bin edges to be used. MUST be in parsecs.
+        :return: None, but sets the `binned_densities` and `binned_radii`
+                 object attributes.
+        """
         # error checking
         if self.disk_whole is None:
             raise RuntimeError("Need to add disk before doing histogram "
@@ -903,10 +908,11 @@ class Galaxy(object):
         container = self.disk_whole  # contains the whole galaxy.
         r = container[('STAR', 'particle_position_cylindrical_radius')]
         r = np.array(r.in_units("pc"))
-        masses = np.array(container[('STAR', 'MASS')].in_units("msun"))
+        star_masses = np.array(container[('STAR', 'MASS')].in_units("msun"))
 
         # then do the actual binning.
-        hist, bin_edges = np.histogram(r, bins=bin_edges, weights=masses)
+        bin_masses, bin_edges = np.histogram(r, bins=bin_edges,
+                                             weights=star_masses)
 
         # then get the area of each bin
         areas = [utils.annulus_area(bin_edges[idx], bin_edges[idx + 1])
@@ -916,7 +922,7 @@ class Galaxy(object):
                    for idx in range(len(bin_edges) - 1)]
 
         self.binned_radii = centers
-        self.binned_densities = hist / np.array(areas)  # hist is mass per bin
+        self.binned_densities = bin_masses / np.array(areas)
 
         end_time = time.time()
         print("{} seconds for binning profile".format(end_time - start_time))
@@ -930,11 +936,11 @@ class Galaxy(object):
         annulus to get the mass, then divide by the area to get surface
         density.
 
-        :param min_radius: Minimum radius at which start the profile.
-        :param max_radius: Maximum radius at which the profile ends.
-        :param num_bins: Number of bins, which will be spaced equally in log
-                         space between min and max.
-        :return: None, but sets th
+        :param bin_edges: List of bin edges to be used. We will integrate from
+                          one bin to another when doing the profile. MUST be in
+                          parsecs.
+        :return: None, but sets the `integrated_kde_densities` and
+                 `integrated_kde_radii` object attributes.
         """
         # error checking
         if self.disk_kde is None:
@@ -960,8 +966,10 @@ class Galaxy(object):
         # create the KDE objects if needed
         if self._star_kde_mass_2d is None:
             self._star_kde_mass_2d = self._create_kde_object(2, "mass")
+        # then use it.
         density_integrand = self._star_kde_mass_2d.density
         for lower_idx in range(len(bin_edges) - 1):
+            # get the radii to integrate over
             lower_radius = bin_edges[lower_idx]
             upper_radius = bin_edges[lower_idx + 1]
 
@@ -971,7 +979,7 @@ class Galaxy(object):
             dens = utils.surface_density_annulus(density_func=density_integrand,
                                                  radius_a=lower_radius,
                                                  radius_b=upper_radius,
-                                                 error_tolerance=0.01,
+                                                 error_tolerance=0.1,
                                                  density_func_kwargs=kwargs)
             self.integrated_kde_densities.append(dens)
 
@@ -1025,8 +1033,6 @@ class Galaxy(object):
                                multiple=True)
             _write_single_item(file_obj, self.nsc_idx_disk_nsc,
                                "nsc_idx_disk_nsc", multiple=True)
-            _write_single_item(file_obj, self.nsc_idx_disk_kde,
-                               "nsc_idx_disk_kde", multiple=True)
             # same with the rotational stuff, which requires access to the disk obj
             _write_single_item(file_obj, self.mean_rot_vel, "mean_rot_vel",
                                multiple=False, units=True)
@@ -1048,9 +1054,9 @@ class Galaxy(object):
         _write_single_item(file_obj, self.binned_densities,
                            "binned_densities", multiple=True)
         _write_single_item(file_obj, self.integrated_kde_radii,
-                           "binned_radii", multiple=True)
-        _write_single_item(file_obj, self.integrated_kde_radii,
-                           "binned_densities", multiple=True)
+                           "integrated_kde_radii", multiple=True)
+        _write_single_item(file_obj, self.integrated_kde_densities,
+                           "integrated_kde_densities", multiple=True)
 
         # then all we need are the KDE values. Only write the smoothed ones,
         # since those are what we really use anyway.

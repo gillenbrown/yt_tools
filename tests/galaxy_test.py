@@ -62,7 +62,8 @@ def gal():
 @pytest.fixture
 def real_gal():  # has larger radius to actually include everythign we need to
     gal =  galaxy.Galaxy(ds, best_loc, 1000 * pc, j_radius=30 * pc,
-                         disk_radius=60 * pc)
+                         disk_radius=150 * pc, disk_height=100*pc)
+    gal.kde_profile("mass", dimension=2, outer_radius=50*pc)
     return gal
 
 @pytest.fixture
@@ -212,10 +213,6 @@ def test_integrated_kde_profile_everything(gal):
     assert len(gal.integrated_kde_radii) == bin_num
     assert len(gal.integrated_kde_densities) == bin_num
 
-    # check that the central bin did work correctly
-    assert np.isclose(gal.integrated_kde_radii[0], 0.5)
-    assert gal.integrated_kde_radii[1] > 1.0
-
 # -----------------------------------------------------------------------------
 
 # test the disk operations
@@ -297,10 +294,8 @@ def test_real_nsc_radius_cut(read_in_gal):
     # test that the NSC indices actually pick up the right objects
     radius_key = ('STAR', 'particle_position_spherical_radius')
     for container, idx in zip([read_in_gal.sphere,
-                               read_in_gal.disk_kde,
                                read_in_gal.disk_nsc],
                               [read_in_gal.nsc_idx_sphere,
-                               read_in_gal.nsc_idx_disk_kde,
                                read_in_gal.nsc_idx_disk_nsc]):
         radii = container[radius_key]
         assert np.max(radii[idx]) < read_in_gal.nsc_radius
@@ -382,11 +377,11 @@ def test_half_mass_radius_actually_worked(read_in_gal):
 #
 # -----------------------------------------------------------------------------
 
-def test_reading_writing(real_gal):
+def test_reading_writing(read_in_gal):
     """The only thing we need is that the object needs to be the same after
     we write then read it in. There is a lot of checking here, though."""
 
-    old_gal = real_gal  # needed to easily switch from original to read in
+    old_gal = read_in_gal  # needed to easily switch from original to read in
     file = open("./real_gal_save.txt", "w")
     old_gal.write(file)
     file.close()
@@ -447,6 +442,10 @@ def test_reading_writing(real_gal):
     # and the binned radii
     assert np.allclose(old_gal.binned_radii,     new_gal.binned_radii)
     assert np.allclose(old_gal.binned_densities, new_gal.binned_densities)
+    assert np.allclose(old_gal.integrated_kde_radii,
+                       new_gal.integrated_kde_radii)
+    assert np.allclose(old_gal.integrated_kde_densities,
+                       new_gal.integrated_kde_densities)
 
     # then check some of the derived parameters
     assert np.isclose(old_gal.nsc_axis_ratios.b_over_a,
