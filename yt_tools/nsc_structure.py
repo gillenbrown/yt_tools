@@ -365,17 +365,17 @@ class NscStructure(object):
         self.r_half_non_parametric_err = (2, 3)
         return
 
-        self.r_half_non_parametric = self._half_mass(self.M_c_non_parametric)
-
-        # then perturb
-        r_up = self._half_mass(self.M_c_non_parametric +
-                               self.M_c_non_parametric_err[1])
-        r_down = self._half_mass(self.M_c_non_parametric -
-                                 self.M_c_non_parametric_err[0])
-
-        # then turn that into an error
-        self.r_half_non_parametric_err = (self.r_half_non_parametric - r_down,
-                                          r_up - self.r_half_non_parametric)
+        # self.r_half_non_parametric = self._half_mass(self.M_c_non_parametric)
+        #
+        # # then perturb
+        # r_up = self._half_mass(self.M_c_non_parametric +
+        #                        self.M_c_non_parametric_err[1])
+        # r_down = self._half_mass(self.M_c_non_parametric -
+        #                          self.M_c_non_parametric_err[0])
+        #
+        # # then turn that into an error
+        # self.r_half_non_parametric_err = (self.r_half_non_parametric - r_down,
+        #                                   r_up - self.r_half_non_parametric)
 
 
 class AxisRatios(object):
