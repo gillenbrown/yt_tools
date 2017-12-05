@@ -779,7 +779,7 @@ class Galaxy(object):
         # half mass upper limits
         nsc_star_masses = self.sphere[('STAR', "MASS")][self.nsc_idx_sphere]
         if utils.max_above_half(nsc_star_masses):  # one star particle dominates
-            new_lower_err = self.nsc_mass_and_errs()[0]  # just the mass.
+            new_lower_err = self.nsc.r_half_non_parametric  # just the radius.
             # since the errors are a tuple we have to be more clever about
             # setting the lower limit to be a lower limit.
             new_errors = new_lower_err, self.nsc.r_half_non_parametric_err[1]
