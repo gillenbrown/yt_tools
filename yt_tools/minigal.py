@@ -1,5 +1,8 @@
 import utils
 
+class EndOfGalsException(Exception):
+    pass
+
 def parse_line(line):
     objects = line.split()
     name = objects[0]
@@ -58,7 +61,7 @@ class Minigal():
                 break  # this is what we want.
             elif line != "\n":  # if it's anything other than blank. The end of the
                 # file will be an empty string, so it will get caught too.
-                raise ValueError("File is not in the right spot for reading")
+                raise EndOfGalsException
 
         # we are now at the right spot. Each line following this is a single
         # known value that is easy to grab.

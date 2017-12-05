@@ -360,6 +360,11 @@ class NscStructure(object):
             self.r_half_non_parametric_err = None
             return
 
+        # for now REMOVE LATER
+        self.r_half_non_parametric = 10
+        self.r_half_non_parametric_err = (2, 3)
+        return
+
         self.r_half_non_parametric = self._half_mass(self.M_c_non_parametric)
 
         # then perturb
