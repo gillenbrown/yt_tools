@@ -1097,10 +1097,13 @@ class Galaxy(object):
         #                    "kde_radii_2D", multiple=True)
         # _write_single_item(file_obj, self.kde_densities["mass_kde_2D"],
         #                    "kde_densities_2D", multiple=True)
-        _write_single_item(file_obj, self.kde_radii_smoothed["mass_kde_2D"],
-                           "kde_radii_2D_smoothed", multiple=True)
-        _write_single_item(file_obj, self.kde_densities_smoothed["mass_kde_2D"],
-                           "kde_densities_2D_smoothed", multiple=True)
+        if "mass_kde_2D" in self.kde_densities_smoothed:
+            _write_single_item(file_obj,
+                               self.kde_radii_smoothed["mass_kde_2D"],
+                               "kde_radii_2D_smoothed", multiple=True)
+            _write_single_item(file_obj,
+                               self.kde_densities_smoothed["mass_kde_2D"],
+                               "kde_densities_2D_smoothed", multiple=True)
         _write_single_item(file_obj, self.binned_radii,
                            "binned_radii", multiple=True)
         _write_single_item(file_obj, self.binned_densities,
