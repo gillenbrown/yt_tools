@@ -724,8 +724,8 @@ class Galaxy(object):
         # this won't work for the logspace, so we put it in by hand. We have
         # 31 edges, which makes 30 bins.
         # then we parse those into bins to be used in in the inner and outer
-        inner_bins = np.concatenate([[0], np.logspace(0, 1, 10)])
-        outer_bins = np.logspace(1, 3, 21)
+        inner_bins = np.concatenate([[0], np.logspace(0, 2, 20)])
+        outer_bins = np.logspace(2, 3, 11)
         # then we can create these profiles if needed.
         if self.integrated_kde_densities is None:
             self.integrated_kde_profile(inner_bins)
