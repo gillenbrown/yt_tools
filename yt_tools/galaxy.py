@@ -723,7 +723,7 @@ class Galaxy(object):
         # 1000 pc. There will be one central bin from zero to one parsec, but
         # this won't work for the logspace, so we put it in by hand. We have
         # 201 edges, which makes 200 bins.
-        bins = np.concatenate([[0], np.logspace(0, 3, 200)])
+        bins = np.concatenate([[0], np.logspace(0, 3, 50)])
         # then we parse those into bins to be used in in the inner and outer
         inner_bins = bins[np.where(bins <= 100)]
         outer_bins = bins[np.where(bins >= 10)]
