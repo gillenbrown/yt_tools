@@ -722,11 +722,10 @@ class Galaxy(object):
         # create the bins. We want them evenly space in log space from 1pc to
         # 1000 pc. There will be one central bin from zero to one parsec, but
         # this won't work for the logspace, so we put it in by hand. We have
-        # 201 edges, which makes 200 bins.
-        bins = np.concatenate([[0], np.logspace(0, 3, 25)])
+        # 31 edges, which makes 30 bins.
         # then we parse those into bins to be used in in the inner and outer
-        inner_bins = bins[np.where(bins <= 100)]
-        outer_bins = bins[np.where(bins >= 10)]
+        inner_bins = np.concatenate([[0], np.logspace(0, 1, 10)])
+        outer_bins = np.logspace(1, 3, 21)
         # then we can create these profiles if needed.
         if self.integrated_kde_densities is None:
             self.integrated_kde_profile(inner_bins)
