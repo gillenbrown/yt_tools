@@ -439,11 +439,15 @@ class Galaxy(object):
                 y = j_sp[('STAR', 'particle_position_relative_y')]
                 z = j_sp[('STAR', 'particle_position_relative_z')]
                 mass = j_sp[('STAR', 'MASS')]
+                mid_time = time.time()
                 axis_ratios = nsc_structure.AxisRatios(x=x, y=y, z=z, mass=mass)
                 normal = axis_ratios.c_vec  # vector of smallest axis.
                 end_time = time.time()
-                print("{} seconds for disk plane via axis ratios"
-                      "".format(end_time - start_time))
+                print("{} s total for axis ratios plane\n"
+                      "{} s time for array access\n"
+                      "{} s for calculations".format(end_time - start_time,
+                                                     mid_time - start_time,
+                                                     end_time - mid_time))
             elif method == "angular_momentum":
                 normal = j_sp.quantities.angular_momentum_vector(use_gas=True,
                                                                  use_particles=True)
