@@ -449,8 +449,25 @@ class AxisRatios(object):
             self.ellipticity = 0
             return
 
-        eigenvalues = np.linalg.eigvals(self.inertia_tensor)
-        c, b, a = sorted(eigenvalues) # sort goes from small to big
+        eigenvalues, eigenvectors = np.linalg.eig(self.inertia_tensor)
+
+        # get the indices of the three eigenvalues and eigenvectors. a is the
+        # largest eigenvalue. The eigenvalues and eigenvectors are in the same
+        # indices of their lists, which is why this works.
+        a_idx = np.argmax(eigenvalues)
+        c_idx = np.argmin(eigenvalues)
+        b_idx = ({0, 1, 2} - {a_idx, c_idx}).pop()
+
+        # then store the eigenvectors. Have to flatten them to turn them into
+        # 1D arrays rather than matrices.
+        self.a_vec = np.array(eigenvectors[a_idx]).flatten()
+        self.b_vec = np.array(eigenvectors[b_idx]).flatten()
+        self.c_vec = np.array(eigenvectors[c_idx]).flatten()
+
+        # and get the eigenvalues. Note that these are the square of the axis.
+        a = eigenvalues[a_idx]
+        b = eigenvalues[b_idx]
+        c = eigenvalues[c_idx]
 
         # take square root of all values
         a = np.sqrt(a)

@@ -401,7 +401,7 @@ class Galaxy(object):
         return kde.KDE(locations, values)
 
     def add_disk(self, j_radius=None, disk_radius=None, disk_height=None,
-                 normal=None, disk_type="kde"):
+                 normal=None, disk_type="kde", method="axis_ratios"):
         """Creates a disk aligned with the angular momentum of the galaxy.
         
         This works by creating a sphere with the radius=`j_radius`, calculating 
@@ -432,9 +432,20 @@ class Galaxy(object):
         if normal is None:
             # then we can go ahead and do things. First create the new sphere
             j_sp = self.ds.sphere(center=self.center, radius=j_radius)
-            # find its angular momentum
-            normal = j_sp.quantities.angular_momentum_vector(use_gas=True,
-                                                             use_particles=True)
+            if method == "axis_ratios":
+                # don't use angular momentum, use the axis ratios.
+                x = j_sp[('STAR', 'particle_position_relative_x')]
+                y = j_sp[('STAR', 'particle_position_relative_y')]
+                z = j_sp[('STAR', 'particle_position_relative_z')]
+                mass = j_sp[('STAR', 'MASS')]
+                axis_ratios = nsc_structure.AxisRatios(x=x, y=y, z=z, mass=mass)
+                normal = axis_ratios.c_vec  # vector of smallest axis.
+            elif method == "angular_momentum":
+                normal = j_sp.quantities.angular_momentum_vector(use_gas=True,
+                                                                 use_particles=True)
+            else:
+                raise ValueError("Need to specify method for disk "
+                                 "orientation correctly.")
         # then create the disk
         disk = self.ds.disk(center=self.center, normal=normal,
                             height=disk_height, radius=disk_radius)

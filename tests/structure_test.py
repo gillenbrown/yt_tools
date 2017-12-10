@@ -252,6 +252,14 @@ def test_axis_ratios_one_not_symmetric():
     assert np.isclose(a_r.c_over_b, 1.0)
     assert np.isclose(a_r.ellipticity, 0.75)
 
+def test_eigenvectors_one_not_symmetric():
+    """Test with a structure wher one axis is larger than the others. """
+    a_r = nsc_structure.AxisRatios(xs * 4, ys, zs, masses)
+    # test that the eigenvector is in the right direction
+    assert (np.allclose(a_r.a_vec,      [1, 0, 0]) or
+            np.allclose(a_r.a_vec * -1, [1, 0, 0]))
+    # y and z are arbitrary
+
 def test_axis_ratios_all_not_symmetric():
     """Test with a structure where all three axes are different."""
     a_r = nsc_structure.AxisRatios(xs, ys * 2, zs * 3, masses)
@@ -263,24 +271,48 @@ def test_axis_ratios_all_not_symmetric():
     assert np.isclose(a_r.c_over_b, 0.5)
     assert np.isclose(a_r.ellipticity, 2.0 / 3.0)
 
+def test_eigenvectors_all_not_symmetric():
+    """Test with a structure where all three axes are different."""
+    a_r = nsc_structure.AxisRatios(xs, ys * 2, zs * 3, masses)
+    assert (np.allclose(a_r.a_vec,      [0, 0, 1]) or
+            np.allclose(a_r.a_vec * -1, [0, 0, 1]))
+    assert (np.allclose(a_r.b_vec,      [0, 1, 0]) or
+            np.allclose(a_r.b_vec * -1, [0, 1, 0]))
+    assert (np.allclose(a_r.c_vec,      [1, 0, 0]) or
+            np.allclose(a_r.c_vec * -1, [1, 0, 0]))
+
 def test_axis_ratios_all_not_symmetric_rotated():
     """Test with a rotated structure where are three axes are different. """
     new_x = xs
     new_y = ys * 2
     new_z = zs * 3
 
-    # then rotate through an angle
-    theta = 23.4
+    # then rotate through an angle. This is conceptually weird. This gives the
+    # points relative to an axis that is 23.4 degrees counterclockwise of the
+    # original axis, so this is equivalent to rotating the points 23.4 degrees
+    # counterclockwise.
+    theta = 23.4 * np.pi / 180.0
     new_new_xs = new_x * np.cos(theta) - new_y * np.sin(theta)
     new_new_ys = new_x * np.sin(theta) + new_y * np.cos(theta)
 
     a_r = nsc_structure.AxisRatios(new_new_xs, new_new_ys, new_z, masses)
+
+    # check axis ratios
     assert np.isclose(a_r.a_over_b, 1.5)
     assert np.isclose(a_r.b_over_a, 1.0 / 1.5)
     assert np.isclose(a_r.a_over_c, 3.0)
     assert np.isclose(a_r.c_over_a, 1.0 / 3.0)
     assert np.isclose(a_r.b_over_c, 2.0)
     assert np.isclose(a_r.c_over_b, 0.5)
+
+    # check eigenvectors
+    assert (np.allclose(a_r.a_vec,      [0, 0, 1]) or
+            np.allclose(a_r.a_vec * -1, [0, 0, 1]))
+    # remember that we basically rotated the points counterclockwise.
+    assert (np.allclose(a_r.b_vec,      [np.sin(theta), np.cos(theta), 0]) or
+            np.allclose(a_r.b_vec * -1, [np.sin(theta), np.cos(theta), 0]))
+    assert (np.allclose(a_r.c_vec     , [np.cos(theta), -np.sin(theta), 0]) or
+            np.allclose(a_r.c_vec * -1, [np.cos(theta), -np.sin(theta), 0]))
 
 def test_axis_ratios_different_mass():
     """Test where all locations are the same, but different masses makes the

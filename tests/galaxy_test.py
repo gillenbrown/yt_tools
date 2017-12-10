@@ -229,6 +229,12 @@ def test_add_disk_units(gal):
     with pytest.raises(TypeError):
         gal.add_disk(disk_height=10)
 
+def test_add_disk_methods(gal):
+    gal.add_disk(method="axis_ratios")
+    gal.add_disk(method="angular_momentum")
+    with pytest.raises(ValueError):
+        gal.add_disk(method="sdf")
+
 def test_add_disk_result_type(gal):
     """We should have an actual disk when done. """
     assert gal.disk_kde is None
