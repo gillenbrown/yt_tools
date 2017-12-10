@@ -433,6 +433,7 @@ class Galaxy(object):
             # then we can go ahead and do things. First create the new sphere
             j_sp = self.ds.sphere(center=self.center, radius=j_radius)
             if method == "axis_ratios":
+                start_time = time.time()
                 # don't use angular momentum, use the axis ratios.
                 x = j_sp[('STAR', 'particle_position_relative_x')]
                 y = j_sp[('STAR', 'particle_position_relative_y')]
@@ -440,6 +441,9 @@ class Galaxy(object):
                 mass = j_sp[('STAR', 'MASS')]
                 axis_ratios = nsc_structure.AxisRatios(x=x, y=y, z=z, mass=mass)
                 normal = axis_ratios.c_vec  # vector of smallest axis.
+                end_time = time.time()
+                print("{} seconds for disk plane via axis ratios"
+                      "".format(end_time - start_time))
             elif method == "angular_momentum":
                 normal = j_sp.quantities.angular_momentum_vector(use_gas=True,
                                                                  use_particles=True)
