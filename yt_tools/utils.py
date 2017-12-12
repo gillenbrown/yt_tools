@@ -533,3 +533,52 @@ def surface_density_annulus(density_func, radius_a, radius_b, error_tolerance,
 
     return mean
 
+def round_up_ten(val):
+    """
+    Rounds a number up to the nearest factor of 10.
+
+    A couple of examples will illustrate:
+    1->10
+    5->10
+    10->10
+    11->20
+    -5->0
+    -15->-10
+
+    :param val: Value to round in this fashion
+    :return: The rounded value.
+    """
+    return 10 * np.ceil(val / 10)
+
+def box_membership(xs, ys, zs, len_x, len_y, len_z):
+    """
+    Determined whether points are inside a box centered at zero.
+
+    Points will be selected if they satisfy
+    -len_x_i < x_i < len_x_i
+    for all i in x, y, z.
+
+    :param xs: x components of a list of points
+    :param ys: y components of a list of points
+    :param zs: z components of a list of points
+    :param len_x: half width of the box in the x direction.
+    :param len_y: half width of the box in the y direction.
+    :param len_z: half width of the box in the z direction.
+    :return: List of indices of the points that are indeed in the box.
+    """
+    # ensure arrays
+    xs = np.array(xs)
+    ys = np.array(ys)
+    zs = np.array(zs)
+
+    # First get whether each component is in the respective box. This will
+    # give us the indices that satisfy each component here.
+    x_idx = np.where(abs(xs) < len_x)
+    y_idx = np.where(abs(ys) < len_y)
+    z_idx = np.where(abs(zs) < len_z)
+
+    # then get the intersection, so that a point has to satisfy all three
+    # to be returned.
+    good_idx_temp = np.intersect1d(x_idx, y_idx)
+    good_idx = np.intersect1d(good_idx_temp, z_idx)
+    return good_idx

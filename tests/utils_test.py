@@ -706,7 +706,7 @@ def test_surface_density_annulus_constant_density(r_a, r_b, result):
     tolerance = 0.01
     integral = utils.surface_density_annulus(flat, r_a, r_b,
                                              error_tolerance=tolerance)
-    assert np.isclose(integral, result, rtol=1.5*tolerance, atol=0)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
 
 @pytest.mark.parametrize("r_a,r_b,result", [
     (0, 1, 2.0/3.0),
@@ -720,7 +720,7 @@ def test_surface_density_annulus_r(r_a, r_b, result):
     tolerance = 0.01
     integral = utils.surface_density_annulus(radius, r_a, r_b,
                                              error_tolerance=tolerance)
-    assert np.isclose(integral, result, rtol=1.5*tolerance, atol=0)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
 
 @pytest.mark.parametrize("r_a,r_b,result", [
     (0, 1, 0.5),
@@ -734,7 +734,7 @@ def test_surface_density_annulus_r_squared(r_a, r_b, result):
     tolerance = 0.01
     integral = utils.surface_density_annulus(radius_squared, r_a, r_b,
                                              error_tolerance=tolerance)
-    assert np.isclose(integral, result, rtol=1.5*tolerance, atol=0)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
 
 @pytest.mark.parametrize("r_a,r_b,dens", [
     (0, 1, 3.14234872),
@@ -748,7 +748,8 @@ def test_surface_density_annulus_constant_density_args(r_a, r_b, dens):
     integral = utils.surface_density_annulus(flat, r_a, r_b,
                                              error_tolerance=tolerance,
                                              density_func_kwargs={"k": dens})
-    assert np.isclose(integral, dens, rtol=1.5*tolerance, atol=0)
+    assert np.isclose(integral, dens, rtol=2*tolerance, atol=0)
+
 @pytest.mark.parametrize("tolerance", [0.5, 0.1, 0.05, 0.01, 0.001])
 def test_surface_density_annulus_r_squared_tolerance(tolerance):
     def radius_squared(loc):
@@ -761,4 +762,111 @@ def test_surface_density_annulus_r_squared_tolerance(tolerance):
 
     integral = utils.surface_density_annulus(radius_squared, r_a, r_b,
                                              error_tolerance=tolerance)
-    assert np.isclose(integral, result, rtol=1.5*tolerance, atol=0)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+
+# -----------------------------------------------------------------------------
+
+# test rounding up
+
+# -----------------------------------------------------------------------------
+@pytest.mark.parametrize("val,answer", [
+    (1, 10),
+    (9.9999999, 10),
+    (10.0, 10),
+    (10.00001, 20)
+])
+def test_round_up_ten_simple(val, answer):
+    new_answer = utils.round_up_ten(val)
+    assert np.isclose(new_answer, answer)
+
+@pytest.mark.parametrize("val,answer", [
+    (-1, 0),
+    (-9.9999999, 0),
+    (-10.0, -10),
+    (-10.00001, -10),
+    (-19.99999, -10),
+    (-21, -20)
+])
+def test_round_up_ten_negative(val, answer):
+    new_answer = utils.round_up_ten(val)
+    assert np.isclose(new_answer, answer)
+
+def test_round_up_ten_array():
+    values = np.array([1, 9, 10, 19, -15])
+    answers = [10, 10, 10, 20, -10]
+    new_answer = utils.round_up_ten(values)
+    assert np.allclose(new_answer, answers)
+
+# -----------------------------------------------------------------------------
+
+# test box selection
+
+# -----------------------------------------------------------------------------
+
+def test_box_selection_points_inside():
+    """Test on points that I know to be inside."""
+    locs = [[0,     0,    0],
+            [1.9,   0,    0],
+            [0,     1.9,  0],
+            [0,     0,    1.9],
+            [1.9,   1.9,  1.9],
+            [-1.9,  0,    0],
+            [0,    -1.9,  0],
+            [0,     0,   -1.9],
+            [-1.9, -1.9, -1.9]
+            ]
+    xs, ys, zs = zip(*locs)
+    idxs = utils.box_membership(xs, ys, zs, 2, 2, 2)
+    assert np.array_equal(idxs, [0, 1, 2, 3, 4, 5, 6, 7, 8])
+
+def test_box_selection_points_outside():
+    """Test on points that I know to be inside."""
+    locs = [[1.9,   0,    0],
+            [0,     1.9,  0],
+            [0,     0,    1.9],
+            [1.9,   1.9,  1.9],
+            [-1.9,  0,    0],
+            [0,    -1.9,  0],
+            [0,     0,   -1.9],
+            [-1.9, -1.9, -1.9]
+            ]
+    xs, ys, zs = zip(*locs)
+    idxs = utils.box_membership(xs, ys, zs, 1.8, 1.8, 1.8)
+    assert np.array_equal(idxs, [])
+
+def test_box_selection_points_many():
+    """Test the general locations of points that are accepted."""
+    xs = np.random.uniform(-20, 20, 1000)
+    ys = np.random.uniform(-20, 20, 1000)
+    zs = np.random.uniform(-20, 20, 1000)
+    idxs = utils.box_membership(xs, ys, zs, 15, 12, 8)
+    # then get the indices that were not present
+    all_idx_set = set(range(len(xs)))
+    idx_set = set(idxs)
+    bad_idx = list(all_idx_set.difference(idx_set))
+    good_xs = xs[idxs]
+    bad_xs  = xs[bad_idx]
+    good_ys = ys[idxs]
+    bad_ys  = ys[bad_idx]
+    good_zs = zs[idxs]
+    bad_zs  = zs[bad_idx]
+
+    # then check that the accepted points were inside, and the rejected ones
+    # were outside
+    assert np.max(good_xs) < 15
+    assert np.min(good_xs) > -15
+    assert np.all(np.abs(good_xs) < 15)
+
+    assert np.max(good_ys) < 12
+    assert np.min(good_ys) > -12
+    assert np.all(np.abs(good_ys) < 12)
+
+    assert np.max(good_zs) < 8
+    assert np.min(good_zs) > -8
+    assert np.all(np.abs(good_zs) < 8)
+
+    for idx in bad_idx:
+        x_bad = abs(xs[idx]) > 15
+        y_bad = abs(ys[idx]) > 12
+        z_bad = abs(zs[idx]) > 8
+        assert x_bad or y_bad or z_bad
