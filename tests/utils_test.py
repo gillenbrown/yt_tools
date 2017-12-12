@@ -706,7 +706,7 @@ def test_surface_density_annulus_constant_density(r_a, r_b, result):
     tolerance = 0.01
     integral = utils.surface_density_annulus(flat, r_a, r_b,
                                              error_tolerance=tolerance)
-    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+    assert np.isclose(integral, result, rtol=1.5*tolerance, atol=0)
 
 @pytest.mark.parametrize("r_a,r_b,result", [
     (0, 1, 2.0/3.0),
@@ -720,7 +720,7 @@ def test_surface_density_annulus_r(r_a, r_b, result):
     tolerance = 0.01
     integral = utils.surface_density_annulus(radius, r_a, r_b,
                                              error_tolerance=tolerance)
-    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+    assert np.isclose(integral, result, rtol=1.5*tolerance, atol=0)
 
 @pytest.mark.parametrize("r_a,r_b,result", [
     (0, 1, 0.5),
@@ -734,7 +734,7 @@ def test_surface_density_annulus_r_squared(r_a, r_b, result):
     tolerance = 0.01
     integral = utils.surface_density_annulus(radius_squared, r_a, r_b,
                                              error_tolerance=tolerance)
-    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+    assert np.isclose(integral, result, rtol=1.5*tolerance, atol=0)
 
 @pytest.mark.parametrize("r_a,r_b,dens", [
     (0, 1, 3.14234872),
@@ -748,4 +748,17 @@ def test_surface_density_annulus_constant_density_args(r_a, r_b, dens):
     integral = utils.surface_density_annulus(flat, r_a, r_b,
                                              error_tolerance=tolerance,
                                              density_func_kwargs={"k": dens})
-    assert np.isclose(integral, dens, rtol=2*tolerance, atol=0)
+    assert np.isclose(integral, dens, rtol=1.5*tolerance, atol=0)
+@pytest.mark.parametrize("tolerance", [0.5, 0.1, 0.05, 0.01, 0.001])
+def test_surface_density_annulus_r_squared_tolerance(tolerance):
+    def radius_squared(loc):
+        x, y = loc
+        return x ** 2 + y ** 2
+
+    r_a = 3
+    r_b = 8
+    result = 36.5
+
+    integral = utils.surface_density_annulus(radius_squared, r_a, r_b,
+                                             error_tolerance=tolerance)
+    assert np.isclose(integral, result, rtol=1.5*tolerance, atol=0)

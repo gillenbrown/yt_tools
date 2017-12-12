@@ -509,6 +509,7 @@ def surface_density_annulus(density_func, radius_a, radius_b, error_tolerance,
     number = 100  # number of samples for the next iteration
     fractional_error = 10**99
     values = np.array([])
+    squared_values = np.array([])
     # We add points to our sample while our fractional error is larger than
     # the desired error.
     while error_tolerance < fractional_error:
@@ -519,15 +520,16 @@ def surface_density_annulus(density_func, radius_a, radius_b, error_tolerance,
                                for x, y in zip(xs, ys)])
         # add to existing points from previous iterations.
         values = np.concatenate([values, new_values])
+        squared_values = np.concatenate([squared_values, new_values**2])
 
         # calculate the mean and error
         n = len(values)
-        mean_values = np.sum(values) / n
-        mean_values_squared = np.sum(values**2) / n
-        error_term = np.sqrt((mean_values_squared - mean_values**2) / n)
-        fractional_error = error_term / mean_values
+        mean = np.sum(values) / n
+        squared_mean = np.sum(squared_values) / n
+        error_term = np.sqrt((squared_mean - mean**2) / n)
+        fractional_error = error_term / mean
         # then double the amount of values for the next iteration, if needed
         number = n
-    print(n)
-    return mean_values
+
+    return mean
 
