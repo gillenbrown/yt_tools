@@ -105,7 +105,7 @@ def test_iterable(item, name):
     try:
         iter(item)
     except TypeError:
-        raise TypeError("{} must be an iterable. ".format(item))
+        raise TypeError("{} must be an iterable. ".format(name))
 
 def generate_random_theta_phi(number):
     """Generates random points on the surface of a sphere. 

@@ -845,11 +845,8 @@ def test_box_selection_points_many():
     idx_set = set(idxs)
     bad_idx = list(all_idx_set.difference(idx_set))
     good_xs = xs[idxs]
-    bad_xs  = xs[bad_idx]
     good_ys = ys[idxs]
-    bad_ys  = ys[bad_idx]
     good_zs = zs[idxs]
-    bad_zs  = zs[bad_idx]
 
     # then check that the accepted points were inside, and the rejected ones
     # were outside
@@ -870,3 +867,17 @@ def test_box_selection_points_many():
         y_bad = abs(ys[idx]) > 12
         z_bad = abs(zs[idx]) > 8
         assert x_bad or y_bad or z_bad
+
+def test_box_selection_points_infinite_extent_inside():
+    xs = np.random.uniform(-4, 4, 1000)
+    ys = np.random.uniform(-4, 4, 1000)
+    zs = np.random.uniform(-1000, 1000, 1000)
+    idxs = utils.box_membership(xs, ys, zs, 4, 4, np.inf)
+    assert np.array_equal(idxs, np.arange(1000))
+
+def test_box_selection_points_infinite_extent_outside():
+    xs = np.random.uniform(-4, -2, 1000)
+    ys = np.random.uniform(0, 1, 1000)
+    zs = np.random.uniform(-1000, 1000, 1000)
+    idxs = utils.box_membership(xs, ys, zs, 2, 2, np.inf)
+    assert np.array_equal(idxs, [])
