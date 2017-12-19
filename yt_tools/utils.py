@@ -533,6 +533,19 @@ def surface_density_annulus(density_func, radius_a, radius_b, error_tolerance,
 
     return mean
 
+def mass_annulus(density_func, radius_a, radius_b, error_tolerance,
+                            density_func_kwargs=None):
+    """
+    Exactly the same as the surface density function, only that it multiplies
+    by the area of the annulus to get the total mass. All params are the same,
+    since this is just a wrapper for that function.
+    """
+    area = annulus_area(radius_a, radius_b)
+    dens = surface_density_annulus(density_func, radius_a, radius_b,
+                                   error_tolerance=error_tolerance,
+                                   density_func_kwargs=density_func_kwargs)
+    return area * dens
+
 def round_up_ten(val):
     """
     Rounds a number up to the nearest factor of 10.

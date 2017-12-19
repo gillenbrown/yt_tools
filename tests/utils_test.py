@@ -764,6 +764,74 @@ def test_surface_density_annulus_r_squared_tolerance(tolerance):
                                              error_tolerance=tolerance)
     assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
 
+@pytest.mark.parametrize("r_a,r_b,result", [
+    (0, 1, np.pi),
+    (1, 10, 311.0176727)
+])
+def test_mass_annulus_constant_density(r_a, r_b, result):
+    def flat(loc):
+        return 1
+    tolerance = 0.01
+    integral = utils.mass_annulus(flat, r_a, r_b,
+                                             error_tolerance=tolerance)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+
+@pytest.mark.parametrize("r_a,r_b,result", [
+    (0, 1, 2.094395102),
+    (3, 8, 1015.781625)
+])
+def test_mass_annulus_r(r_a, r_b, result):
+    def radius(loc):
+        x, y = loc
+        return np.sqrt(x**2 + y**2)
+
+    tolerance = 0.01
+    integral = utils.mass_annulus(radius, r_a, r_b,
+                                             error_tolerance=tolerance)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+
+@pytest.mark.parametrize("r_a,r_b,result", [
+    (0, 1, 1.570796327),
+    (3, 8, 6306.747252)
+])
+def test_mass_annulus_r_squared(r_a, r_b, result):
+    def radius_squared(loc):
+        x, y = loc
+        return x ** 2 + y ** 2
+
+    tolerance = 0.01
+    integral = utils.mass_annulus(radius_squared, r_a, r_b,
+                                             error_tolerance=tolerance)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+
+@pytest.mark.parametrize("r_a,r_b,dens,mass", [
+    (0, 1, 5, 15.70796327),
+    (1, 10, 2.5, 777.5441818)
+])
+def test_mass_annulus_constant_density_args(r_a, r_b, dens, mass):
+    # make sure this works with an argument.
+    def flat(loc, k):
+        return k
+    tolerance = 0.01
+    integral = utils.mass_annulus(flat, r_a, r_b,
+                                             error_tolerance=tolerance,
+                                             density_func_kwargs={"k": dens})
+    assert np.isclose(integral, mass, rtol=2*tolerance, atol=0)
+
+@pytest.mark.parametrize("tolerance", [0.5, 0.1, 0.05, 0.01, 0.001])
+def test_mass_annulus_r_squared_tolerance(tolerance):
+    def radius_squared(loc):
+        x, y = loc
+        return x ** 2 + y ** 2
+
+    r_a = 3
+    r_b = 8
+    result = 6306.747252
+
+    integral = utils.mass_annulus(radius_squared, r_a, r_b,
+                                             error_tolerance=tolerance)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+
 # -----------------------------------------------------------------------------
 
 # test rounding up
