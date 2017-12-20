@@ -184,6 +184,11 @@ def read_gal(ds, file_obj):
     mean_rot_vel = _parse_line(file_obj.readline(), multiple=False, units=True)
     nsc_3d_sigma = _parse_line(file_obj.readline(), multiple=False, units=True)
 
+    r_nsc = _parse_line(file_obj.readline(), multiple=False, units=True)
+    r_nsc_err = _parse_line(file_obj.readline(), multiple=True, units=True)
+    r_half = _parse_line(file_obj.readline(), multiple=False, units=False)
+    r_half_err = _parse_line(file_obj.readline(), multiple=True, units=False)
+
     # we can create the galaxy at this point
     gal = Galaxy(ds, center, radius, id)
     # we then add the disk without calculating angular momentum by
@@ -195,6 +200,12 @@ def read_gal(ds, file_obj):
                      normal=disk_nsc_normal, disk_type="nsc")
     else:
         gal.disk_nsc = None
+
+    # assign the radii of interest
+    gal.nsc_radius = r_nsc
+    gal.nsc_radius_err = r_nsc_err
+    gal.half_mass_radius = r_half
+    gal.half_mass_radius_errs = r_half_err
 
     # assign the NSC indices and velocity stuff
     gal.nsc_idx_sphere = nsc_idx_sphere
@@ -235,7 +246,6 @@ def read_gal(ds, file_obj):
     # this should all be pretty quick, since the KDE process has already been
     # read in and doesn't need to be repeated.
     try:
-        gal.find_nsc_radius()
         gal.create_axis_ratios()
         gal.create_abundances()
     except AttributeError:  # will happen if no NSC
@@ -324,6 +334,8 @@ class Galaxy(object):
         self.nsc_idx_sphere = None  # used for NSC analysis
         self.nsc_idx_disk_kde = None  # used for NSC analysis
         self.nsc_idx_disk_nsc = None  # used for NSC analysis
+        self.half_mass_radius = None  # used for NSC analysis
+        self.half_mass_radius_errs = None  # used for NSC analysis
         self.nsc_axis_ratios = None  # used for rotation analysis
         self.mean_rot_vel = None  # used for rotation analysis
         self.nsc_3d_sigma = None  # used for rotation analysis
@@ -342,7 +354,7 @@ class Galaxy(object):
             self.create_abundances()
 
         num_stars = len(self.disk_whole[('STAR', 'MASS')])
-        print("{} star particles in the galaxy.".format(num_stars)
+        print("{} star particles in the galaxy.".format(num_stars))
 
     def _create_kde_object(self, dimension=2, quantity="mass"):
         """Creates a KDE object in the desired coordinates for the desired
@@ -601,7 +613,7 @@ class Galaxy(object):
             time_a = time.time()
             total_mass = utils.mass_annulus(density_func=density_integrand,
                                             radius_a=0,
-                                            radius_b=self.nsc_radius,
+                                            radius_b=radius,
                                             error_tolerance=0.01,
                                             density_func_kwargs=kwargs)
 
@@ -1129,6 +1141,17 @@ class Galaxy(object):
                                multiple=False, units=True)
             _write_single_item(file_obj, self.nsc_3d_sigma, "nsc_3d_sigma",
                                multiple=False, units=True)
+            # then the actual radius and half mass radius, which take a while
+            # to calculate
+            _write_single_item(file_obj, self.nsc_radius, "r_NSC",
+                               multiple=False, units=True)
+            _write_single_item(file_obj, self.nsc_radius_err, "r_NSC_err",
+                               multiple=True, units=True)
+            _write_single_item(file_obj, self.half_mass_radius, "r_half",
+                               multiple=False, units=False)
+            _write_single_item(file_obj, self.half_mass_radius_errs,
+                               "r_half_err", multiple=True, units=False)
+
         else:
             _write_single_item(file_obj, None, "disk_nsc_radius")
             _write_single_item(file_obj, None, "disk_nsc_height")
@@ -1138,6 +1161,10 @@ class Galaxy(object):
             _write_single_item(file_obj, None, "nsc_idx_disk_kde")
             _write_single_item(file_obj, None, "mean_rot_vel")
             _write_single_item(file_obj, None, "nsc_3d_sigma")
+            _write_single_item(file_obj, None, "r_NSC")
+            _write_single_item(file_obj, None, "r_NSC_err")
+            _write_single_item(file_obj, None, "r_half")
+            _write_single_item(file_obj, None, "r_half_err")
 
         # then the binned radii too
         _write_single_item(file_obj, self.binned_radii,
@@ -1234,9 +1261,9 @@ class Galaxy(object):
         _write_single_item(file_obj, self.nsc_radius.to("pc").value,
                            "nsc_radius")
         # nsc half mass radius (already in pc)
-        _write_single_item(file_obj, self.nsc.r_half_non_parametric,
+        _write_single_item(file_obj, self.half_mass_radius,
                            "nsc_r_half")
-        _write_single_item(file_obj, self.nsc.r_half_non_parametric_err,
+        _write_single_item(file_obj, self.half_mass_radius_errs,
                            "nsc_r_half_err", multiple=True)
 
         # galaxy mass
@@ -1302,5 +1329,15 @@ class Galaxy(object):
             _write_single_item(file_obj, abund, multiple=True,
                                name="star_{}_on_fe".format(elt.lower()))
         _write_single_item(file_obj, star_masses, "star_masses", multiple=True)
+
+
+        # TODO: remove
+        _write_single_item(file_obj, self.nsc.r_half_non_parametric,
+                           "nsc_r_half_old", multiple=False)
+        # fraction of mass within r_half
+        nsc_mass = self.stellar_mass(self.nsc_radius)
+        half_mass = self.stellar_mass(self.half_mass_radius*yt.units.pc)
+        fraction = half_mass / nsc_mass
+        _write_single_item(file_obj, fraction, "mass_fraction")
 
         file_obj.write("end_of_galaxy\n")  # tag so later read-in is easier
