@@ -342,20 +342,6 @@ class Galaxy(object):
         self.nsc_abundances = None  # used for elemental abundances
         self.gal_abundances = None  # used for elemental abundances
 
-        # we can then add a disk if the user wants to, and initialize the rest
-        # of everything that comes after that.
-        if (j_radius is not None) or (disk_height is not None) or \
-                (disk_radius is not None):
-            self.add_disk(j_radius, disk_radius, disk_height, disk_type="kde")
-            self.find_nsc_radius()
-            self.nsc_half_mass_radius()
-            self.create_axis_ratios()
-            self.nsc_rotation()
-            self.create_abundances()
-
-        num_stars = len(self.disk_whole[('STAR', 'MASS')])
-        print("{} star particles in the galaxy.".format(num_stars))
-
     def _create_kde_object(self, dimension=2, quantity="mass"):
         """Creates a KDE object in the desired coordinates for the desired
         quantity.

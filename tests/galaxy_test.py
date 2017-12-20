@@ -61,9 +61,13 @@ def gal():
 
 @pytest.fixture
 def real_gal():  # has larger radius to actually include everythign we need to
-    gal =  galaxy.Galaxy(ds, best_loc, 1000 * pc, j_radius=30 * pc,
-                         disk_radius=150 * pc, disk_height=100*pc)
-    gal.kde_profile("mass", dimension=2, outer_radius=50*pc)
+    gal =  galaxy.Galaxy(ds, best_loc, 1000 * pc)
+    gal.add_disk(j_radius=30 * pc, disk_radius=150 * pc, disk_height=100*pc)
+    gal.find_nsc_radius()
+    gal.nsc_half_mass_radius()
+    gal.create_axis_ratios()
+    gal.nsc_rotation()
+    gal.create_abundances()
     return gal
 
 @pytest.fixture
