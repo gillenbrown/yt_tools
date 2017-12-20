@@ -163,6 +163,7 @@ def read_gal(ds, file_obj):
     id = _parse_line(file_obj.readline(), multiple=False, units=False)
     center = _parse_line(file_obj.readline(), multiple=True, units=True)
     radius = _parse_line(file_obj.readline(), multiple=False, units=True)
+    j_radius = _parse_line(file_obj.readline(), multiple=False, units=True)
     disk_kde_radius = _parse_line(file_obj.readline(),
                                   multiple=False, units=True)
     disk_kde_height = _parse_line(file_obj.readline(),
@@ -190,7 +191,7 @@ def read_gal(ds, file_obj):
     r_half_err = _parse_line(file_obj.readline(), multiple=True, units=False)
 
     # we can create the galaxy at this point
-    gal = Galaxy(ds, center, radius, id)
+    gal = Galaxy(ds, center, radius, id, j_radius)
     # we then add the disk without calculating angular momentum by
     # specifying the normal vector. This saves computation time.
     gal.add_disk(disk_radius=disk_kde_radius, disk_height=disk_kde_height,
@@ -246,7 +247,8 @@ def read_gal(ds, file_obj):
     # this should all be pretty quick, since the KDE process has already been
     # read in and doesn't need to be repeated.
     try:
-        gal.create_axis_ratios()
+        gal.create_axis_ratios_nsc()
+        gal.create_axis_ratios_gal()
         gal.create_abundances()
     except AttributeError:  # will happen if no NSC
         pass
@@ -260,8 +262,7 @@ def _assign_id():
     return id_start
 
 class Galaxy(object):
-    def __init__(self, dataset, center, radius, id=None, j_radius=None,
-                 disk_radius=None, disk_height=None):
+    def __init__(self, dataset, center, radius, j_radius, id=None):
         """Create a galaxy object at the specified location with the 
         given size. 
         
@@ -270,11 +271,10 @@ class Galaxy(object):
                        units.
         :param radius: Radius that will be used to create the sphere object.
                        Must also have units.
+        :param j_radius: Radius used to calculate the disk plane. Only the
+                         part of the galaxy inside this radius will be used.
+                         0.2 times the virial radius is typical.
         :param id: identification number for this galaxy. Can be arbitrary.
-        :params j_radius, disk_radius, disk_height: used for the creation of
-                the disk. See the _add_disk functionality for detailed
-                explanation. If these are left blank no disk will be
-                created.
         """
         if id is not None:
             self.id = id
@@ -295,11 +295,14 @@ class Galaxy(object):
 
         # we need to check that the radius has units too
         utils.test_for_units(radius, "radius")
+        utils.test_for_units(j_radius, "radius")
         # set the attribute if it passes tests
         self.radius = radius
+        self.j_radius = j_radius
 
         # create the sphere that contains the galaxy.
         self.sphere = self.ds.sphere(center=self.center, radius=self.radius)
+        self.j_sphere = self.ds.sphere(center=self.center, radius=self.j_radius)
 
         # and find the smallest cell size (used for KDE)
         self.min_dx = np.min(self.sphere[('index', 'dx')])
@@ -337,6 +340,7 @@ class Galaxy(object):
         self.half_mass_radius = None  # used for NSC analysis
         self.half_mass_radius_errs = None  # used for NSC analysis
         self.nsc_axis_ratios = None  # used for rotation analysis
+        self.gal_axis_ratios = None  # used for disk plane
         self.mean_rot_vel = None  # used for rotation analysis
         self.nsc_3d_sigma = None  # used for rotation analysis
         self.nsc_abundances = None  # used for elemental abundances
@@ -402,17 +406,15 @@ class Galaxy(object):
         # we can then create the KDE object
         return kde.KDE(locations, values)
 
-    def add_disk(self, j_radius=None, disk_radius=None, disk_height=None,
-                 normal=None, disk_type="kde", method="axis_ratios"):
+    def add_disk(self, disk_radius=None, disk_height=None, normal=None,
+                 disk_type="kde", method="axis_ratios"):
         """Creates a disk aligned with the angular momentum of the galaxy.
         
         This works by creating a sphere with the radius=`j_radius`, calculating 
         the angular momentum vector within that sphere, then creating a disk
         who's normal vector is that angular momentum vector. This should give 
         us a disk that aligns with the actual disk of the galaxy.
-        
-        :param j_radius: radius within which we will calculate the angular 
-                         momentum. Needs units.
+
         :param disk_radius: radius of the resulting disk. Needs units.
         :param disk_height: height of the resulting disk. Needs units.
         :param normal: If you already know the normal, this will add the disk
@@ -420,31 +422,22 @@ class Galaxy(object):
         :returns: None, but creates the disk attribute for the galaxy. 
         """
         # set default values if not already set
-        if j_radius is None:
-            j_radius = self.radius  # not an ideal value, but a good default
         if disk_radius is None:
             disk_radius = self.radius
         if disk_height is None:
             disk_height = self.radius
         # then check units
-        utils.test_for_units(j_radius, "j_radius")
         utils.test_for_units(disk_radius, "disk_radius")
         utils.test_for_units(disk_height, "disk_height")
 
         if normal is None:
-            # then we can go ahead and do things. First create the new sphere
-            j_sp = self.ds.sphere(center=self.center, radius=j_radius)
             if method == "axis_ratios":
-                # don't use angular momentum, use the axis ratios.
-                x = j_sp[('STAR', 'particle_position_relative_x')]
-                y = j_sp[('STAR', 'particle_position_relative_y')]
-                z = j_sp[('STAR', 'particle_position_relative_z')]
-                mass = j_sp[('STAR', 'MASS')]
-                axis_ratios = nsc_structure.AxisRatios(x=x, y=y, z=z, mass=mass)
-                normal = axis_ratios.c_vec  # vector of smallest axis.
+                if self.gal_axis_ratios is None:
+                    self.create_axis_ratios_gal()
+                normal = self.gal_axis_ratios.c_vec  # vector of smallest axis.
             elif method == "angular_momentum":
-                normal = j_sp.quantities.angular_momentum_vector(use_gas=True,
-                                                                 use_particles=True)
+                normal = self.j_sphere.quantities.angular_momentum_vector(use_gas=True,
+                                                                          use_particles=True)
             else:
                 raise ValueError("Need to specify method for disk "
                                  "orientation correctly.")
@@ -879,7 +872,7 @@ class Galaxy(object):
             new_errors = new_lower_err, self.nsc.r_half_non_parametric_err[1]
             self.nsc.r_half_non_parametric_err = new_errors
 
-    def create_axis_ratios(self):
+    def create_axis_ratios_nsc(self):
         """Creates the axis ratios object. """
         self._check_nsc_existence()
 
@@ -896,6 +889,20 @@ class Galaxy(object):
         mass = mass[self.nsc_idx_sphere]
 
         self.nsc_axis_ratios = nsc_structure.AxisRatios(x, y, z, mass)
+
+    def create_axis_ratios_gal(self):
+        """
+        Create axis ratios for the whole galaxy. Uses the j radius passed in
+        at the very beginning.
+        """
+
+        key = "particle_position_relative_{}"
+        x = np.array(self.j_sphere[('STAR', key.format("x"))].to("pc").value)
+        y = np.array(self.j_sphere[('STAR', key.format("y"))].to("pc").value)
+        z = np.array(self.j_sphere[('STAR', key.format("z"))].to("pc").value)
+        mass = np.array(self.j_sphere[('STAR', 'MASS')].to("solMass").value)
+
+        self.gal_axis_ratios = nsc_structure.AxisRatios(x, y, z, mass)
 
     def _check_nsc_existence(self):
         """Checks if we have a NSC radius set or not. Raises an AttributeError
@@ -1101,6 +1108,8 @@ class Galaxy(object):
         _write_single_item(file_obj, self.center.in_units("pc"), "center",
                            units=True, multiple=True)
         _write_single_item(file_obj, self.radius.in_units("pc"), "radius",
+                           units=True, multiple=False)
+        _write_single_item(file_obj, self.j_radius.in_units("pc"), "j_radius",
                            units=True, multiple=False)
         # disk values
         _write_single_item(file_obj, self.disk_kde.radius.in_units("pc"),

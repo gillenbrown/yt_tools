@@ -23,31 +23,35 @@ best_loc = [848.18993318, 249.52074043, 180.26988714] * kpc
 def test_gal_id_generator():
     """This has to be run first, since it depends on the initial state of
     the id counter. """
-    gal_0 = galaxy.Galaxy(ds, best_loc, 10*kpc)
+    gal_0 = galaxy.Galaxy(ds, best_loc, 10*kpc, 1*kpc)
     assert gal_0.id == 101
-    gal_1 = galaxy.Galaxy(ds, best_loc, 10 * kpc)
+    gal_1 = galaxy.Galaxy(ds, best_loc, 10 * kpc, 1*kpc)
     assert gal_1.id == 102
-    gal_id = galaxy.Galaxy(ds, best_loc, 10 * kpc, 314)
+    gal_id = galaxy.Galaxy(ds, best_loc, 10 * kpc, 1*kpc, 314)
     assert gal_id.id == 314
 
 def test_gal_dataset_typing():
     with pytest.raises(TypeError):
-        galaxy.Galaxy(None, [1, 2, 3] * kpc, 10 * kpc)
-    galaxy.Galaxy(ds, [1, 2, 3] * kpc, 10 * kpc) # will not raise error
+        galaxy.Galaxy(None, [1, 2, 3] * kpc, 10 * kpc, 1 * kpc)
+    galaxy.Galaxy(ds, [1, 2, 3] * kpc, 10 * kpc, 1 * kpc) # will not raise error
 
 def test_gal_center_unit_check():
     with pytest.raises(TypeError):
-        galaxy.Galaxy(ds, [1, 2, 3], 10 * kpc)
+        galaxy.Galaxy(ds, [1, 2, 3], 10 * kpc, 1 * kpc)
 
 def test_gal_center_length_check():
     with pytest.raises(ValueError):
-        galaxy.Galaxy(ds, [1, 2] * kpc, 10*kpc)
+        galaxy.Galaxy(ds, [1, 2] * kpc, 10*kpc, 1 * kpc)
     with pytest.raises(ValueError):
-        galaxy.Galaxy(ds, [1, 2, 3, 4] * kpc, 10*kpc)
+        galaxy.Galaxy(ds, [1, 2, 3, 4] * kpc, 10*kpc, 1 * kpc)
 
 def test_gal_radius_unit_check():
     with pytest.raises(TypeError):
-        galaxy.Galaxy(ds, [1, 2, 3]*kpc, 10)
+        galaxy.Galaxy(ds, [1, 2, 3]*kpc, 10, 1 * kpc)
+
+def test_gal_j_radius_unit_check():
+    with pytest.raises(TypeError):
+        galaxy.Galaxy(ds, [1, 2, 3] * kpc, 10 * kpc, 1)
 
 # -----------------------------------------------------------------------------
 
@@ -57,15 +61,16 @@ def test_gal_radius_unit_check():
 
 @pytest.fixture
 def gal():
-    return galaxy.Galaxy(ds, best_loc, 17 * pc)
+    return galaxy.Galaxy(ds, best_loc, 17 * pc, 17*pc)
 
 @pytest.fixture
 def real_gal():  # has larger radius to actually include everythign we need to
-    gal =  galaxy.Galaxy(ds, best_loc, 1000 * pc)
-    gal.add_disk(j_radius=30 * pc, disk_radius=150 * pc, disk_height=100*pc)
+    gal =  galaxy.Galaxy(ds, best_loc, 1000 * pc, 1000*pc)
+    gal.add_disk(disk_radius=150 * pc, disk_height=100*pc)
     gal.find_nsc_radius()
     gal.nsc_half_mass_radius()
-    gal.create_axis_ratios()
+    gal.create_axis_ratios_nsc()
+    gal.create_axis_ratios_gal()
     gal.nsc_rotation()
     gal.create_abundances()
     return gal
@@ -99,7 +104,7 @@ def test_kde_creation_everything(gal):
         gal._create_kde_object(dimension=2)
 
     # then add the disk so everything should work.
-    gal.add_disk(j_radius=30*pc, disk_radius=30*pc, disk_height=30*pc)
+    gal.add_disk(disk_radius=30*pc, disk_height=30*pc)
     # nothing below should raise an error, and the assert should work too.
     gal._create_kde_object()
     # kde objects should have the right dimensions
@@ -126,7 +131,7 @@ def test_kde_profile_everything(gal):
         gal.kde_profile(dimension=3, outer_radius=10*pc)
 
     # have to add disk to get this in 2D
-    gal.add_disk(j_radius=30*pc, disk_radius=30*pc, disk_height=30*pc)
+    gal.add_disk(disk_radius=30*pc, disk_height=30*pc)
     gal.kde_profile(outer_radius=10 * pc, dimension=2)  # no error
     gal.kde_profile(outer_radius=10 * pc)  # defaults, no error
     with pytest.raises(ValueError):  # 1D won't work even after adding disk.
@@ -178,7 +183,7 @@ def test_histogram_profile_everything(gal):
     # first check whether a disk has been added
     with pytest.raises(RuntimeError):
         gal.histogram_profile(bin_edges)
-    gal.add_disk(j_radius=30*pc, disk_radius=30*pc, disk_height=30*pc)
+    gal.add_disk(disk_radius=30*pc, disk_height=30*pc)
     gal.histogram_profile(bin_edges)  # no error
 
     # bin edges needs to be iterable
@@ -201,7 +206,7 @@ def test_integrated_kde_profile_everything(gal):
     # first check whether a disk has been added
     with pytest.raises(RuntimeError):
         gal.integrated_kde_profile(bin_edges)
-    gal.add_disk(j_radius=30*pc, disk_radius=30*pc, disk_height=30*pc)
+    gal.add_disk(disk_radius=30*pc, disk_height=30*pc)
 
     # bin_radii has to be non_negative
     with pytest.raises(ValueError):
@@ -225,9 +230,7 @@ def test_integrated_kde_profile_everything(gal):
 
 def test_add_disk_units(gal):
     gal.add_disk()  # default parameters should work
-    gal.add_disk(20 * pc, 20 * pc, 20 * pc)
-    with pytest.raises(TypeError):
-        gal.add_disk(j_radius=10)
+    gal.add_disk(20 * pc, 20 * pc)
     with pytest.raises(TypeError):
         gal.add_disk(disk_radius=10)
     with pytest.raises(TypeError):
@@ -242,38 +245,26 @@ def test_add_disk_methods(gal):
 def test_add_disk_result_type(gal):
     """We should have an actual disk when done. """
     assert gal.disk_kde is None
-    gal.add_disk(j_radius=30*pc, disk_radius=30*pc, disk_height=30*pc)
+    gal.add_disk(disk_radius=30*pc, disk_height=30*pc)
     assert isinstance(gal.disk_kde,
                       yt.data_objects.selection_data_containers.YTDisk)
 
     assert gal.disk_nsc is None
-    gal.add_disk(j_radius=30*pc, disk_radius=30*pc, disk_height=30*pc,
+    gal.add_disk(disk_radius=30*pc, disk_height=30*pc,
                  disk_type="nsc")
     assert isinstance(gal.disk_nsc,
                       yt.data_objects.selection_data_containers.YTDisk)
-
-    with pytest.raises(ValueError):
-        gal.add_disk(j_radius=30*pc, disk_radius=30*pc, disk_height=30*pc,
-                     disk_type="wer")
 
 def test_add_disk_properties(gal):
     """Check that the disk has the properties we want. """
     disk_height = 29.3 * pc
     disk_radius = 22.5 * pc
-    gal.add_disk(disk_radius=disk_radius, disk_height=disk_height,
-                 j_radius=30*pc)
+    gal.add_disk(disk_radius=disk_radius, disk_height=disk_height)
     assert gal.disk_kde.height == disk_height
     assert gal.disk_kde.radius == disk_radius
     # test that it's not in the default orientation
     assert not np.allclose(gal.disk_kde.get_field_parameter("normal"),
                            [0, 0, 1])
-
-# def test_add_disk_kde_creation(gal):
-#     assert gal._star_kde_mass_2d is None
-#     assert gal._star_kde_metals_2d is None
-#     gal.add_disk()
-#     assert isinstance(gal._star_kde_mass_2d, kde.KDE)
-#     assert isinstance(gal._star_kde_metals_2d, kde.KDE)
 
 # -----------------------------------------------------------------------------
 #
@@ -421,6 +412,20 @@ def test_reading_writing(real_gal):
     assert np.allclose(old_gal.disk_nsc._norm_vec,
                        new_gal.disk_nsc._norm_vec)
     assert old_gal.disk_nsc.height == new_gal.disk_nsc.height
+
+    # eigenvectors of disk
+    assert np.allclose(old_gal.nsc_axis_ratios.a_vec,
+                       new_gal.nsc_axis_ratios.a_vec)
+    assert np.allclose(old_gal.nsc_axis_ratios.b_vec,
+                       new_gal.nsc_axis_ratios.b_vec)
+    assert np.allclose(old_gal.nsc_axis_ratios.c_vec,
+                       new_gal.nsc_axis_ratios.c_vec)
+    assert np.allclose(old_gal.gal_axis_ratios.a_vec,
+                       new_gal.gal_axis_ratios.a_vec)
+    assert np.allclose(old_gal.gal_axis_ratios.b_vec,
+                       new_gal.gal_axis_ratios.b_vec)
+    assert np.allclose(old_gal.gal_axis_ratios.c_vec,
+                       new_gal.gal_axis_ratios.c_vec)
 
     # NSC radii should be the same
     assert old_gal.nsc_radius == new_gal.nsc_radius
