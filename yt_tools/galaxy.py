@@ -191,7 +191,7 @@ def read_gal(ds, file_obj):
     r_half_err = _parse_line(file_obj.readline(), multiple=True, units=False)
 
     # we can create the galaxy at this point
-    gal = Galaxy(ds, center, radius, id, j_radius)
+    gal = Galaxy(ds, center, radius, j_radius, id)
     # we then add the disk without calculating angular momentum by
     # specifying the normal vector. This saves computation time.
     gal.add_disk(disk_radius=disk_kde_radius, disk_height=disk_kde_height,
@@ -295,7 +295,7 @@ class Galaxy(object):
 
         # we need to check that the radius has units too
         utils.test_for_units(radius, "radius")
-        utils.test_for_units(j_radius, "radius")
+        utils.test_for_units(j_radius, "j_radius")
         # set the attribute if it passes tests
         self.radius = radius
         self.j_radius = j_radius
