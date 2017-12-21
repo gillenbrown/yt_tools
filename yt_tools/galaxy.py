@@ -291,14 +291,14 @@ class Galaxy(object):
         if len(center) != 3:
             raise ValueError("Center must be a three element array (x, y, z).")
         # set the attribute if it passes tests
-        self.center = center
+        self.center = self.ds.arr(center)
 
         # we need to check that the radius has units too
         utils.test_for_units(radius, "radius")
         utils.test_for_units(j_radius, "j_radius")
         # set the attribute if it passes tests
-        self.radius = radius
-        self.j_radius = j_radius
+        self.radius = self.ds.quan(radius)
+        self.j_radius = self.ds.quan(j_radius)
 
         # create the sphere that contains the galaxy.
         self.sphere = self.ds.sphere(center=self.center, radius=self.radius)
