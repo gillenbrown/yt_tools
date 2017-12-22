@@ -459,27 +459,30 @@ class AxisRatios(object):
         b_idx = ({0, 1, 2} - {a_idx, c_idx}).pop()
 
         # then store the eigenvectors. Have to flatten them to turn them into
-        # 1D arrays rather than matrices.
+        # 1D arrays rather than matrices. They already come normalized, so we
+        # don't have to worry about normalizing them. Since they come from a
+        # symmetric matrix, they will be orthogonal too.
         self.a_vec = np.array(eigenvectors[a_idx]).flatten()
         self.b_vec = np.array(eigenvectors[b_idx]).flatten()
         self.c_vec = np.array(eigenvectors[c_idx]).flatten()
 
         # and get the eigenvalues. Note that these are the square of the axis.
-        a = eigenvalues[a_idx]
-        b = eigenvalues[b_idx]
-        c = eigenvalues[c_idx]
+        eig_val_a = eigenvalues[a_idx]
+        eig_val_b = eigenvalues[b_idx]
+        eig_val_c = eigenvalues[c_idx]
 
-        # take square root of all values
-        a = np.sqrt(a)
-        b = np.sqrt(b)
-        c = np.sqrt(c)
+        # The eigenvalues are a^2/3, b^2/3, and c^2/3. We want to turn these
+        # eigenvalues into the real axis lengths.
+        self.a = np.sqrt(3.0 * eig_val_a)
+        self.b = np.sqrt(3.0 * eig_val_b)
+        self.c = np.sqrt(3.0 * eig_val_c)
 
         # then turn them into axis ratios.
-        self.a_over_b = a / b
-        self.b_over_a = b / a
-        self.a_over_c = a / c
-        self.c_over_a = c / a
-        self.b_over_c = b / c
-        self.c_over_b = c / b
+        self.a_over_b = self.a / self.b
+        self.b_over_a = self.b / self.a
+        self.a_over_c = self.a / self.c
+        self.c_over_a = self.c / self.a
+        self.b_over_c = self.b / self.c
+        self.c_over_b = self.c / self.b
 
         self.ellipticity = 1.0 - self.c_over_a
