@@ -962,7 +962,22 @@ class Galaxy(object):
            shape matrix of the NSC. These should line up with the axis ratios
            if they are not due to rotation. """
 
-        # first get the velocities in all directions.
+        # need to check for NSC first
+        self._check_nsc_existence()
+
+        # first get the vectors that will will project along.
+        a_vec = self.nsc_axis_ratios.a_vec
+        b_vec = self.nsc_axis_ratios.b_vec
+        c_vec = self.nsc_axis_ratios.c_vec
+        # if there are too few particles to do anything, then the eigenvector
+        # will be None. If we can't do this, then just set the dispersions
+        # to zero.
+        if a_vec is None:
+            self.nsc_disp_along_a = 0 * yt.units.km / yt.units.second
+            self.nsc_disp_along_b = 0 * yt.units.km / yt.units.second
+            self.nsc_disp_along_c = 0 * yt.units.km / yt.units.second
+
+        # then get the velocities in all directions.
         key = "particle_velocity_{}"
         v_x_old = self.j_sphere[('STAR', key.format("x"))].to("km/s").value
         v_y_old = self.j_sphere[('STAR', key.format("y"))].to("km/s").value
@@ -974,11 +989,6 @@ class Galaxy(object):
         v_y_old = v_y_old[self.nsc_idx_j_sphere]
         v_z_old = v_z_old[self.nsc_idx_j_sphere]
         mass = mass[self.nsc_idx_j_sphere]
-
-        # then get the vectors that will will project along.
-        a_vec = self.nsc_axis_ratios.a_vec
-        b_vec = self.nsc_axis_ratios.b_vec
-        c_vec = self.nsc_axis_ratios.c_vec
 
         # then transform the positions to be in the new coordinate system.
         v_as, v_bs, v_cs = [], [], []

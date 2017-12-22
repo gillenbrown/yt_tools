@@ -447,6 +447,9 @@ class AxisRatios(object):
             self.b_over_c = 0
             self.c_over_b = 0
             self.ellipticity = 0
+            self.a_vec = None
+            self.b_vec = None
+            self.c_vec = None
             return
 
         eigenvalues, eigenvectors = np.linalg.eig(self.inertia_tensor)
