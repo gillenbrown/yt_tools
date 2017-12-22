@@ -184,6 +184,9 @@ def read_gal(ds, file_obj):
 
     mean_rot_vel = _parse_line(file_obj.readline(), multiple=False, units=True)
     nsc_3d_sigma = _parse_line(file_obj.readline(), multiple=False, units=True)
+    nsc_sigma_a = _parse_line(file_obj.readline(), multiple=False, units=True)
+    nsc_sigma_b = _parse_line(file_obj.readline(), multiple=False, units=True)
+    nsc_sigma_c = _parse_line(file_obj.readline(), multiple=False, units=True)
 
     r_nsc = _parse_line(file_obj.readline(), multiple=False, units=True)
     r_nsc_err = _parse_line(file_obj.readline(), multiple=True, units=True)
@@ -208,11 +211,15 @@ def read_gal(ds, file_obj):
     gal.half_mass_radius = r_half
     gal.half_mass_radius_errs = r_half_err
 
-    # assign the NSC indices and velocity stuff
+    # assign the NSC indices
     gal.nsc_idx_j_sphere = nsc_idx_j_sphere
     gal.nsc_idx_disk_nsc = nsc_idx_disk_nsc
+    # and velocity stuff
     gal.mean_rot_vel = mean_rot_vel
     gal.nsc_3d_sigma = nsc_3d_sigma
+    gal.nsc_disp_along_a = nsc_sigma_a
+    gal.nsc_disp_along_b = nsc_sigma_b
+    gal.nsc_disp_along_c = nsc_sigma_c
 
     # then the binned profile
     gal.binned_radii = _parse_line(file_obj.readline(),
@@ -343,6 +350,9 @@ class Galaxy(object):
         self.gal_axis_ratios = None  # used for disk plane
         self.mean_rot_vel = None  # used for rotation analysis
         self.nsc_3d_sigma = None  # used for rotation analysis
+        self.nsc_disp_along_a = None  # used for rotation analysis
+        self.nsc_disp_along_b = None  # used for rotation analysis
+        self.nsc_disp_along_c = None  # used for rotation analysis
         self.nsc_abundances = None  # used for elemental abundances
         self.gal_abundances = None  # used for elemental abundances
 
@@ -941,6 +951,52 @@ class Galaxy(object):
         self.nsc_3d_sigma = utils.sum_in_quadrature(sigma_z, sigma_rot,
                                                     sigma_radial)
 
+    def nsc_dispersion_eigenvectors(self):
+        """Calculate the dispersion along each of the eigenvalues of the
+           shape matrix of the NSC. These should line up with the axis ratios
+           if they are not due to rotation. """
+
+        # first get the velocities in all directions.
+        key = "particle_velocity_{}"
+        v_x_old = self.j_sphere[('STAR', key.format("x"))].to("km/s").value
+        v_y_old = self.j_sphere[('STAR', key.format("y"))].to("km/s").value
+        v_z_old = self.j_sphere[('STAR', key.format("z"))].to("km/s").value
+        mass = self.j_sphere[('STAR', 'MASS')].to("solMass").value
+
+        # then restrict down to the NSC
+        v_x_old = v_x_old[self.nsc_idx_j_sphere]
+        v_y_old = v_y_old[self.nsc_idx_j_sphere]
+        v_z_old = v_z_old[self.nsc_idx_j_sphere]
+        mass = mass[self.nsc_idx_j_sphere]
+
+        # then get the vectors that will will project along.
+        a_vec = self.nsc_axis_ratios.a_vec
+        b_vec = self.nsc_axis_ratios.b_vec
+        c_vec = self.nsc_axis_ratios.c_vec
+
+        # then transform the positions to be in the new coordinate system.
+        v_as, v_bs, v_cs = [], [], []
+        for vx, vy, vz in zip(v_x_old, v_y_old, v_z_old):
+            loc = utils.transform_coords([vx, vy, vz], a_vec, b_vec, c_vec)
+            v_as.append(loc[0])
+            v_bs.append(loc[1])
+            v_cs.append(loc[2])
+
+        # add back the units
+        v_as = np.array(v_as) * yt.units.km / yt.units.second
+        v_bs = np.array(v_bs) * yt.units.km / yt.units.second
+        v_cs = np.array(v_cs) * yt.units.km / yt.units.second
+
+        # then we can easily get the dispersion along each eigenvalue.
+        sigma_a = np.sqrt(utils.weighted_variance(v_as, mass, ddof=0))
+        sigma_b = np.sqrt(utils.weighted_variance(v_bs, mass, ddof=0))
+        sigma_c = np.sqrt(utils.weighted_variance(v_cs, mass, ddof=0))
+
+        # then save those
+        self.nsc_disp_along_a = sigma_a
+        self.nsc_disp_along_b = sigma_b
+        self.nsc_disp_along_c = sigma_c
+
     def create_abundances(self):
         """Creates the abundance objects, which handle all the elemental
         abundance stuff, like [Z/H], [Fe/H], and [X/Fe].
@@ -1136,6 +1192,12 @@ class Galaxy(object):
                                multiple=False, units=True)
             _write_single_item(file_obj, self.nsc_3d_sigma, "nsc_3d_sigma",
                                multiple=False, units=True)
+            _write_single_item(file_obj, self.nsc_disp_along_a,
+                               "nsc_disp_along_a", multiple=False, units=True)
+            _write_single_item(file_obj, self.nsc_disp_along_b,
+                               "nsc_disp_along_b", multiple=False, units=True)
+            _write_single_item(file_obj, self.nsc_disp_along_c,
+                               "nsc_disp_along_c", multiple=False, units=True)
             # then the actual radius and half mass radius, which take a while
             # to calculate
             _write_single_item(file_obj, self.nsc_radius, "r_NSC",
@@ -1281,6 +1343,12 @@ class Galaxy(object):
                            "nsc_rot_vel")
         _write_single_item(file_obj, self.nsc_3d_sigma.to("km/s").value,
                            "nsc_3d_sigma")
+        _write_single_item(file_obj, self.nsc_disp_along_a.to("km/s").value,
+                           "nsc_disp_along_a")
+        _write_single_item(file_obj, self.nsc_disp_along_b.to("km/s").value,
+                           "nsc_disp_along_b")
+        _write_single_item(file_obj, self.nsc_disp_along_c.to("km/s").value,
+                           "nsc_disp_along_c")
 
         # metallicity
         z = self.nsc_abundances.log_z_over_z_sun_total()

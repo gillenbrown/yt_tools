@@ -72,6 +72,7 @@ def real_gal():  # has larger radius to actually include everythign we need to
     gal.create_axis_ratios_nsc()
     gal.create_axis_ratios_gal()
     gal.nsc_rotation()
+    gal.nsc_dispersion_eigenvectors()
     gal.create_abundances()
     return gal
 
@@ -489,6 +490,12 @@ def test_reading_writing(real_gal):
                       new_gal.mean_rot_vel.in_units("km/s").value)
     assert np.isclose(old_gal.nsc_3d_sigma.in_units("km/s").value,
                       new_gal.nsc_3d_sigma.in_units("km/s").value)
+    assert np.isclose(old_gal.nsc_disp_along_a.in_units("km/s").value,
+                      new_gal.nsc_disp_along_a.in_units("km/s").value)
+    assert np.isclose(old_gal.nsc_disp_along_b.in_units("km/s").value,
+                      new_gal.nsc_disp_along_b.in_units("km/s").value)
+    assert np.isclose(old_gal.nsc_disp_along_c.in_units("km/s").value,
+                      new_gal.nsc_disp_along_c.in_units("km/s").value)
     assert np.isclose(old_gal.nsc_abundances.x_on_fe_total("N"),
                       new_gal.nsc_abundances.x_on_fe_total("N"))
     assert np.isclose(old_gal.nsc_abundances.x_on_h_total("Ca"),

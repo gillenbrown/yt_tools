@@ -79,6 +79,18 @@ def test_dispersion(new_gal):
     sigma = read_in_gal.nsc_3d_sigma.to("km/s").value
     assert np.isclose(sigma, new_gal.nsc_3d_sigma)
 
+def test_dispersion_along_a(new_gal):
+    sigma = read_in_gal.nsc_disp_along_a.to("km/s").value
+    assert np.isclose(sigma, new_gal.nsc_disp_along_a)
+
+def test_dispersion_along_b(new_gal):
+    sigma = read_in_gal.nsc_disp_along_b.to("km/s").value
+    assert np.isclose(sigma, new_gal.nsc_disp_along_b)
+
+def test_dispersion_along_c(new_gal):
+    sigma = read_in_gal.nsc_disp_along_c.to("km/s").value
+    assert np.isclose(sigma, new_gal.nsc_disp_along_c)
+
 def test_metallicity(new_gal):
     z = read_in_gal.nsc_abundances.log_z_over_z_sun_total()
     assert np.isclose(z, new_gal.metallicity)
