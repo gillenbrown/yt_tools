@@ -597,44 +597,45 @@ class Galaxy(object):
         kwargs = {"inner_kernel": inner_kernel,
                   "break_radius": break_radius,
                   "outer_kernel": outer_kernel}
-        half_mass_radii = []
+        half_masses = []
         for radius in [self.nsc_radius, nsc_low, nsc_high]:
-            time_a = time.time()
             total_mass = utils.mass_annulus(density_func=density_integrand,
                                             radius_a=0,
                                             radius_b=radius,
                                             error_tolerance=0.01,
                                             density_func_kwargs=kwargs)
 
-            time_b = time.time()
-            half_mass = total_mass / 2.0
+            half_masses.append(total_mass / 2.0)
 
-            # then calculate the mass in each annulus, and make it cumulative
-            # until we reach half the mass
-            bin_edges = np.arange(0, self.nsc_radius, 0.01)
-            cumulative_mass = 0
-            time_c = time.time()
-            for left_idx in range(len(bin_edges) - 1):
-                right_idx = left_idx + 1
-                radius_a = bin_edges[left_idx]
-                radius_b = bin_edges[right_idx]
-                # integrate over the annulus
-                this_mass = utils.mass_annulus(density_func=density_integrand,
-                                               radius_a=radius_a,
-                                               radius_b=radius_b,
-                                               error_tolerance=0.01,
-                                               density_func_kwargs=kwargs)
-                # then add it to the total
-                cumulative_mass += this_mass
+        # then calculate the mass in each annulus, and make it cumulative
+        # until we reach half the mass
+        bin_edges = np.arange(0, self.nsc_radius, 0.01)
+        cumulative_mass = 0
+        half_mass_radii = [0, 0, 0]
+        half_mass_done = [False, False, False]
+        for left_idx in range(len(bin_edges) - 1):
+            right_idx = left_idx + 1
+            radius_a = bin_edges[left_idx]
+            radius_b = bin_edges[right_idx]
+            # integrate over the annulus
+            this_mass = utils.mass_annulus(density_func=density_integrand,
+                                           radius_a=radius_a,
+                                           radius_b=radius_b,
+                                           error_tolerance=0.01,
+                                           density_func_kwargs=kwargs)
+            # then add it to the total
+            cumulative_mass += this_mass
 
-                # If it's greater than half, we have our half mass radius
-                if cumulative_mass >= half_mass:
-                    half_mass_radii.append(radius_b)
-                    break
-            time_d = time.time()
-            print("{}s for initial integration.\n"
-                  "{}s for cumulative finding.".format(time_b - time_a,
-                                                       time_d - time_c))
+            # then check for each radius
+            for idx in range(3):
+                if not half_mass_done[idx]:
+                    # If it's greater than half, we have our half mass radius
+                    if cumulative_mass >= half_masses[idx]:
+                        half_mass_radii[idx] = radius_b
+                        half_mass_done[idx] = True
+            # once we hit all of them, we are done.
+            if all(half_mass_done):
+                break
         # then parse the list of radii we made. These correspond to the
         # NSC radii that were in the loop above.
         half_mass_best = half_mass_radii[0]
