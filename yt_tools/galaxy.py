@@ -184,6 +184,7 @@ def read_gal(ds, file_obj):
 
     mean_rot_vel = _parse_line(file_obj.readline(), multiple=False, units=True)
     nsc_3d_sigma = _parse_line(file_obj.readline(), multiple=False, units=True)
+    anisotropy = _parse_line(file_obj.readline(), multiple=False, units=True)
     nsc_sigma_a = _parse_line(file_obj.readline(), multiple=False, units=True)
     nsc_sigma_b = _parse_line(file_obj.readline(), multiple=False, units=True)
     nsc_sigma_c = _parse_line(file_obj.readline(), multiple=False, units=True)
@@ -217,6 +218,7 @@ def read_gal(ds, file_obj):
     # and velocity stuff
     gal.mean_rot_vel = mean_rot_vel
     gal.nsc_3d_sigma = nsc_3d_sigma
+    gal.anisotropy_parameter = anisotropy
     gal.nsc_disp_along_a = nsc_sigma_a
     gal.nsc_disp_along_b = nsc_sigma_b
     gal.nsc_disp_along_c = nsc_sigma_c
@@ -350,6 +352,7 @@ class Galaxy(object):
         self.gal_axis_ratios = None  # used for disk plane
         self.mean_rot_vel = None  # used for rotation analysis
         self.nsc_3d_sigma = None  # used for rotation analysis
+        self.anisotropy_parameter = None  # used for rotation analysis
         self.nsc_disp_along_a = None  # used for rotation analysis
         self.nsc_disp_along_b = None  # used for rotation analysis
         self.nsc_disp_along_c = None  # used for rotation analysis
@@ -952,6 +955,8 @@ class Galaxy(object):
         self.nsc_3d_sigma = utils.sum_in_quadrature(sigma_z, sigma_rot,
                                                     sigma_radial)
 
+        self.anisotropy_parameter = 1.0 - sigma_rot**2 / sigma_radial**2
+
     def nsc_dispersion_eigenvectors(self):
         """Calculate the dispersion along each of the eigenvalues of the
            shape matrix of the NSC. These should line up with the axis ratios
@@ -1193,6 +1198,9 @@ class Galaxy(object):
                                multiple=False, units=True)
             _write_single_item(file_obj, self.nsc_3d_sigma, "nsc_3d_sigma",
                                multiple=False, units=True)
+            _write_single_item(file_obj, self.anisotropy_parameter,
+                               "anisotropy_parameter",
+                               multiple=False, units=True)
             _write_single_item(file_obj, self.nsc_disp_along_a,
                                "nsc_disp_along_a", multiple=False, units=True)
             _write_single_item(file_obj, self.nsc_disp_along_b,
@@ -1344,6 +1352,8 @@ class Galaxy(object):
                            "nsc_rot_vel")
         _write_single_item(file_obj, self.nsc_3d_sigma.to("km/s").value,
                            "nsc_3d_sigma")
+        _write_single_item(file_obj, self.anisotropy_parameter,
+                           "anisotropy_parameter")
         _write_single_item(file_obj, self.nsc_disp_along_a.to("km/s").value,
                            "nsc_disp_along_a")
         _write_single_item(file_obj, self.nsc_disp_along_b.to("km/s").value,

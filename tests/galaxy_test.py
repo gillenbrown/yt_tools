@@ -490,6 +490,8 @@ def test_reading_writing(real_gal):
                       new_gal.mean_rot_vel.in_units("km/s").value)
     assert np.isclose(old_gal.nsc_3d_sigma.in_units("km/s").value,
                       new_gal.nsc_3d_sigma.in_units("km/s").value)
+    assert np.isclose(old_gal.anisotropy_parameter,
+                      new_gal.anisotropy_parameter)
     assert np.isclose(old_gal.nsc_disp_along_a.in_units("km/s").value,
                       new_gal.nsc_disp_along_a.in_units("km/s").value)
     assert np.isclose(old_gal.nsc_disp_along_b.in_units("km/s").value,

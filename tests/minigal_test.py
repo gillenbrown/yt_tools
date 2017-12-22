@@ -79,6 +79,10 @@ def test_dispersion(new_gal):
     sigma = read_in_gal.nsc_3d_sigma.to("km/s").value
     assert np.isclose(sigma, new_gal.nsc_3d_sigma)
 
+def test_anisotropy(new_gal):
+    beta = read_in_gal.anisotropy_parameter
+    assert np.isclose(beta, new_gal.anisotropy_parameter)
+
 def test_dispersion_along_a(new_gal):
     sigma = read_in_gal.nsc_disp_along_a.to("km/s").value
     assert np.isclose(sigma, new_gal.nsc_disp_along_a)
