@@ -976,6 +976,7 @@ class Galaxy(object):
             self.nsc_disp_along_a = 0 * yt.units.km / yt.units.second
             self.nsc_disp_along_b = 0 * yt.units.km / yt.units.second
             self.nsc_disp_along_c = 0 * yt.units.km / yt.units.second
+            return
 
         # then get the velocities in all directions.
         key = "particle_velocity_{}"
