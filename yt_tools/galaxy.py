@@ -177,8 +177,8 @@ def read_gal(ds, file_obj):
     disk_nsc_normal = _parse_line(file_obj.readline(),
                                   multiple=True, units=False)
 
-    nsc_idx_sphere = _parse_line(file_obj.readline(),
-                                 multiple=True, units=False, new_type=int)
+    nsc_idx_j_sphere = _parse_line(file_obj.readline(),
+                                   multiple=True, units=False, new_type=int)
     nsc_idx_disk_nsc = _parse_line(file_obj.readline(),
                                  multiple=True, units=False, new_type=int)
 
@@ -209,7 +209,7 @@ def read_gal(ds, file_obj):
     gal.half_mass_radius_errs = r_half_err
 
     # assign the NSC indices and velocity stuff
-    gal.nsc_idx_sphere = nsc_idx_sphere
+    gal.nsc_idx_j_sphere = nsc_idx_j_sphere
     gal.nsc_idx_disk_nsc = nsc_idx_disk_nsc
     gal.mean_rot_vel = mean_rot_vel
     gal.nsc_3d_sigma = nsc_3d_sigma
@@ -334,7 +334,7 @@ class Galaxy(object):
         self.nsc = None  # used for NSC analysis
         self.nsc_radius = None  # used for NSC analysis
         self.nsc_radius_err = None # used for NSC analysis
-        self.nsc_idx_sphere = None  # used for NSC analysis
+        self.nsc_idx_j_sphere = None  # used for NSC analysis
         self.nsc_idx_disk_kde = None  # used for NSC analysis
         self.nsc_idx_disk_nsc = None  # used for NSC analysis
         self.half_mass_radius = None  # used for NSC analysis
@@ -635,7 +635,7 @@ class Galaxy(object):
         # then check if the NSC is dominated by one massive star particle. If
         # so, then our half mass is just an upper limit
         # half mass upper limits
-        nsc_star_masses = self.sphere[('STAR', "MASS")][self.nsc_idx_sphere]
+        nsc_star_masses = self.j_sphere[('STAR', "MASS")][self.nsc_idx_j_sphere]
         if utils.max_above_half(nsc_star_masses):  # one star particle dominates
             err_down = self.half_mass_radius  # just the radius.
         else:
@@ -843,18 +843,18 @@ class Galaxy(object):
                       disk_radius=10 * self.nsc_radius, disk_type="nsc")
 
         # then get the indices of the stars actually in the NSC
-        if self.nsc_idx_sphere is None:  # checks for read in
+        if self.nsc_idx_j_sphere is None:  # checks for read in
             radius_key = ('STAR', 'particle_position_spherical_radius')
             self.nsc_idx_disk_kde = np.where(self.disk_kde[radius_key] <
                                              self.nsc_radius)[0]
             self.nsc_idx_disk_nsc = np.where(self.disk_nsc[radius_key] <
                                              self.nsc_radius)[0]
-            self.nsc_idx_sphere = np.where(self.sphere[radius_key] <
-                                           self.nsc_radius)[0]
+            self.nsc_idx_j_sphere = np.where(self.j_sphere[radius_key] <
+                                             self.nsc_radius)[0]
 
         # The same number of stars should be in the NSC to matter what
         # container is being used.
-        if not len(self.nsc_idx_disk_nsc) == len(self.nsc_idx_sphere):
+        if not len(self.nsc_idx_disk_nsc) == len(self.nsc_idx_j_sphere):
             raise RuntimeError("NSC disk and sphere don't have same NSC stars.")
 
         # then check that there are actually stars in the NSC
@@ -864,7 +864,7 @@ class Galaxy(object):
         # then check if the NSC is dominated by one massive star particle. If
         # so, then our half mass is just an upper limit
         # half mass upper limits
-        nsc_star_masses = self.sphere[('STAR', "MASS")][self.nsc_idx_sphere]
+        nsc_star_masses = self.j_sphere[('STAR', "MASS")][self.nsc_idx_j_sphere]
         if utils.max_above_half(nsc_star_masses):  # one star particle dominates
             new_lower_err = self.nsc.r_half_non_parametric  # just the radius.
             # since the errors are a tuple we have to be more clever about
@@ -878,15 +878,15 @@ class Galaxy(object):
 
         # get the locations of the stars in the NSC. Convert to numpy arrays
         # for speed.
-        x = np.array(self.sphere[('STAR', 'POSITION_X')].in_units("pc"))
-        y = np.array(self.sphere[('STAR', 'POSITION_Y')].in_units("pc"))
-        z = np.array(self.sphere[('STAR', 'POSITION_Z')].in_units("pc"))
-        mass = np.array(self.sphere[('STAR', "MASS")].in_units("msun"))
+        x = np.array(self.j_sphere[('STAR', 'POSITION_X')].in_units("pc"))
+        y = np.array(self.j_sphere[('STAR', 'POSITION_Y')].in_units("pc"))
+        z = np.array(self.j_sphere[('STAR', 'POSITION_Z')].in_units("pc"))
+        mass = np.array(self.j_sphere[('STAR', "MASS")].in_units("msun"))
         # then get just the NSC ones, and subtract off the center
-        x = x[self.nsc_idx_sphere] - self.center[0].in_units("pc").value
-        y = y[self.nsc_idx_sphere] - self.center[1].in_units("pc").value
-        z = z[self.nsc_idx_sphere] - self.center[2].in_units("pc").value
-        mass = mass[self.nsc_idx_sphere]
+        x = x[self.nsc_idx_j_sphere] - self.center[0].in_units("pc").value
+        y = y[self.nsc_idx_j_sphere] - self.center[1].in_units("pc").value
+        z = z[self.nsc_idx_j_sphere] - self.center[2].in_units("pc").value
+        mass = mass[self.nsc_idx_j_sphere]
 
         self.nsc_axis_ratios = nsc_structure.AxisRatios(x, y, z, mass)
 
@@ -953,16 +953,16 @@ class Galaxy(object):
         # we need masses, Z_Ia, and Z_II. I can convert these to arrays to
         # help speed, since the units don't matter in the metallicity
         # calculations. As long as the masses are relative it will still work.
-        masses = np.array(self.sphere[('STAR', 'MASS')].in_units("msun"))
-        z_Ia = np.array(self.sphere[('STAR', 'METALLICITY_SNIa')])
-        z_II = np.array(self.sphere[('STAR', 'METALLICITY_SNII')])
+        mass = np.array(self.j_sphere[('STAR', 'MASS')].in_units("msun"))
+        z_Ia = np.array(self.j_sphere[('STAR', 'METALLICITY_SNIa')])
+        z_II = np.array(self.j_sphere[('STAR', 'METALLICITY_SNII')])
 
         # the objects can then be created, where for the NSC we select only
         # the objects in the NSC
-        self.gal_abundances = abundances.Abundances(masses, z_Ia, z_II)
-        self.nsc_abundances = abundances.Abundances(masses[self.nsc_idx_sphere],
-                                                    z_Ia[self.nsc_idx_sphere],
-                                                    z_II[self.nsc_idx_sphere])
+        self.gal_abundances = abundances.Abundances(mass, z_Ia, z_II)
+        self.nsc_abundances = abundances.Abundances(mass[self.nsc_idx_j_sphere],
+                                                    z_Ia[self.nsc_idx_j_sphere],
+                                                    z_II[self.nsc_idx_j_sphere])
 
     def contains(self, other_gal):
         """
@@ -1127,8 +1127,8 @@ class Galaxy(object):
                                "disk_kde_normal", multiple=True)
             # NSC indexes, which take a while to build in the first place, so it's
             # better to write them to file now
-            _write_single_item(file_obj, self.nsc_idx_sphere, "nsc_idx_sphere",
-                               multiple=True)
+            _write_single_item(file_obj, self.nsc_idx_j_sphere,
+                               "nsc_idx_j_sphere", multiple=True)
             _write_single_item(file_obj, self.nsc_idx_disk_nsc,
                                "nsc_idx_disk_nsc", multiple=True)
             # same with the rotational stuff, which requires access to the disk obj
@@ -1151,7 +1151,7 @@ class Galaxy(object):
             _write_single_item(file_obj, None, "disk_nsc_radius")
             _write_single_item(file_obj, None, "disk_nsc_height")
             _write_single_item(file_obj, None, "disk_kde_normal")
-            _write_single_item(file_obj, None, "nsc_idx_sphere")
+            _write_single_item(file_obj, None, "nsc_idx_j_sphere")
             _write_single_item(file_obj, None, "nsc_idx_disk_nsc")
             _write_single_item(file_obj, None, "nsc_idx_disk_kde")
             _write_single_item(file_obj, None, "mean_rot_vel")
