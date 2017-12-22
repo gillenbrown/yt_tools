@@ -281,6 +281,18 @@ def test_eigenvectors_all_not_symmetric():
     assert (np.allclose(a_r.c_vec,      [1, 0, 0]) or
             np.allclose(a_r.c_vec * -1, [1, 0, 0]))
 
+@pytest.mark.parametrize("xs,ys,zs,masses", [
+    (xs*1.01, ys*1.02, zs*1.03, masses),  # have to have unique eigenvectors
+    (xs*2, ys*3, zs*45, masses*4.3),
+    (np.random.normal(0, 10, 100), np.random.normal(0, 10, 100),
+     np.random.normal(0, 10, 100), np.random.uniform(1, 10, 100))
+])
+def test_eigenvectors_orthogonal(xs, ys, zs, masses):
+    a_r = nsc_structure.AxisRatios(xs, ys, zs, masses)
+    assert np.isclose(np.dot(a_r.a_vec, a_r.b_vec), 0)
+    assert np.isclose(np.dot(a_r.a_vec, a_r.c_vec), 0)
+    assert np.isclose(np.dot(a_r.b_vec, a_r.c_vec), 0)
+
 def test_axis_ratios_all_not_symmetric_rotated():
     """Test with a rotated structure where are three axes are different. """
     new_x = xs

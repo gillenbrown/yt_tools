@@ -949,3 +949,145 @@ def test_box_selection_points_infinite_extent_outside():
     zs = np.random.uniform(-1000, 1000, 1000)
     idxs = utils.box_membership(xs, ys, zs, 2, 2, np.inf)
     assert np.array_equal(idxs, [])
+
+# -----------------------------------------------------------------------------
+
+# test vector normalize
+
+# -----------------------------------------------------------------------------
+
+def test_vector_norm_error_checking():
+    vec = np.array([1, 2, 3, 4, 5])
+    utils.normalize_vector(vec)  # no error
+    with pytest.raises(ValueError):
+        vec = np.array([[1, 2], [3, 4]])
+        utils.normalize_vector(vec)
+
+def test_vector_norm_no_work_needed_a():
+    vec = np.array([1, 0, 0])
+    norm_vec = utils.normalize_vector(vec)
+    assert np.allclose(vec, norm_vec)
+
+def test_vector_norm_no_work_needed_b():
+    vec = np.array([0.8, 0.6, 0])
+    norm_vec = utils.normalize_vector(vec)
+    assert np.allclose(vec, norm_vec)
+
+def test_vector_norm_known_case_a():
+    vec = np.array([1, 2, 3, 4, 5])
+    norm = np.sqrt(55.0)
+    true_norm_vec = np.array([1.0/norm, 2.0/norm, 3.0/norm, 4.0/norm, 5.0/norm])
+    test_norm_vec = utils.normalize_vector(vec)
+    assert np.allclose(true_norm_vec, test_norm_vec)
+    assert np.isclose(np.sum(true_norm_vec**2), 1)
+
+def test_vector_norm_known_case_b():
+    vec = np.array([0.1, 0.5])
+    true_norm_vec = np.array([0.196116135, 0.980580676])
+    test_norm_vec = utils.normalize_vector(vec)
+    assert np.allclose(true_norm_vec, test_norm_vec)
+    assert np.isclose(np.sum(true_norm_vec**2), 1)
+
+def test_vector_norm_general():
+    for _ in range(1000):
+        vec = np.random.uniform(0, 1, 3)
+        norm_vec = utils.normalize_vector(vec)
+        assert np.isclose(np.sum(norm_vec**2), 1)
+
+# -----------------------------------------------------------------------------
+
+# test coordinate transformation
+
+# -----------------------------------------------------------------------------
+def test_transform_error_checking_length_of_items():
+    with pytest.raises(ValueError):
+        utils.transform_coords([1, 2], [1, 0, 0], [0, 1, 0], [0, 0, 1])
+    with pytest.raises(ValueError):
+        utils.transform_coords([1, 2, 3], [1, 0, 0, 1], [0, 1, 0], [0, 0, 1])
+    with pytest.raises(ValueError):
+        utils.transform_coords([1, 2, 3], [1, 0, 0], [0, 1], [0, 0, 1])
+    with pytest.raises(ValueError):
+        utils.transform_coords([1, 2, 3], [1, 0, 0], [0, 1, 0], [0, 0, 1, 1])
+
+# def test_transform_error_checking_normalized():
+#     loc = [1, 2, 3]
+#     # check one with no error
+#     utils.transform_coords(loc, [1, 0, 0], [0, 1, 0], [0, 0, 1])
+#     with pytest.raises(ValueError):
+#         utils.transform_coords(loc, [2, 0, 0], [0, 1, 0], [0, 0, 1])
+#     with pytest.raises(ValueError):
+#         utils.transform_coords(loc, [1, 0, 0], [0, 5, 0], [0, 0, 1])
+#     with pytest.raises(ValueError):
+#         utils.transform_coords(loc, [1, 0, 0], [0, 1, 0], [0, 0, 0.5])
+
+# def test_transform_error_checking_orthogonal():
+#     # check that the simple case works. Will not raise an error
+#     loc = [1, 2, 3]
+#     # check some with no error
+#     utils.transform_coords(loc, [1, 0, 0], [0, 1, 0], [0, 0, 1])
+#     utils.transform_coords(loc, [-1, 0, 0], [0, -1, 0], [0, 0, -1])
+#     # then some with an error
+#     with pytest.raises(ValueError):
+#         utils.transform_coords(loc, [1, 1, 0], [0, 1, 0], [0, 0, 1])
+#     with pytest.raises(ValueError):
+#         utils.transform_coords(loc, [1, 0, 2], [0, 1, 0], [0, 0, 1])
+#     with pytest.raises(ValueError):
+#         utils.transform_coords(loc, [1, 0, 0], [0, 1, -0.5], [0, 0, 1])
+#     with pytest.raises(ValueError):
+#         utils.transform_coords(loc, [1, 1, 1], [0, 1, 0], [0, 0, 1])
+
+def test_transform_regular_xyz():
+    b = np.random.normal(0, 1, 3)
+    x = [1, 0, 0]
+    y = [0, 1, 0]
+    z = [0, 0, 1]
+    assert np.allclose(utils.transform_coords(b, x, y, z), b)
+
+def test_transform_regular_switch_axes():
+    """still in regular cartesian, but switch some axes."""
+    b = [5, 3, 8]
+    vec_a = [0, 1, 0]
+    vec_b = [0, 0, 1]
+    vec_c = [1, 0, 0]
+    assert np.allclose(utils.transform_coords(b, vec_a, vec_b, vec_c),
+                       [3, 8, 5])
+
+@pytest.mark.parametrize("loc,true_answer", [
+    ([1, 2, 3], [np.sqrt(14.0), 0, 0]),
+    ([1, -2, 1], [0, np.sqrt(6), 0]),
+    ([-4, -1, 2], [0, 0, -np.sqrt(21.0)]),
+    ([-7, 1, 13], [9.086882225, 1.632993162, -11.56554818]),
+    ([10, -np.pi, np.sqrt(2)], [2.12725393, 7.224932834, 7.425950489])
+])
+def test_transform_coords_one_example(loc, true_answer):
+    """Example calculated by hand"""
+    norm_a = np.sqrt(14.0)
+    vec_a = [1.0/norm_a, 2.0/norm_a, 3.0/norm_a]
+    norm_b = np.sqrt(6.0)
+    vec_b = [1.0/norm_b, -2.0/norm_b, 1.0/norm_b]
+    norm_c = np.sqrt(21)
+    vec_c = [4.0/norm_c, 1.0/norm_c, -2.0/norm_c]
+
+    test_answer = utils.transform_coords(loc, vec_a, vec_b, vec_c)
+    assert np.allclose(test_answer, true_answer)
+
+def test_transform_coords_general():
+    for _ in range(1000):
+        vec_a = utils.normalize_vector(np.random.uniform(-1, 1, 3))
+        temp_vec = np.random.uniform(-1, 1, 3)
+        vec_b = utils.normalize_vector(np.cross(vec_a, temp_vec))
+        vec_c = utils.normalize_vector(np.cross(vec_a, vec_b))
+
+        loc = np.random.uniform(-100, 100, 3)
+
+        new_loc = utils.transform_coords(loc, vec_a, vec_b, vec_c)
+
+        reconstructed_loc = new_loc[0] * vec_a + \
+                            new_loc[1] * vec_b + \
+                            new_loc[2] * vec_c
+
+        assert np.allclose(loc, reconstructed_loc)
+
+
+
+

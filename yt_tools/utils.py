@@ -595,3 +595,44 @@ def box_membership(xs, ys, zs, len_x, len_y, len_z):
     good_idx_temp = np.intersect1d(x_idx, y_idx)
     good_idx = np.intersect1d(good_idx_temp, z_idx)
     return good_idx
+
+def normalize_vector(vector):
+    """
+    Normalizes a vector, such that the sum of the squares of all components is
+    :param vector:
+    :return:
+    """
+    if len(vector.shape) != 1:
+        raise ValueError("Only works for 1D vectors.")
+    return vector / np.linalg.norm(vector)
+
+def transform_coords(loc, vec_a, vec_b, vec_c):
+    """
+    Transform coordinates from one set to another.
+
+    Three vectors are passed in that determine the three coordinate axes of the
+    new coordinate system. Note that the vectors are NOT required to be
+    normalized to one or be orthogonal. For example, if all vectors are
+    normalized to two, then all the resultant locations will be half the value
+    that they would be if they were normalized to one. We do not check for
+    orthogonality, which may give linear algebra errors if the vectors passed
+    in aren't defined well.
+
+    This will return a result such that
+    result[0]*vec_a + result[1]*vec_b + result[2]*vec_c == loc
+
+    :param loc: 3 component vector describing the point we want to transform
+    :param vec_a: 3 component vector in the direction of the first
+                  coordinate axis
+    :param vec_b: 3 component vector in the direction of the second
+                  coordinate axis
+    :param vec_c: 3 component vector in the direction of the third
+                  coordinate axis
+    :return: 3 component vector containing the location of the new point with
+             respect to the the three vectors passed in.
+    """
+    try:
+        matrix = np.column_stack((vec_a, vec_b, vec_c))
+        return np.linalg.solve(matrix, loc)
+    except ValueError:
+        raise ValueError("All values need to have length three.")
