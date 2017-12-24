@@ -52,12 +52,16 @@ def test_gal_half_mass_radius(new_gal):
     assert np.isclose(half_mass_radius.to("kpc").value, new_gal.gal_r_half)
 
 def test_nsc_radius_half(new_gal):
-    nsc_radius = read_in_gal.nsc.r_half_non_parametric
+    nsc_radius = read_in_gal.half_mass_radius
     assert np.isclose(nsc_radius, new_gal.nsc_r_half)
 
 def test_nsc_radius_half_errs(new_gal):
-    nsc_radius_err = read_in_gal.nsc.r_half_non_parametric_err
+    nsc_radius_err = read_in_gal.half_mass_radius_errs
     assert np.allclose(nsc_radius_err, new_gal.nsc_r_half_err)
+
+def test_nsc_radius_half_old(new_gal):
+    nsc_radius = read_in_gal.nsc.r_half_non_parametric
+    assert np.isclose(nsc_radius, new_gal.nsc_r_half_old)
 
 def test_axis_ratios_b(new_gal):
     b_over_a = read_in_gal.nsc_axis_ratios.b_over_a
@@ -142,14 +146,6 @@ def test_al_on_fe(new_gal):
 def test_al_on_fe_spread(new_gal):
     al_on_fe_s = np.sqrt(read_in_gal.nsc_abundances.x_on_fe_average("Al")[1])
     assert np.isclose(al_on_fe_s, new_gal.al_on_fe_spread)
-
-def test_kde_smoothed_radii_2D(new_gal):
-    radii = read_in_gal.kde_radii_smoothed["mass_kde_2D"]
-    assert np.allclose(radii, new_gal.kde_radii_2D_smoothed)
-
-def test_kde_smoothed_densities_2D(new_gal):
-    densities = read_in_gal.kde_densities_smoothed["mass_kde_2D"]
-    assert np.allclose(densities, new_gal.kde_densities_2D_smoothed)
 
 def test_binned_radii(new_gal):
     radii = read_in_gal.binned_radii

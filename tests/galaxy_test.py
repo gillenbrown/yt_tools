@@ -295,9 +295,9 @@ def test_real_nsc_stellar_mass(read_in_gal):
 def test_real_nsc_radius_cut(read_in_gal):
     # test that the NSC indices actually pick up the right objects
     radius_key = ('STAR', 'particle_position_spherical_radius')
-    for container, idx in zip([read_in_gal.sphere,
+    for container, idx in zip([read_in_gal.j_sphere,
                                read_in_gal.disk_nsc],
-                              [read_in_gal.nsc_idx_sphere,
+                              [read_in_gal.nsc_idx_j_sphere,
                                read_in_gal.nsc_idx_disk_nsc]):
         radii = container[radius_key]
         assert np.max(radii[idx]) < read_in_gal.nsc_radius
@@ -310,7 +310,7 @@ def test_real_nsc_radius_cut(read_in_gal):
 def test_real_nsc_indices(read_in_gal):
     # The same number of stars should be in the NSC to matter what
     # container is being used.
-    assert len(read_in_gal.nsc_idx_sphere) ==\
+    assert len(read_in_gal.nsc_idx_j_sphere) ==\
            len(read_in_gal.nsc_idx_disk_nsc)
 
     # then check that there are actually stars in the NSC
@@ -379,11 +379,11 @@ def test_half_mass_radius_actually_worked(read_in_gal):
 #
 # -----------------------------------------------------------------------------
 
-def test_reading_writing(real_gal):
+def test_reading_writing(read_in_gal):
     """The only thing we need is that the object needs to be the same after
     we write then read it in. There is a lot of checking here, though."""
 
-    old_gal = real_gal  # needed to easily switch from original to read in
+    old_gal = read_in_gal  # needed to easily switch from original to read in
     file = open("./real_gal_save.txt", "w")
     old_gal.write(file)
     file.close()
@@ -430,19 +430,17 @@ def test_reading_writing(real_gal):
 
     # NSC radii should be the same
     assert old_gal.nsc_radius == new_gal.nsc_radius
-    assert np.allclose(old_gal.nsc_radius_err,
-                       new_gal.nsc_radius_err)
+    assert np.allclose(old_gal.nsc_radius_err.to("pc").value,
+                       new_gal.nsc_radius_err.to("pc").value)
     assert old_gal.half_mass_radius == new_gal.half_mass_radius
     assert np.allclose(old_gal.half_mass_radius_errs,
                        new_gal.half_mass_radius_errs)
 
     # NSC indexes should be the same
-    assert np.array_equal(old_gal.nsc_idx_sphere,
-                          new_gal.nsc_idx_sphere)
+    assert np.array_equal(old_gal.nsc_idx_j_sphere,
+                          new_gal.nsc_idx_j_sphere)
     assert np.array_equal(old_gal.nsc_idx_disk_nsc,
                           new_gal.nsc_idx_disk_nsc)
-    assert np.array_equal(old_gal.nsc_idx_disk_kde,
-                          new_gal.nsc_idx_disk_kde)
 
     # KDE profiles should be the same too.
     assert len(new_gal.kde_radii) == 0  # should have multiple keys
@@ -480,12 +478,6 @@ def test_reading_writing(real_gal):
                       new_gal.nsc_axis_ratios.c_over_b)
     assert np.isclose(old_gal.nsc_axis_ratios.ellipticity,
                       new_gal.nsc_axis_ratios.ellipticity)
-    assert old_gal.nsc_radius == new_gal.nsc_radius
-    assert np.array_equal(old_gal.nsc_idx_sphere, new_gal.nsc_idx_sphere)
-    assert np.array_equal(old_gal.nsc_idx_disk_kde,
-                          new_gal.nsc_idx_disk_kde)
-    assert np.array_equal(old_gal.nsc_idx_disk_nsc,
-                          new_gal.nsc_idx_disk_nsc)
     assert np.isclose(old_gal.mean_rot_vel.in_units("km/s").value,
                       new_gal.mean_rot_vel.in_units("km/s").value)
     assert np.isclose(old_gal.nsc_3d_sigma.in_units("km/s").value,

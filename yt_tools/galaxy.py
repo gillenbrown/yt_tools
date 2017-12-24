@@ -80,9 +80,13 @@ def _parse_line(line, multiple=False, units=False, new_type=float):
         unit = split_line[-1]  # unit will be the last thing
         if multiple:
             values = split_line[1:-1]  # first item is the name, last is unit
+            return yt.YTArray(values, unit)  # put the unit on the data
         else:
-            values = split_line[1]  # just get the single value, not a list
-        return yt.YTArray(values, unit)  # put the unit on the data
+            values = float(split_line[1])  # just get the single value
+            # have to convert to float because YTQuantity doesn't take
+            # strings, unlike YTArray
+            return yt.YTQuantity(values, unit)  # put the unit on the data
+
     else:  # no units.
         # We have to convert everything to floats here, since we don't have
         # yt to do that for us.
@@ -184,7 +188,7 @@ def read_gal(ds, file_obj):
 
     mean_rot_vel = _parse_line(file_obj.readline(), multiple=False, units=True)
     nsc_3d_sigma = _parse_line(file_obj.readline(), multiple=False, units=True)
-    anisotropy = _parse_line(file_obj.readline(), multiple=False, units=True)
+    anisotropy = _parse_line(file_obj.readline(), multiple=False, units=False)
     nsc_sigma_a = _parse_line(file_obj.readline(), multiple=False, units=True)
     nsc_sigma_b = _parse_line(file_obj.readline(), multiple=False, units=True)
     nsc_sigma_c = _parse_line(file_obj.readline(), multiple=False, units=True)
@@ -256,6 +260,7 @@ def read_gal(ds, file_obj):
     # this should all be pretty quick, since the KDE process has already been
     # read in and doesn't need to be repeated.
     try:
+        gal.setup_nsc_object()
         gal.create_axis_ratios_nsc()
         gal.create_axis_ratios_gal()
         gal.create_abundances()
@@ -584,6 +589,11 @@ class Galaxy(object):
         except AttributeError:
             return None, [None, None]
 
+        # # For testing, if this takes forever.
+        # self.half_mass_radius = 100
+        # self.half_mass_radius_errs = (5, 5)
+        # return
+
         # get the upper and lower limits on the NSC radius
         nsc_low = self.nsc_radius - self.nsc_radius_err[0]
         nsc_high = self.nsc_radius + self.nsc_radius_err[1]
@@ -814,12 +824,10 @@ class Galaxy(object):
         self.kde_radii_smoothed[key] = bin_radii
         self.kde_densities_smoothed[key] = bin_density
 
-    def find_nsc_radius(self):
+    def setup_nsc_object(self):
         """
-        Finds the radius of the NSC, using the KDE profile and the associated
-        functionality in the NscStructure class.
-
-        :return:
+        This creates tje object that will be used to fit the profile to
+        determine where the NSC is.
         """
         # create the bins. We want them evenly space in log space from 1pc to
         # 1000 pc. There will be one central bin from zero to one parsec, but
@@ -841,6 +849,16 @@ class Galaxy(object):
 
         # then do the heavy work in the NSC class
         self.nsc = nsc_structure.NscStructure(fit_radii, fit_densities)
+
+    def find_nsc_radius(self):
+        """
+        Finds the radius of the NSC, using the KDE profile and the associated
+        functionality in the NscStructure class.
+
+        :return:
+        """
+        if self.nsc is None:
+            self.setup_nsc_object()
 
         if self.nsc.nsc_radius is None:
             self.nsc_radius = None
@@ -955,7 +973,9 @@ class Galaxy(object):
         self.nsc_3d_sigma = utils.sum_in_quadrature(sigma_z, sigma_rot,
                                                     sigma_radial)
 
-        self.anisotropy_parameter = 1.0 - sigma_rot**2 / sigma_radial**2
+        anisotropy_parameter = 1.0 - sigma_rot**2 / sigma_radial**2
+        # get rid of the yt dimensionless
+        self.anisotropy_parameter = anisotropy_parameter.value
 
     def nsc_dispersion_eigenvectors(self):
         """Calculate the dispersion along each of the eigenvalues of the
@@ -1211,7 +1231,7 @@ class Galaxy(object):
                                multiple=False, units=True)
             _write_single_item(file_obj, self.anisotropy_parameter,
                                "anisotropy_parameter",
-                               multiple=False, units=True)
+                               multiple=False, units=False)
             _write_single_item(file_obj, self.nsc_disp_along_a,
                                "nsc_disp_along_a", multiple=False, units=True)
             _write_single_item(file_obj, self.nsc_disp_along_b,
@@ -1422,7 +1442,7 @@ class Galaxy(object):
         # fraction of mass within r_half
         nsc_mass = self.stellar_mass(self.nsc_radius)
         half_mass = self.stellar_mass(self.half_mass_radius*yt.units.pc)
-        fraction = half_mass / nsc_mass
-        _write_single_item(file_obj, fraction, "mass_fraction")
+        fraction = (half_mass / nsc_mass).value
+        _write_single_item(file_obj, fraction, "mass_fraction", units=False)
 
         file_obj.write("end_of_galaxy\n")  # tag so later read-in is easier
