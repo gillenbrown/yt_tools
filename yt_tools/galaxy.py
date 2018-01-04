@@ -966,14 +966,22 @@ class Galaxy(object):
 
         self.mean_rot_vel = utils.weighted_mean(vel_rot, masses)
 
-        sigma_radial = np.sqrt(utils.weighted_variance(vel_rad, masses, ddof=0))
-        sigma_rot = np.sqrt(utils.weighted_variance(vel_rot, masses, ddof=0))
-        sigma_z = np.sqrt(utils.weighted_variance(vel_z, masses, ddof=0))
+        sigma_squared_radial = utils.weighted_variance(vel_rad, masses, ddof=0)
+        sigma_squared_rot = utils.weighted_variance(vel_rot, masses, ddof=0)
+        sigma_squared_z = utils.weighted_variance(vel_z, masses, ddof=0)
+
+        sigma_radial = np.sqrt(sigma_squared_radial.value)
+        sigma_rot = np.sqrt(sigma_squared_rot.value)
+        sigma_z = np.sqrt(sigma_squared_z.value)
 
         self.nsc_3d_sigma = utils.sum_in_quadrature(sigma_z, sigma_rot,
                                                     sigma_radial)
 
-        anisotropy_parameter = 1.0 - sigma_rot**2 / sigma_radial**2
+
+        if np.isclose(sigma_rot, 0) and np.isclose(sigma_radial, 0):
+            anisotropy_parameter = 1
+        else:
+            anisotropy_parameter = 1.0 - sigma_rot**2 / sigma_radial**2
         # get rid of the yt dimensionless
         self.anisotropy_parameter = anisotropy_parameter.value
 
