@@ -614,7 +614,7 @@ class Galaxy(object):
         for radius in [self.nsc_radius, nsc_low, nsc_high]:
             total_mass = utils.mass_annulus(density_func=density_integrand,
                                             radius_a=0,
-                                            radius_b=radius,
+                                            radius_b=radius.to("pc").value,
                                             error_tolerance=0.01,
                                             density_func_kwargs=kwargs)
 
@@ -622,7 +622,7 @@ class Galaxy(object):
 
         # then calculate the mass in each annulus, and make it cumulative
         # until we reach half the mass
-        bin_edges = np.arange(0, self.nsc_radius, 0.01)
+        bin_edges = np.arange(0, self.nsc_radius.to("pc").value, 0.01)
         cumulative_mass = 0
         half_mass_radii = [0, 0, 0]
         half_mass_done = [False, False, False]
@@ -661,7 +661,7 @@ class Galaxy(object):
         # half mass upper limits
         nsc_star_masses = self.j_sphere[('STAR', "MASS")][self.nsc_idx_j_sphere]
         if utils.max_above_half(nsc_star_masses):  # one star particle dominates
-            err_down = self.half_mass_radius  # just the radius.
+            err_down = half_mass_best  # just the radius.
         else:
             err_down = half_mass_best - half_mass_down
         # the upper error doesn't depend on the radius.
@@ -979,11 +979,9 @@ class Galaxy(object):
 
 
         if np.isclose(sigma_rot, 0) and np.isclose(sigma_radial, 0):
-            anisotropy_parameter = 1
+            self.anisotropy_parameter = 1
         else:
-            anisotropy_parameter = 1.0 - sigma_rot**2 / sigma_radial**2
-        # get rid of the yt dimensionless
-        self.anisotropy_parameter = anisotropy_parameter.value
+            self.anisotropy_parameter = 1.0 - sigma_rot**2 / sigma_radial**2
 
     def nsc_dispersion_eigenvectors(self):
         """Calculate the dispersion along each of the eigenvalues of the
