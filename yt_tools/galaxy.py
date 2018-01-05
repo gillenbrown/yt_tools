@@ -164,7 +164,8 @@ def read_gal(ds, file_obj):
 
     # we are now at the right spot. Each line following this is a single
     # known value that is easy to grab.
-    id = _parse_line(file_obj.readline(), multiple=False, units=False)
+    id = _parse_line(file_obj.readline(), multiple=False, units=False,
+                     new_type=int)
     center = _parse_line(file_obj.readline(), multiple=True, units=True)
     radius = _parse_line(file_obj.readline(), multiple=False, units=True)
     j_radius = _parse_line(file_obj.readline(), multiple=False, units=True)
@@ -577,23 +578,25 @@ class Galaxy(object):
             if interior_mass > 0.5 * total_gal_mass:
                 return radius
 
-    def nsc_half_mass_radius(self):
-        """
-        Calculate the half mass radius of the galaxy by integrating the
-        real KDE density, not the profile.
+    def _parse_half_mass_radii(self, half_mass_best, half_mass_down,
+                               half_mass_up):
+        # turn into errors
+        # then check if the NSC is dominated by one massive star particle. If
+        # so, then our half mass is just an upper limit
+        # half mass upper limits
+        nsc_star_masses = self.j_sphere[('STAR', "MASS")][self.nsc_idx_j_sphere]
+        if utils.max_above_half(nsc_star_masses):  # one star particle dominates
+            err_down = half_mass_best  # just the radius.
+        else:
+            err_down = half_mass_best - half_mass_down
+        # the upper error doesn't depend on the radius.
+        err_up = half_mass_up - half_mass_best
 
-        :return: NSC half mass radius and errors
-        """
-        try:
-            self._check_nsc_existence()
-        except AttributeError:
-            return None, [None, None]
+        # then set the errors
+        self.half_mass_radius = half_mass_best
+        self.half_mass_radius_errs = (err_down, err_up)
 
-        # # For testing, if this takes forever.
-        # self.half_mass_radius = 100
-        # self.half_mass_radius_errs = (5, 5)
-        # return
-
+    def _kde_nsc_half_mass_radius(self):
         # get the upper and lower limits on the NSC radius
         nsc_low = self.nsc_radius - self.nsc_radius_err[0]
         nsc_high = self.nsc_radius + self.nsc_radius_err[1]
@@ -622,7 +625,7 @@ class Galaxy(object):
 
         # then calculate the mass in each annulus, and make it cumulative
         # until we reach half the mass
-        bin_edges = np.arange(0, self.nsc_radius.to("pc").value, 0.01)
+        bin_edges = np.concatenate([[0], np.logspace(0, 3, 301)])
         cumulative_mass = 0
         half_mass_radii = [0, 0, 0]
         half_mass_done = [False, False, False]
@@ -649,27 +652,56 @@ class Galaxy(object):
             # once we hit all of them, we are done.
             if all(half_mass_done):
                 break
-        # then parse the list of radii we made. These correspond to the
-        # NSC radii that were in the loop above.
-        half_mass_best = half_mass_radii[0]
-        half_mass_down = half_mass_radii[1]
-        half_mass_up = half_mass_radii[2]
 
-        # turn into errors
-        # then check if the NSC is dominated by one massive star particle. If
-        # so, then our half mass is just an upper limit
-        # half mass upper limits
-        nsc_star_masses = self.j_sphere[('STAR', "MASS")][self.nsc_idx_j_sphere]
-        if utils.max_above_half(nsc_star_masses):  # one star particle dominates
-            err_down = half_mass_best  # just the radius.
+        self._parse_half_mass_radii(*half_mass_radii)
+
+    def _particle_nsc_half_mass_radius(self):
+        nsc_low = self.nsc_radius - self.nsc_radius_err[0]
+        nsc_high = self.nsc_radius + self.nsc_radius_err[1]
+
+        best_nsc_mass = self.stellar_mass(radius_cut=self.nsc_radius)
+        low_nsc_mass = self.stellar_mass(radius_cut=nsc_low)
+        high_nsc_mass = self.stellar_mass(radius_cut=nsc_high)
+
+        half_masses = [mass / 2.0 for mass in
+                       [best_nsc_mass, low_nsc_mass, high_nsc_mass]]
+        half_mass_radii = [0, 0, 0]
+        half_mass_done = [False, False, False]
+
+        # then iterate through a range of radii
+        for radius in np.arange(0, 500, 0.01) * yt.units.pc:
+            interior_mass = self.stellar_mass(radius_cut=radius)
+            # when we get to more than half of the total, we have the
+            # half mass radius.
+            for idx in range(3):
+                if not half_mass_done[idx]:
+                    # If it's greater than half, we have our half mass radius
+                    if interior_mass >= half_masses[idx]:
+                        half_mass_radii[idx] = radius
+                        half_mass_done[idx] = True
+            # once we hit all of them, we are done.
+            if all(half_mass_done):
+                break
+
+        self._parse_half_mass_radii(*half_mass_radii)
+
+    def nsc_half_mass_radius(self):
+        """
+        Calculate the half mass radius of the galaxy by integrating the
+        real KDE density, not the profile.
+
+        :return: NSC half mass radius and errors
+        """
+        try:
+            self._check_nsc_existence()
+        except AttributeError:
+            return None, [None, None]
+
+        if len(self._star_kde_mass_2d.x) > 5 * 10**5:
+            print("\n\n\n\n\doing particle half mass \n\n\n\n")
+            self._particle_nsc_half_mass_radius()
         else:
-            err_down = half_mass_best - half_mass_down
-        # the upper error doesn't depend on the radius.
-        err_up = half_mass_up - half_mass_best
-
-        # then set the errors
-        self.half_mass_radius = half_mass_best
-        self.half_mass_radius_errs = (err_down, err_up)
+            self._kde_nsc_half_mass_radius()
 
     def nsc_mass_and_errs(self):
         """Calculates the mass of the NSC and the errors on that.
@@ -1103,7 +1135,6 @@ class Galaxy(object):
         if not np.all(np.array(bin_edges) >= 0):
             raise ValueError("All radii need to be positive")
 
-        start_time = time.time()
         # first get the values. We bin in radius, and weight by mass.
         container = self.disk_whole  # contains the whole galaxy.
         r = container[('STAR', 'particle_position_cylindrical_radius')]
@@ -1123,9 +1154,6 @@ class Galaxy(object):
 
         self.binned_radii = centers
         self.binned_densities = bin_masses / np.array(areas)
-
-        end_time = time.time()
-        print("{} seconds for binning profile".format(end_time - start_time))
 
     def integrated_kde_profile(self, bin_edges):
         """
@@ -1381,6 +1409,7 @@ class Galaxy(object):
         # axis ratios
         _write_single_item(file_obj, self.nsc_axis_ratios.b_over_a, "b_over_a")
         _write_single_item(file_obj, self.nsc_axis_ratios.c_over_a, "c_over_a")
+        _write_single_item(file_obj, self.nsc_axis_ratios.c_over_b, "c_over_b")
         _write_single_item(file_obj, self.nsc_axis_ratios.ellipticity,
                            "ellipticity")
 
