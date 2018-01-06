@@ -541,21 +541,27 @@ class Galaxy(object):
         if quantity.lower() not in ["mass", "z"]:
             raise ValueError("Only mass and Z are supported. ")
 
-    def stellar_mass(self, radius_cut=None):
+    def stellar_mass(self, radius_cut=None, spherical=True):
         """Calculate the total stellar mass in this galaxy. 
         
         This sums the masses of the star particles that are inside the radius 
         of the galaxy or NSC, and returns the answer in solar masses.
 
         """
+        if spherical:
+            container = self.sphere
+            radius_key = ('STAR', 'particle_position_spherical_radius')
+        else:
+            container = self.disk_kde
+            radius_key = ('STAR', 'particle_position_cylindrical_radius')
 
-        masses = self.sphere[('STAR', "MASS")].in_units("msun")
+        masses = container[('STAR', "MASS")].in_units("msun")
+
         if radius_cut is not None:
             # check for units
             utils.test_for_units(radius_cut, "radius_cut")
             # get the mass within this radius.
-            radius_key = ('STAR', 'particle_position_spherical_radius')
-            idx = np.where(self.sphere[radius_key] < radius_cut)[0]
+            idx = np.where(container[radius_key] < radius_cut)[0]
             return np.sum(masses[idx])
 
         else:  # whole galaxy
@@ -682,6 +688,7 @@ class Galaxy(object):
             # once we hit all of them, we are done.
             if all(half_mass_done):
                 break
+        print()
 
         self._parse_half_mass_radii(*half_mass_radii)
 
@@ -1478,8 +1485,9 @@ class Galaxy(object):
         _write_single_item(file_obj, self.nsc.r_half_non_parametric,
                            "nsc_r_half_old", multiple=False)
         # fraction of mass within r_half
-        nsc_mass = self.stellar_mass(self.nsc_radius)
-        half_mass = self.stellar_mass(self.half_mass_radius*yt.units.pc)
+        nsc_mass = self.stellar_mass(self.nsc_radius, spherical=False)
+        half_mass = self.stellar_mass(self.half_mass_radius*yt.units.pc,
+                                      spherical=False)
         fraction = (half_mass / nsc_mass).value
         _write_single_item(file_obj, fraction, "mass_fraction", units=False)
 
