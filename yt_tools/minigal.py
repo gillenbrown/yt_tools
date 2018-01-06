@@ -10,7 +10,11 @@ def parse_line(line):
     name = name.replace(":", "")
     values = objects[1:]  # will be a list always, even if just one item
     if len(values) == 1:  # if only one item, turn into a scalar
-        values = float(values[0])
+        # check for None
+        if values[0] == "None":
+            values = None
+        else:
+            values = float(values[0])
     else:
         values = [float(val) for val in values]  # turn to floats
     return name, values
