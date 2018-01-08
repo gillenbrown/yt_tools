@@ -1506,12 +1506,12 @@ class Galaxy(object):
         :return: two arrays, for birth times (in Myr) and masses (in solar massees)
         """
         # get the original arrays
-        birth_times = np.array(self.sphere[('STAR', 'creation_time')].to("Myr"))
-        masses = np.array(self.sphere[('STAR', 'MASS')].to("Msun"))
+        birth_times = np.array(self.j_sphere[('STAR', 'creation_time')].to("Myr"))
+        masses = np.array(self.j_sphere[('STAR', 'MASS')].to("Msun"))
 
         # just get the NSC
-        birth_times = birth_times[self.nsc_idx_sphere]
-        masses = masses[self.nsc_idx_sphere]
+        birth_times = birth_times[self.nsc_idx_j_sphere]
+        masses = masses[self.nsc_idx_j_sphere]
 
         # sort by birth times
         sort_idx = np.argsort(birth_times)
