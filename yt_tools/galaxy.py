@@ -364,6 +364,7 @@ class Galaxy(object):
         self.nsc_disp_along_c = None  # used for rotation analysis
         self.nsc_abundances = None  # used for elemental abundances
         self.gal_abundances = None  # used for elemental abundances
+        self.sfh_time = None  # used for elemental abundances
 
     def _create_kde_object(self, dimension=2, quantity="mass"):
         """Creates a KDE object in the desired coordinates for the desired
@@ -1480,6 +1481,8 @@ class Galaxy(object):
                                name="star_{}_on_fe".format(elt.lower()))
         _write_single_item(file_obj, star_masses, "star_masses", multiple=True)
 
+        # SFH time
+        _write_single_item(file_obj, self.sfh_time.to("Myr").value, "sfh_time")
 
         # TODO: remove
         _write_single_item(file_obj, self.nsc.r_half_non_parametric,
@@ -1492,3 +1495,65 @@ class Galaxy(object):
         _write_single_item(file_obj, fraction, "mass_fraction", units=False)
 
         file_obj.write("end_of_galaxy\n")  # tag so later read-in is easier
+
+    def _sort_mass_and_birth(self):
+        """
+        Sorts the stars in the NSC by their birth time.
+
+        This gets the mass and birth time of the stars in the NSC, then sorts both
+        of those arrays by the birth time.
+
+        :return: two arrays, for birth times (in Myr) and masses (in solar massees)
+        """
+        # get the original arrays
+        birth_times = np.array(self.sphere[('STAR', 'creation_time')].to("Myr"))
+        masses = np.array(self.sphere[('STAR', 'MASS')].to("Msun"))
+
+        # just get the NSC
+        birth_times = birth_times[self.nsc_idx_sphere]
+        masses = masses[self.nsc_idx_sphere]
+
+        # sort by birth times
+        sort_idx = np.argsort(birth_times)
+        birth_times = birth_times[sort_idx]
+        masses = masses[sort_idx]
+
+        # normalize time to zero
+        birth_times -= min(birth_times)
+
+        return birth_times, masses
+
+    def _timescale(self, cumulative_mass, birth_times, min_level, max_level):
+        """
+        Calculate the timescale for star formation.
+
+        This is defined as the time it took to go from `min_level` of the final mass
+        to `max_level`. Typical values are 0.01 and 0.91. I use this extra 1% to
+        ignore stars that formed at very early times and just happened to be in the
+        NSC, when they aren't really connected.
+
+        :param cumulative_mass: Array with the cumulative mass formation history.
+        :param birth_times: Array with the times that match with cumulative_mass.
+        :param min_level: Level of mass formation to start the clock.
+        :param max_level: Level of mass formation to end the clock.
+        :return: Time to assemble this mass, in Myr.
+        """
+        min_idx = np.argmin(np.abs(cumulative_mass - min_level))
+        max_idx = np.argmin(np.abs(cumulative_mass - max_level))
+
+        return birth_times[max_idx] - birth_times[min_idx]
+
+    def cumulative_sfh(self):
+        if self.nsc_radius is None:
+            return
+        birth_times, masses = self._sort_mass_and_birth()
+
+        total_mass = np.sum(masses)
+        fractional_masses = masses / total_mass
+        cumulative_mass = np.cumsum(fractional_masses)
+
+        min_level = 0.01
+        max_level = 0.91
+        timescale =  self._timescale(cumulative_mass, birth_times,
+                                     min_level, max_level)
+        self.sfh_time = timescale
