@@ -1482,7 +1482,7 @@ class Galaxy(object):
         _write_single_item(file_obj, star_masses, "star_masses", multiple=True)
 
         # SFH time
-        _write_single_item(file_obj, self.sfh_time.to("Myr").value, "sfh_time")
+        _write_single_item(file_obj, self.sfh_time, "sfh_time")
 
         # TODO: remove
         _write_single_item(file_obj, self.nsc.r_half_non_parametric,
