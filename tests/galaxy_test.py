@@ -68,7 +68,7 @@ def real_gal():  # has larger radius to actually include everythign we need to
     gal =  galaxy.Galaxy(ds, best_loc, 1000 * pc, 1000*pc)
     gal.add_disk(disk_radius=150 * pc, disk_height=100*pc)
     gal.find_nsc_radius()
-    gal.nsc_half_mass_radius()
+    # gal.nsc_half_mass_radius()
     gal.create_axis_ratios_nsc()
     gal.create_axis_ratios_gal()
     gal.nsc_rotation()
@@ -81,6 +81,12 @@ def read_in_gal():
     file = open("./real_gal_save.txt", "r")
     gal =  galaxy.read_gal(ds, file)
     file.close()
+    # gal.nsc_half_mass_radius()
+    gal.create_axis_ratios_nsc()
+    gal.create_axis_ratios_gal()
+    gal.nsc_rotation()
+    gal.nsc_dispersion_eigenvectors()
+    gal.create_abundances()
     return gal
 
 # -----------------------------------------------------------------------------
@@ -390,6 +396,11 @@ def test_reading_writing(read_in_gal):
 
     file = open("./real_gal_save.txt", "r")
     new_gal = galaxy.read_gal(ds, file)
+    new_gal.create_axis_ratios_nsc()
+    new_gal.create_axis_ratios_gal()
+    new_gal.nsc_rotation()
+    new_gal.nsc_dispersion_eigenvectors()
+    new_gal.create_abundances()
 
     # then compare things. First basic stuff:
     assert old_gal.id == new_gal.id
@@ -429,12 +440,10 @@ def test_reading_writing(read_in_gal):
                        new_gal.gal_axis_ratios.c_vec)
 
     # NSC radii should be the same
-    assert old_gal.nsc_radius == new_gal.nsc_radius
+    assert np.isclose(old_gal.nsc_radius.to("pc").value,
+                      new_gal.nsc_radius.to("pc").value)
     assert np.allclose(old_gal.nsc_radius_err.to("pc").value,
                        new_gal.nsc_radius_err.to("pc").value)
-    assert old_gal.half_mass_radius == new_gal.half_mass_radius
-    assert np.allclose(old_gal.half_mass_radius_errs,
-                       new_gal.half_mass_radius_errs)
 
     # NSC indexes should be the same
     assert np.array_equal(old_gal.nsc_idx_j_sphere,
@@ -480,10 +489,14 @@ def test_reading_writing(read_in_gal):
                       new_gal.nsc_axis_ratios.ellipticity)
     assert np.isclose(old_gal.mean_rot_vel.in_units("km/s").value,
                       new_gal.mean_rot_vel.in_units("km/s").value)
+    assert np.isclose(old_gal.nsc_sigma_radial.in_units("km/s").value,
+                      new_gal.nsc_sigma_radial.in_units("km/s").value)
+    assert np.isclose(old_gal.nsc_sigma_rot.in_units("km/s").value,
+                      new_gal.nsc_sigma_rot.in_units("km/s").value)
+    assert np.isclose(old_gal.nsc_sigma_z.in_units("km/s").value,
+                      new_gal.nsc_sigma_z.in_units("km/s").value)
     assert np.isclose(old_gal.nsc_3d_sigma.in_units("km/s").value,
                       new_gal.nsc_3d_sigma.in_units("km/s").value)
-    assert np.isclose(old_gal.anisotropy_parameter,
-                      new_gal.anisotropy_parameter)
     assert np.isclose(old_gal.nsc_disp_along_a.in_units("km/s").value,
                       new_gal.nsc_disp_along_a.in_units("km/s").value)
     assert np.isclose(old_gal.nsc_disp_along_b.in_units("km/s").value,

@@ -1,7 +1,6 @@
 import utils
 
-class EndOfGalsException(Exception):
-    pass
+from galaxy import EndOfGalsErr
 
 def parse_line(line):
     objects = line.split()
@@ -63,9 +62,11 @@ class Minigal():
             line = file_obj.readline()
             if line.strip() == "new_galaxy_here":
                 break  # this is what we want.
+            elif line.strip() == "End of file.":
+                raise EndOfGalsErr
             elif line != "\n":  # if it's anything other than blank. The end of the
                 # file will be an empty string, so it will get caught too.
-                raise EndOfGalsException
+                raise ValueError("File is not in the right spot for reading")
 
         # we are now at the right spot. Each line following this is a single
         # known value that is easy to grab.

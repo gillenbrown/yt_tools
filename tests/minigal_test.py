@@ -12,6 +12,12 @@ ds = yt.load(file_loc)
 
 file = open("./real_gal_save.txt", "r")
 read_in_gal =  galaxy.read_gal(ds, file)
+read_in_gal.create_axis_ratios_nsc()
+read_in_gal.create_axis_ratios_gal()
+read_in_gal.nsc_rotation()
+read_in_gal.nsc_dispersion_eigenvectors()
+read_in_gal.create_abundances()
+read_in_gal.nsc_half_mass_radius()
 file.close()
 
 out_file = open("./minigal_save.txt", "w")
@@ -59,10 +65,6 @@ def test_nsc_radius_half_errs(new_gal):
     nsc_radius_err = read_in_gal.half_mass_radius_errs
     assert np.allclose(nsc_radius_err, new_gal.nsc_r_half_err)
 
-def test_nsc_radius_half_old(new_gal):
-    nsc_radius = read_in_gal.nsc.r_half_non_parametric
-    assert np.isclose(nsc_radius, new_gal.nsc_r_half_old)
-
 def test_axis_ratios_b(new_gal):
     b_over_a = read_in_gal.nsc_axis_ratios.b_over_a
     assert np.isclose(b_over_a, new_gal.b_over_a)
@@ -83,9 +85,17 @@ def test_dispersion(new_gal):
     sigma = read_in_gal.nsc_3d_sigma.to("km/s").value
     assert np.isclose(sigma, new_gal.nsc_3d_sigma)
 
-def test_anisotropy(new_gal):
-    beta = read_in_gal.anisotropy_parameter
-    assert np.isclose(beta, new_gal.anisotropy_parameter)
+def test_dispersion_radial(new_gal):
+    sigma = read_in_gal.nsc_sigma_radial.to("km/s").value
+    assert np.isclose(sigma, new_gal.nsc_sigma_radial)
+
+def test_dispersion_rot(new_gal):
+    sigma = read_in_gal.nsc_sigma_rot.to("km/s").value
+    assert np.isclose(sigma, new_gal.nsc_sigma_rot)
+
+def test_dispersion_z(new_gal):
+    sigma = read_in_gal.nsc_sigma_z.to("km/s").value
+    assert np.isclose(sigma, new_gal.nsc_sigma_z)
 
 def test_dispersion_along_a(new_gal):
     sigma = read_in_gal.nsc_disp_along_a.to("km/s").value

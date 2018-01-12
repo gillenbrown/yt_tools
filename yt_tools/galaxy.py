@@ -194,17 +194,16 @@ def read_gal(ds, file_obj):
     nsc_idx_disk_nsc = _parse_line(file_obj.readline(),
                                  multiple=True, units=False, new_type=int)
 
-    mean_rot_vel = _parse_line(file_obj.readline(), multiple=False, units=True)
-    nsc_3d_sigma = _parse_line(file_obj.readline(), multiple=False, units=True)
-    anisotropy = _parse_line(file_obj.readline(), multiple=False, units=False)
-    nsc_sigma_a = _parse_line(file_obj.readline(), multiple=False, units=True)
-    nsc_sigma_b = _parse_line(file_obj.readline(), multiple=False, units=True)
-    nsc_sigma_c = _parse_line(file_obj.readline(), multiple=False, units=True)
+    # mean_rot_vel = _parse_line(file_obj.readline(), multiple=False, units=True)
+    # nsc_3d_sigma = _parse_line(file_obj.readline(), multiple=False, units=True)
+    # nsc_sigma_a = _parse_line(file_obj.readline(), multiple=False, units=True)
+    # nsc_sigma_b = _parse_line(file_obj.readline(), multiple=False, units=True)
+    # nsc_sigma_c = _parse_line(file_obj.readline(), multiple=False, units=True)
 
     r_nsc = _parse_line(file_obj.readline(), multiple=False, units=True)
     r_nsc_err = _parse_line(file_obj.readline(), multiple=True, units=True)
-    r_half = _parse_line(file_obj.readline(), multiple=False, units=False)
-    r_half_err = _parse_line(file_obj.readline(), multiple=True, units=False)
+    # r_half = _parse_line(file_obj.readline(), multiple=False, units=False)
+    # r_half_err = _parse_line(file_obj.readline(), multiple=True, units=False)
 
     # we can create the galaxy at this point
     gal = Galaxy(ds, center, radius, j_radius, id)
@@ -221,19 +220,18 @@ def read_gal(ds, file_obj):
     # assign the radii of interest
     gal.nsc_radius = r_nsc
     gal.nsc_radius_err = r_nsc_err
-    gal.half_mass_radius = r_half
-    gal.half_mass_radius_errs = r_half_err
+    # gal.half_mass_radius = r_half
+    # gal.half_mass_radius_errs = r_half_err
 
     # assign the NSC indices
     gal.nsc_idx_j_sphere = nsc_idx_j_sphere
     gal.nsc_idx_disk_nsc = nsc_idx_disk_nsc
     # and velocity stuff
-    gal.mean_rot_vel = mean_rot_vel
-    gal.nsc_3d_sigma = nsc_3d_sigma
-    gal.anisotropy_parameter = anisotropy
-    gal.nsc_disp_along_a = nsc_sigma_a
-    gal.nsc_disp_along_b = nsc_sigma_b
-    gal.nsc_disp_along_c = nsc_sigma_c
+    # gal.mean_rot_vel = mean_rot_vel
+    # gal.nsc_3d_sigma = nsc_3d_sigma
+    # gal.nsc_disp_along_a = nsc_sigma_a
+    # gal.nsc_disp_along_b = nsc_sigma_b
+    # gal.nsc_disp_along_c = nsc_sigma_c
 
     # then the binned profile
     gal.binned_radii = _parse_line(file_obj.readline(),
@@ -267,13 +265,15 @@ def read_gal(ds, file_obj):
     # then we can do the fun stuff where we calculate everythign of interest.
     # this should all be pretty quick, since the KDE process has already been
     # read in and doesn't need to be repeated.
-    try:
-        gal.setup_nsc_object()
-        gal.create_axis_ratios_nsc()
-        gal.create_axis_ratios_gal()
-        gal.create_abundances()
-    except AttributeError:  # will happen if no NSC
-        pass
+    gal.setup_nsc_object()
+    # try:
+    #     gal.setup_nsc_object()
+    #     gal.create_axis_ratios_nsc()
+    #     gal.create_axis_ratios_gal()
+    #     gal.create_abundances()
+    #     gal.nsc_rotation()
+    # except AttributeError:  # will happen if no NSC
+    #     pass
 
     return gal
 
@@ -364,8 +364,10 @@ class Galaxy(object):
         self.nsc_axis_ratios = None  # used for rotation analysis
         self.gal_axis_ratios = None  # used for disk plane
         self.mean_rot_vel = None  # used for rotation analysis
+        self.nsc_sigma_radial = None  # used for rotation analysis
+        self.nsc_sigma_rot = None  # used for rotation analysis
+        self.nsc_sigma_z = None  # used for rotation analysis
         self.nsc_3d_sigma = None  # used for rotation analysis
-        self.anisotropy_parameter = None  # used for rotation analysis
         self.nsc_disp_along_a = None  # used for rotation analysis
         self.nsc_disp_along_b = None  # used for rotation analysis
         self.nsc_disp_along_c = None  # used for rotation analysis
@@ -712,6 +714,8 @@ class Galaxy(object):
         except AttributeError:
             return None, [None, None]
 
+        if self._star_kde_mass_2d is None:
+            self._star_kde_mass_2d = self._create_kde_object(2, "mass")
         if len(self._star_kde_mass_2d.x) > 5 * 10**5:
             print("\n\n\n\n\doing particle half mass \n\n\n\n")
             self._particle_nsc_half_mass_radius()
@@ -1021,14 +1025,12 @@ class Galaxy(object):
         sigma_rot = np.sqrt(sigma_squared_rot)
         sigma_z = np.sqrt(sigma_squared_z)
 
+        self.nsc_sigma_radial = sigma_radial
+        self.nsc_sigma_rot = sigma_rot
+        self.nsc_sigma_z = sigma_z
+
         self.nsc_3d_sigma = utils.sum_in_quadrature(sigma_z, sigma_rot,
                                                     sigma_radial)
-
-        if np.isclose(sigma_rot.value, 0) and np.isclose(sigma_radial.value, 0):
-            self.anisotropy_parameter = 1
-        else:
-            anisotropy_parameter = 1.0 - sigma_rot**2 / sigma_radial**2
-            self.anisotropy_parameter = anisotropy_parameter.value  # no units
 
     def nsc_dispersion_eigenvectors(self):
         """Calculate the dispersion along each of the eigenvalues of the
@@ -1274,29 +1276,26 @@ class Galaxy(object):
             _write_single_item(file_obj, self.nsc_idx_disk_nsc,
                                "nsc_idx_disk_nsc", multiple=True)
             # same with the rotational stuff, which requires access to the disk obj
-            _write_single_item(file_obj, self.mean_rot_vel, "mean_rot_vel",
-                               multiple=False, units=True)
-            _write_single_item(file_obj, self.nsc_3d_sigma, "nsc_3d_sigma",
-                               multiple=False, units=True)
-            _write_single_item(file_obj, self.anisotropy_parameter,
-                               "anisotropy_parameter",
-                               multiple=False, units=False)
-            _write_single_item(file_obj, self.nsc_disp_along_a,
-                               "nsc_disp_along_a", multiple=False, units=True)
-            _write_single_item(file_obj, self.nsc_disp_along_b,
-                               "nsc_disp_along_b", multiple=False, units=True)
-            _write_single_item(file_obj, self.nsc_disp_along_c,
-                               "nsc_disp_along_c", multiple=False, units=True)
+            # _write_single_item(file_obj, self.mean_rot_vel, "mean_rot_vel",
+            #                    multiple=False, units=True)
+            # _write_single_item(file_obj, self.nsc_3d_sigma, "nsc_3d_sigma",
+            #                    multiple=False, units=True)
+            # _write_single_item(file_obj, self.nsc_disp_along_a,
+            #                    "nsc_disp_along_a", multiple=False, units=True)
+            # _write_single_item(file_obj, self.nsc_disp_along_b,
+            #                    "nsc_disp_along_b", multiple=False, units=True)
+            # _write_single_item(file_obj, self.nsc_disp_along_c,
+            #                    "nsc_disp_along_c", multiple=False, units=True)
             # then the actual radius and half mass radius, which take a while
             # to calculate
             _write_single_item(file_obj, self.nsc_radius, "r_NSC",
                                multiple=False, units=True)
             _write_single_item(file_obj, self.nsc_radius_err, "r_NSC_err",
                                multiple=True, units=True)
-            _write_single_item(file_obj, self.half_mass_radius, "r_half",
-                               multiple=False, units=False)
-            _write_single_item(file_obj, self.half_mass_radius_errs,
-                               "r_half_err", multiple=True, units=False)
+            # _write_single_item(file_obj, self.half_mass_radius, "r_half",
+            #                    multiple=False, units=False)
+            # _write_single_item(file_obj, self.half_mass_radius_errs,
+            #                    "r_half_err", multiple=True, units=False)
 
         else:
             _write_single_item(file_obj, None, "disk_nsc_radius")
@@ -1304,16 +1303,15 @@ class Galaxy(object):
             _write_single_item(file_obj, None, "disk_kde_normal")
             _write_single_item(file_obj, None, "nsc_idx_j_sphere")
             _write_single_item(file_obj, None, "nsc_idx_disk_nsc")
-            _write_single_item(file_obj, None, "mean_rot_vel")
-            _write_single_item(file_obj, None, "nsc_3d_sigma")
-            _write_single_item(file_obj, None, "anisotropy_parameter")
-            _write_single_item(file_obj, None, "nsc_disp_along_a")
-            _write_single_item(file_obj, None, "nsc_disp_along_b")
-            _write_single_item(file_obj, None, "nsc_disp_along_c")
+            # _write_single_item(file_obj, None, "mean_rot_vel")
+            # _write_single_item(file_obj, None, "nsc_3d_sigma")
+            # _write_single_item(file_obj, None, "nsc_disp_along_a")
+            # _write_single_item(file_obj, None, "nsc_disp_along_b")
+            # _write_single_item(file_obj, None, "nsc_disp_along_c")
             _write_single_item(file_obj, None, "r_NSC")
             _write_single_item(file_obj, None, "r_NSC_err")
-            _write_single_item(file_obj, None, "r_half")
-            _write_single_item(file_obj, None, "r_half_err")
+            # _write_single_item(file_obj, None, "r_half")
+            # _write_single_item(file_obj, None, "r_half_err")
 
         # then the binned radii too
         _write_single_item(file_obj, self.binned_radii,
@@ -1434,10 +1432,14 @@ class Galaxy(object):
         # rotation and dispersion
         _write_single_item(file_obj, self.mean_rot_vel.to("km/s").value,
                            "nsc_rot_vel")
+        _write_single_item(file_obj, self.nsc_sigma_radial.to("km/s").value,
+                           "nsc_sigma_radial")
+        _write_single_item(file_obj, self.nsc_sigma_rot.to("km/s").value,
+                           "nsc_sigma_rot")
+        _write_single_item(file_obj, self.nsc_sigma_z.to("km/s").value,
+                           "nsc_sigma_z")
         _write_single_item(file_obj, self.nsc_3d_sigma.to("km/s").value,
                            "nsc_3d_sigma")
-        _write_single_item(file_obj, self.anisotropy_parameter,
-                           "anisotropy_parameter")
         _write_single_item(file_obj, self.nsc_disp_along_a.to("km/s").value,
                            "nsc_disp_along_a")
         _write_single_item(file_obj, self.nsc_disp_along_b.to("km/s").value,
@@ -1491,19 +1493,16 @@ class Galaxy(object):
         # SFH time
         _write_single_item(file_obj, self.sfh_time, "sfh_time")
 
-        # TODO: remove
-        _write_single_item(file_obj, self.nsc.r_half_non_parametric,
-                           "nsc_r_half_old", multiple=False)
-        # fraction of mass within r_half
-        nsc_mass = self.stellar_mass(self.nsc_radius, spherical=False)
-        half_mass = self.stellar_mass(self.half_mass_radius*yt.units.pc,
-                                      spherical=False)
-        fraction = (half_mass / nsc_mass).value
-        _write_single_item(file_obj, fraction, "mass_fraction", units=False)
+        # # fraction of mass within r_half
+        # nsc_mass = self.stellar_mass(self.nsc_radius, spherical=False)
+        # half_mass = self.stellar_mass(self.half_mass_radius*yt.units.pc,
+        #                               spherical=False)
+        # fraction = (half_mass / nsc_mass).value
+        # _write_single_item(file_obj, fraction, "mass_fraction", units=False)
 
         file_obj.write("end_of_galaxy\n")  # tag so later read-in is easier
 
-    def _sort_mass_and_birth(self):
+    def _sort_mass_and_birth_nsc(self):
         """
         Sorts the stars in the NSC by their birth time.
 
@@ -1550,10 +1549,10 @@ class Galaxy(object):
 
         return birth_times[max_idx] - birth_times[min_idx]
 
-    def cumulative_sfh(self):
+    def cumulative_sfh_nsc(self):
         if self.nsc_radius is None:
             return
-        birth_times, masses = self._sort_mass_and_birth()
+        birth_times, masses = self._sort_mass_and_birth_nsc()
 
         total_mass = np.sum(masses)
         fractional_masses = masses / total_mass
