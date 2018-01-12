@@ -1440,12 +1440,6 @@ class Galaxy(object):
                            "nsc_sigma_z")
         _write_single_item(file_obj, self.nsc_3d_sigma.to("km/s").value,
                            "nsc_3d_sigma")
-        _write_single_item(file_obj, self.nsc_disp_along_a.to("km/s").value,
-                           "nsc_disp_along_a")
-        _write_single_item(file_obj, self.nsc_disp_along_b.to("km/s").value,
-                           "nsc_disp_along_b")
-        _write_single_item(file_obj, self.nsc_disp_along_c.to("km/s").value,
-                           "nsc_disp_along_c")
 
         # metallicity
         z = self.nsc_abundances.log_z_over_z_sun_total()
