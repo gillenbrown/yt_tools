@@ -135,6 +135,11 @@ def _parse_kde_line(line):
     return data_type, key, smoothed, values
 
 
+# and a custom exception when the file is done with galaxies.
+class EndOfGalsErr(Exception):
+    pass
+
+
 def read_gal(ds, file_obj):
     """Reads a galaxy object from a file.
 
@@ -158,6 +163,8 @@ def read_gal(ds, file_obj):
         line = file_obj.readline()
         if line.strip() == "new_galaxy_here":
             break  # this is what we want.
+        elif line.strip() == "End of file.":
+            raise EndOfGalsErr
         elif line != "\n":  # if it's anything other than blank. The end of the
             # file will be an empty string, so it will get caught too.
             raise ValueError("File is not in the right spot for reading")
@@ -684,7 +691,7 @@ class Galaxy(object):
                 if not half_mass_done[idx]:
                     # If it's greater than half, we have our half mass radius
                     if interior_mass >= half_masses[idx]:
-                        half_mass_radii[idx] = radius
+                        half_mass_radii[idx] = radius.to("pc").value
                         half_mass_done[idx] = True
             # once we hit all of them, we are done.
             if all(half_mass_done):
