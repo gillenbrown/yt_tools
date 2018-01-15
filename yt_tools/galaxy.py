@@ -1222,7 +1222,7 @@ class Galaxy(object):
             dens = utils.surface_density_annulus(density_func=density_integrand,
                                                  radius_a=lower_radius,
                                                  radius_b=upper_radius,
-                                                 error_tolerance=0.1,
+                                                 error_tolerance=0.01,
                                                  density_func_kwargs=kwargs)
             self.integrated_kde_densities.append(dens)
 
