@@ -346,3 +346,11 @@ class NSC_Abundances(object):
         numerator = np.sum(self.mass * sigma_squared_z * slopes**2)
         denominator = np.sum(self.mass)
         return numerator / denominator
+
+    def x_on_h_individual(self, element):
+        star_x_on_h = self.abund.x_on_h(element, self.Z_Ia, self.Z_II)
+        return star_x_on_h, self.mass
+
+    def x_on_fe_individual(self, element):
+        star_x_on_fe = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
+        return star_x_on_fe, self.mass
