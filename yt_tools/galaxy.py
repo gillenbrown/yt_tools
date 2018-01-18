@@ -6,7 +6,7 @@ from scipy import integrate
 from . import kde
 from . import utils
 from . import nsc_structure
-from . import abundances
+from . import nsc_abundances
 
 
 # define some helper functions for the read/write process
@@ -325,7 +325,8 @@ class Galaxy(object):
         # create the sphere that contains the galaxy.
         self.sphere = self.ds.sphere(center=self.center, radius=self.radius)
         self.j_sphere = self.ds.sphere(center=self.center, radius=self.j_radius)
-
+        print(len(self.sphere[('STAR', 'MASS')]))
+        print(self.sphere.radius.to("pc"))
         # and find the smallest cell size (used for KDE)
         self.min_dx = np.min(self.sphere[('index', 'dx')])
         # the kernel we will use should be the width of the cell, to match the
@@ -1100,17 +1101,24 @@ class Galaxy(object):
 
         # we need masses, Z_Ia, and Z_II. I can convert these to arrays to
         # help speed, since the units don't matter in the metallicity
-        # calculations. As long as the masses are relative it will still work.
-        mass = np.array(self.j_sphere[('STAR', 'MASS')].in_units("msun"))
+        # calculations. The masses to need to be in code masses, though, since
+        # the metallicity dispersion values are in code masses, even though
+        # yt thinks they are unitless.
+        mass = np.array(self.j_sphere[('STAR', 'MASS')].in_units("code_mass"))
+        m_i = np.array(self.j_sphere[('STAR', 'INITIAL_MASS')].to("code_mass"))
         z_Ia = np.array(self.j_sphere[('STAR', 'METALLICITY_SNIa')])
         z_II = np.array(self.j_sphere[('STAR', 'METALLICITY_SNII')])
+        z_disp = np.array(self.j_sphere[('STAR', 'METAL_DISPERSION')])
 
         # the objects can then be created, where for the NSC we select only
         # the objects in the NSC
-        self.gal_abundances = abundances.Abundances(mass, z_Ia, z_II)
-        self.nsc_abundances = abundances.Abundances(mass[self.nsc_idx_j_sphere],
-                                                    z_Ia[self.nsc_idx_j_sphere],
-                                                    z_II[self.nsc_idx_j_sphere])
+        self.gal_abundances = nsc_abundances.NSC_Abundances(mass, z_Ia, z_II,
+                                                            z_disp, m_i)
+        self.nsc_abundances = nsc_abundances.NSC_Abundances(mass[self.nsc_idx_j_sphere],
+                                                            z_Ia[self.nsc_idx_j_sphere],
+                                                            z_II[self.nsc_idx_j_sphere],
+                                                            z_disp[self.nsc_idx_j_sphere],
+                                                            m_i[self.nsc_idx_j_sphere])
 
     def contains(self, other_gal):
         """
@@ -1450,32 +1458,44 @@ class Galaxy(object):
         # NSC [Fe/H]
         _write_single_item(file_obj, self.nsc_abundances.x_on_h_total("Fe"),
                            "fe_on_h")
-        nsc_sigma = np.sqrt(self.nsc_abundances.x_on_h_average("Fe")[1])
-        _write_single_item(file_obj, nsc_sigma, "fe_on_h_spread")
+        fe_group_var = self.nsc_abundances.x_on_h_average("Fe")[1]
+        _write_single_item(file_obj, fe_group_var, "fe_on_h_group_variance")
+        fe_int_var = np.sqrt(self.nsc_abundances.internal_variance_elt("Fe", "H"))
+        _write_single_item(file_obj, fe_int_var, "fe_on_h_internal_variance")
 
         # Gal [Fe/H]
         _write_single_item(file_obj, self.gal_abundances.x_on_h_total("Fe"),
                            "gal_fe_on_h")
-        gal_sigma = np.sqrt(self.gal_abundances.x_on_h_average("Fe")[1])
-        _write_single_item(file_obj, gal_sigma, "gal_fe_on_h_spread")
+        gal_fe_group_var = self.gal_abundances.x_on_h_average("Fe")[1]
+        _write_single_item(file_obj, gal_fe_group_var,
+                           "gal_fe_on_h_group_variance")
+        gal_fe_int_var = self.gal_abundances.internal_variance_elt("Fe", "H")
+        _write_single_item(file_obj, gal_fe_int_var,
+                           "gal_fe_on_h_internal_variance")
 
         # [O/Fe]
         _write_single_item(file_obj, self.nsc_abundances.x_on_fe_total("O"),
                            "o_on_fe")
-        o_sigma = np.sqrt(self.nsc_abundances.x_on_fe_average("O")[1])
-        _write_single_item(file_obj, o_sigma, "o_on_fe_spread")
+        o_group_var = self.nsc_abundances.x_on_fe_average("O")[1]
+        _write_single_item(file_obj, o_group_var, "o_on_fe_group_variance")
+        o_int_var = self.nsc_abundances.internal_variance_elt("O", "Fe")
+        _write_single_item(file_obj, o_int_var, "o_on_fe_internal_variance")
 
         # [Mg/Fe]
         _write_single_item(file_obj, self.nsc_abundances.x_on_fe_total("Mg"),
                            "mg_on_fe")
-        mg_sigma = np.sqrt(self.nsc_abundances.x_on_fe_average("Mg")[1])
-        _write_single_item(file_obj, mg_sigma, "mg_on_fe_spread")
+        mg_group_var = self.nsc_abundances.x_on_fe_average("Mg")[1]
+        _write_single_item(file_obj, mg_group_var, "mg_on_fe_group_variance")
+        mg_int_var = self.nsc_abundances.internal_variance_elt("Mg", "Fe")
+        _write_single_item(file_obj, mg_int_var, "mg_on_fe_internal_variance")
 
         # [Al/Fe]
         _write_single_item(file_obj, self.nsc_abundances.x_on_fe_total("Al"),
                            "al_on_fe")
-        al_sigma = np.sqrt(self.nsc_abundances.x_on_fe_average("Al")[1])
-        _write_single_item(file_obj, al_sigma, "al_on_fe_spread")
+        al_group_var = self.nsc_abundances.x_on_fe_average("Al")[1]
+        _write_single_item(file_obj, al_group_var, "al_on_fe_group_variance")
+        al_int_var = self.nsc_abundances.internal_variance_elt("Al", "Fe")
+        _write_single_item(file_obj, al_int_var, "al_on_fe_internal_variance")
 
         # individual abundances
         for elt in ["Mg", "Al", "O", "Na"]:

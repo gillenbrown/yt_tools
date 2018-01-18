@@ -13,11 +13,11 @@ import numpy as np
 kpc = yt.units.kpc
 pc = yt.units.pc
 file_loc = "../../../google_drive/research/simulation_outputs/" \
-           "fiducial_destroy/continuous_a0.2406.art"
+           "NBm_100SFE/continuous_a0.4003.art"
 ds = yt.load(file_loc)
 # then find the densest region, just to have a real galaxy somewhere
 # best_loc = yt.YTArray(ds.all_data().argmax("density"))
-best_loc = [848.18993318, 249.52074043, 180.26988714] * kpc
+best_loc = [1547.09925568, 405.98235163, 369.00318478] * kpc
 # to speed things up I ran the line that does this and copied the result
 
 def test_gal_id_generator():
@@ -385,11 +385,11 @@ def test_half_mass_radius_actually_worked(read_in_gal):
 #
 # -----------------------------------------------------------------------------
 
-def test_reading_writing(read_in_gal):
+def test_reading_writing(real_gal):
     """The only thing we need is that the object needs to be the same after
     we write then read it in. There is a lot of checking here, though."""
 
-    old_gal = read_in_gal  # needed to easily switch from original to read in
+    old_gal = real_gal  # needed to easily switch from original to read in
     file = open("./real_gal_save.txt", "w")
     old_gal.write(file)
     file.close()

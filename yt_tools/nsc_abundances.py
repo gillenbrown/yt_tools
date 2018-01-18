@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+from scipy.misc import derivative
 
 import yields
 import utils
@@ -22,11 +23,12 @@ def create_solar_metal_fractions():
 
     return z_mass, metal_fractions
 
-class Abundances(object):
+class NSC_Abundances(object):
     """Holds infomation about the abundances of an object. """
     # get some of the solar information
     z_sun, solar_metal_fractions = create_solar_metal_fractions()
-    def __init__(self, masses, Z_Ia, Z_II, II_type="nomoto"):
+    def __init__(self, masses, Z_Ia, Z_II, mZZ_II, m_i,
+                 II_type="nomoto"):
         """Create an abundance object.
 
         :param masses: The masses of the star partices.
@@ -49,23 +51,32 @@ class Abundances(object):
             Z_Ia = np.array(Z_Ia)
         if not isinstance(Z_II, np.ndarray):
             Z_II = np.array(Z_II)
+        if not isinstance(mZZ_II, np.ndarray):
+            mZZ_II = np.array(mZZ_II)
+        if not isinstance(m_i, np.ndarray):
+            m_i = np.array(m_i)
 
         # do error checking.
         # masses must be positive.
-        if not all(masses > 0):
+        if any(masses <= 0):
             raise ValueError("Masses must all be positive. ")
         # all arrays must be the same length
-        if not len(masses) == len(Z_Ia) == len(Z_II):
+        if not len(masses) == len(Z_Ia) == len(Z_II) == len(mZZ_II) == len(m_i):
             raise ValueError("All arrays must be the same length. ")
         # the metallicity must be between 0 and 1.
         for z_type in [Z_Ia, Z_II]:
             if any(z_type < 0) or any(z_type > 1):
                 raise ValueError("Metallicity must be between 0 and 1.")
+        # spreads must all be positive
+        if any(mZZ_II < 0):
+            raise ValueError("Metallicity spreads must be non-negative.")
 
         # assign instance attributes
         self.mass = masses
+        self.initial_masses = m_i
         self.Z_Ia = Z_Ia
         self.Z_II = Z_II
+        self.mZZ_II = mZZ_II
         self.Z_tot = self.Z_Ia + self.Z_II
         self.one_minus_Z_tot = 1.0 - self.Z_tot
 
@@ -79,6 +90,10 @@ class Abundances(object):
             self.yields_II = yields.Yields("nomoto_06_II_imf_ave")
         elif II_type == "ww":
             self.yields_II = yields.Yields("ww_95_imf_ave")
+
+        # also create the yield abundance object that is used to calculate
+        # things for each star particle.
+        self.abund = yields.Abundances()
 
     def z_on_h_total(self):
         """Calculate the Z on H value for this collection of stars, by
@@ -167,7 +182,7 @@ class Abundances(object):
         :returns: Variance of [X/H] for the given element.
         :rtype: float
         """
-        star_x_on_h = self.x_on_h_individual(element)[0]
+        star_x_on_h = self.abund.x_on_h(element, self.Z_Ia, self.Z_II)
         return (utils.weighted_mean(star_x_on_h, self.mass),
                 utils.weighted_variance(star_x_on_h, self.mass))
 
@@ -237,9 +252,9 @@ class Abundances(object):
         """
 
 
-        star_fe_on_h = self.x_on_fe_individual(element)[0]
-        return (utils.weighted_mean(star_fe_on_h, self.mass),
-                utils.weighted_variance(star_fe_on_h, self.mass))
+        star_x_on_fe = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
+        return (utils.weighted_mean(star_x_on_fe, self.mass),
+                utils.weighted_variance(star_x_on_fe, self.mass))
 
     def log_z_over_z_sun_total(self):
         """Returns the value of log(Z/Z_sun).
@@ -273,35 +288,61 @@ class Abundances(object):
         return (utils.weighted_mean(log_z, self.mass),
                 utils.weighted_variance(log_z, self.mass))
 
-    def x_on_h_individual(self, element):
+    def _x_on_h_derivative(self, element):
+        """
+        Calculates the derivative of [X/H] against Z_II, which is what is
+        needed to calculate the internal dispersion of the clusters.
 
-        f_Ia = self.yields_Ia.mass_fraction(element, self.Z_Ia)
-        f_II = self.yields_II.mass_fraction(element, self.Z_II)
-        star_num = self.Z_Ia * f_Ia + self.Z_II * f_II
-        star_denom = self.one_minus_Z_tot
-        star_frac = star_num / star_denom
+        :return: Value of d[X/H] / dZ_II for all the metallicities of the
+                 star particles in the cluster.
+        """
+        def x_on_h_wrapper(z_II):
+            return self.abund.x_on_h(element, z_II, 0)
 
-        sun_num = 1.0 - self.z_sun
-        sun_denom = self.z_sun * self.solar_metal_fractions[element]
-        sun_frac = sun_num / sun_denom
+        slopes = []
+        for z in self.Z_II:
+            slopes.append(derivative(x_on_h_wrapper, z, dx=z/10.0))
 
-        star_x_on_h = np.log10(star_frac * sun_frac)
-        return star_x_on_h, self.mass
+        return np.array(slopes)
 
-    def x_on_fe_individual(self, element):
+    def _x_on_fe_derivative(self, element):
+        """
+        Calculates the derivative of [X/Fe] against Z_II, which is what is
+        needed to calculate the internal dispersion of the clusters.
 
-        f_Ia_x = self.yields_Ia.mass_fraction(element, self.Z_Ia)
-        f_II_x = self.yields_II.mass_fraction(element, self.Z_II)
-        f_Ia_Fe = self.yields_Ia.mass_fraction("Fe", self.Z_Ia)
-        f_II_Fe = self.yields_II.mass_fraction("Fe", self.Z_II)
+        :return: Value of d[X/Fe] / dZ_II for all the metallicities of the
+                 star particles in the cluster.
+        """
+        def x_on_fe_wrapper(z_II):
+            return self.abund.x_on_fe(element, z_II, 0)
 
-        star_num = self.Z_Ia * f_Ia_x + self.Z_II * f_II_x
-        star_denom = self.Z_Ia * f_Ia_Fe + self.Z_II * f_II_Fe
-        star_frac = star_num / star_denom
+        slopes = []
+        for z in self.Z_II:
+            slopes.append(derivative(x_on_fe_wrapper, z, dx=z/10.0))
 
-        sun_num = self.solar_metal_fractions["Fe"]
-        sun_denom = self.solar_metal_fractions[element]
-        sun_frac = sun_num / sun_denom
+        return np.array(slopes)
 
-        star_fe_on_h = np.log10(star_frac * sun_frac)
-        return star_fe_on_h, self.mass
+    def internal_variance_elt(self, element, over):
+        """Total variance that comes from the spread among [Fe/H]
+        within particles.
+
+        This is calculated in my notebook, and the equation will be in the
+        paper.
+
+        :return: Value of the variance in [Fe/H] contributed by the internal
+                 dispersion within star particles.
+        """
+        if over == "Fe":
+            slopes = self._x_on_fe_derivative(element)
+        elif over == "H":
+            slopes = self._x_on_h_derivative(element)
+        else:
+            raise ValueError("over must be either 'Fe' or 'H'")
+
+        sigma_squared_z = self.mZZ_II / self.initial_masses - self.Z_II**2
+        # then throw away negative values
+        sigma_squared_z = np.clip(sigma_squared_z, a_min=0, a_max=None)
+
+        numerator = np.sum(self.mass * sigma_squared_z * slopes**2)
+        denominator = np.sum(self.mass)
+        return numerator / denominator
