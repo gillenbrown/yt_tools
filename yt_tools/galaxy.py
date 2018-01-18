@@ -325,8 +325,7 @@ class Galaxy(object):
         # create the sphere that contains the galaxy.
         self.sphere = self.ds.sphere(center=self.center, radius=self.radius)
         self.j_sphere = self.ds.sphere(center=self.center, radius=self.j_radius)
-        print(len(self.sphere[('STAR', 'MASS')]))
-        print(self.sphere.radius.to("pc"))
+
         # and find the smallest cell size (used for KDE)
         self.min_dx = np.min(self.sphere[('index', 'dx')])
         # the kernel we will use should be the width of the cell, to match the
