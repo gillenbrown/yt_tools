@@ -347,10 +347,18 @@ class NSC_Abundances(object):
         denominator = np.sum(self.mass)
         return numerator / denominator
 
+    def to_array(self, item):
+        try:
+            len(item)  # checks for scalars
+        except TypeError:
+            return np.array([item])  # scalars need to be in a list
+        else:
+            return np.array(item)  # lists don't.
+
     def x_on_h_individual(self, element):
         star_x_on_h = self.abund.x_on_h(element, self.Z_Ia, self.Z_II)
-        return star_x_on_h, self.mass
+        return self.to_array(star_x_on_h), self.mass
 
     def x_on_fe_individual(self, element):
         star_x_on_fe = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
-        return star_x_on_fe, self.mass
+        return self.to_array(star_x_on_fe), self.mass
