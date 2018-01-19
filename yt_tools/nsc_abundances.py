@@ -184,7 +184,7 @@ class NSC_Abundances(object):
         """
         star_x_on_h = self.abund.x_on_h(element, self.Z_Ia, self.Z_II)
         return (utils.weighted_mean(star_x_on_h, self.mass),
-                utils.weighted_variance(star_x_on_h, self.mass))
+                utils.weighted_variance(star_x_on_h, self.mass, ddof=0))
 
     def x_on_fe_total(self, element):
         """Calculate the [X/Fe] value for this collection of stars.
@@ -254,7 +254,7 @@ class NSC_Abundances(object):
 
         star_x_on_fe = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
         return (utils.weighted_mean(star_x_on_fe, self.mass),
-                utils.weighted_variance(star_x_on_fe, self.mass))
+                utils.weighted_variance(star_x_on_fe, self.mass, ddof=0))
 
     def log_z_over_z_sun_total(self):
         """Returns the value of log(Z/Z_sun).
@@ -286,7 +286,7 @@ class NSC_Abundances(object):
         z_over_z_sun = self.Z_tot / self.z_sun
         log_z = np.log10(z_over_z_sun)
         return (utils.weighted_mean(log_z, self.mass),
-                utils.weighted_variance(log_z, self.mass))
+                utils.weighted_variance(log_z, self.mass, ddof=0))
 
     def _x_on_h_derivative(self, element):
         """
