@@ -83,7 +83,9 @@ class Minigal():
                          "kde_binned_densities", "nsc_mass_err",
                          "nsc_r_half_err", "star_masses",
                          "star_al_on_fe", "star_mg_on_fe",
-                         "star_o_on_fe", "star_na_on_fe"]
+                         "star_o_on_fe", "star_na_on_fe",
+                         "star_al_on_fe_sd", "star_mg_on_fe_sd",
+                         "star_o_on_fe_sd", "star_na_on_fe_sd"]
         for key in keys_to_check:
             if key in self.value_dict:
                 this_value = self.value_dict[key]
