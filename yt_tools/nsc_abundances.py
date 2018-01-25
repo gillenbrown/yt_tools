@@ -80,6 +80,14 @@ class NSC_Abundances(object):
         self.Z_tot = self.Z_Ia + self.Z_II
         self.one_minus_Z_tot = 1.0 - self.Z_tot
 
+        # Calculate a few simple things that will be useful later
+        sigma_squared_z = self.mZZ_II / self.initial_masses - self.Z_II ** 2
+        # then throw away negative values
+        self.sigma_squared_z = np.clip(sigma_squared_z, a_min=0, a_max=None)
+        # then transform to log_Z
+        var_log_z = np.log(1 + sigma_squared_z / self.Z_II**2) / np.log(10)**2
+        self.sigma_squared_log_z = var_log_z
+
         # also have to check that the total metallicity isn't larger than one.
         if any(self.Z_tot < 0) or any(self.Z_tot > 1):
             raise ValueError("Total metallicity can't be larger than one. ")
@@ -288,37 +296,37 @@ class NSC_Abundances(object):
         return (utils.weighted_mean(log_z, self.mass),
                 utils.weighted_variance(log_z, self.mass, ddof=0))
 
-    def _x_on_h_derivative(self, element):
+    def _x_on_h_log_derivative(self, element):
         """
-        Calculates the derivative of [X/H] against Z_II, which is what is
+        Calculates the derivative of [X/H] against log(Z_II), which is what is
         needed to calculate the internal dispersion of the clusters.
 
-        :return: Value of d[X/H] / dZ_II for all the metallicities of the
+        :return: Value of d[X/H] / d log_Z_II for all the metallicities of the
                  star particles in the cluster.
         """
-        def x_on_h_wrapper(z_II):
-            return self.abund.x_on_h(element, z_II, 0)
+        def x_on_h_wrapper(log_z_II):
+            return self.abund.x_on_h(element, 0, 10**log_z_II)
 
         slopes = []
-        for z in self.Z_II:
-            slopes.append(derivative(x_on_h_wrapper, z, dx=z/10.0))
+        for log_z in np.log10(self.Z_II):
+            slopes.append(derivative(x_on_h_wrapper, log_z, dx=0.01))
 
         return np.array(slopes)
 
-    def _x_on_fe_derivative(self, element):
+    def _x_on_fe_log_derivative(self, element):
         """
-        Calculates the derivative of [X/Fe] against Z_II, which is what is
+        Calculates the derivative of [X/Fe] against log(Z_II), which is what is
         needed to calculate the internal dispersion of the clusters.
 
-        :return: Value of d[X/Fe] / dZ_II for all the metallicities of the
+        :return: Value of d[X/Fe] / d log_Z_II for all the metallicities of the
                  star particles in the cluster.
         """
-        def x_on_fe_wrapper(z_II):
-            return self.abund.x_on_fe(element, z_II, 0)
+        def x_on_fe_wrapper(log_z_II):
+            return self.abund.x_on_fe(element, 0, 10**log_z_II)
 
         slopes = []
-        for z in self.Z_II:
-            slopes.append(derivative(x_on_fe_wrapper, z, dx=z/10.0))
+        for log_z in np.log10(self.Z_II):
+            slopes.append(derivative(x_on_fe_wrapper, log_z, dx=0.01))
 
         return np.array(slopes)
 
@@ -333,17 +341,13 @@ class NSC_Abundances(object):
                  dispersion within star particles.
         """
         if over == "Fe":
-            slopes = self._x_on_fe_derivative(element)
+            slopes_log = self._x_on_fe_log_derivative(element)
         elif over == "H":
-            slopes = self._x_on_h_derivative(element)
+            slopes_log = self._x_on_h_log_derivative(element)
         else:
             raise ValueError("over must be either 'Fe' or 'H'")
 
-        sigma_squared_z = self.mZZ_II / self.initial_masses - self.Z_II**2
-        # then throw away negative values
-        sigma_squared_z = np.clip(sigma_squared_z, a_min=0, a_max=None)
-
-        numerator = np.sum(self.mass * sigma_squared_z * slopes**2)
+        numerator = np.sum(self.mass * self.sigma_squared_log_z * slopes_log**2)
         denominator = np.sum(self.mass)
         return numerator / denominator
 
