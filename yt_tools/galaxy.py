@@ -1503,6 +1503,11 @@ class Galaxy(object):
             abund, star_masses = self.nsc_abundances.x_on_fe_individual(elt)
             _write_single_item(file_obj, abund, multiple=True,
                                name="star_{}_on_fe".format(elt.lower()))
+
+            vars = self.nsc_abundances.internal_variance_individual(elt, "Fe")
+            _write_single_item(file_obj, np.sqrt(vars), multiple=True,
+                               name="star_{}_on_fe_sd".format(elt.lower()))
+
         _write_single_item(file_obj, star_masses, "star_masses", multiple=True)
 
         # SFH time
