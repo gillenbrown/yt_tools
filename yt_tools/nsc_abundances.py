@@ -330,6 +330,29 @@ class NSC_Abundances(object):
 
         return np.array(slopes)
 
+    def internal_variance_log_z(self):
+        numerator = np.sum(self.mass * self.sigma_squared_log_z)
+        denominator = np.sum(self.mass)
+        return numerator / denominator
+
+    def internal_variance_individual(self, element, over):
+        """Variance in elemental abundances that come from internal dispersion.
+
+        This is calculated in my notebook, and the equation will be in the
+        paper.
+
+        :return: List of the values of the variances in an elemental abundance
+                 due to internal dispersion.
+        """
+        if over == "Fe":
+            slopes_log = self._x_on_fe_log_derivative(element)
+        elif over == "H":
+            slopes_log = self._x_on_h_log_derivative(element)
+        else:
+            raise ValueError("over must be either 'Fe' or 'H'")
+
+        return self.sigma_squared_log_z * slopes_log**2
+
     def internal_variance_elt(self, element, over):
         """Total variance that comes from the spread among [Fe/H]
         within particles.
@@ -340,14 +363,8 @@ class NSC_Abundances(object):
         :return: Value of the variance in [Fe/H] contributed by the internal
                  dispersion within star particles.
         """
-        if over == "Fe":
-            slopes_log = self._x_on_fe_log_derivative(element)
-        elif over == "H":
-            slopes_log = self._x_on_h_log_derivative(element)
-        else:
-            raise ValueError("over must be either 'Fe' or 'H'")
-
-        numerator = np.sum(self.mass * self.sigma_squared_log_z * slopes_log**2)
+        individual_var = self.internal_variance_individual(element, over)
+        numerator = np.sum(self.mass * individual_var)
         denominator = np.sum(self.mass)
         return numerator / denominator
 
