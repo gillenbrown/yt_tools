@@ -85,8 +85,9 @@ class NSC_Abundances(object):
         # then throw away negative values
         self.sigma_squared_z = np.clip(sigma_squared_z, a_min=0, a_max=None)
         # then transform to log_Z
-        var_log_z = np.log(1 + sigma_squared_z / self.Z_II**2) / np.log(10)**2
-        self.sigma_squared_log_z = var_log_z
+        numerator = np.log(1 + self.sigma_squared_z / self.Z_II**2)
+        denominator = (np.log(10))**2
+        self.sigma_squared_log_z = numerator / denominator
 
         # also have to check that the total metallicity isn't larger than one.
         if any(self.Z_tot < 0) or any(self.Z_tot > 1):
