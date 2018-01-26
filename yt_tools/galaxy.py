@@ -1588,8 +1588,6 @@ class Galaxy(object):
         birth_times, masses = self._sort_mass_and_birth_nsc()
 
         from yt import YTArray
-        def sf_ave_time(data, region):
-            # calculate the average cluster formation time in unit of Myrs
 
         average_age = self.j_sphere[("STAR", "AVERAGE_AGE")][self.nsc_idx_j_sphere]
         birth_time = self.j_sphere[("STAR", "BIRTH_TIME")][self.nsc_idx_j_sphere]
