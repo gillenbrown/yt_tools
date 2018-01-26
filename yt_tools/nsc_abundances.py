@@ -369,7 +369,7 @@ class NSC_Abundances(object):
         mean_x_on_h = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II)
         z_err = np.sqrt(self.internal_var_z)
         up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
-        down = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II - z_err)
+        down = self.abund.x_on_h(element, self.mean_Z_Ia, max(self.mean_Z_II - z_err, 0))
 
         return (mean_x_on_h - down,
                 up - mean_x_on_h)
@@ -378,7 +378,7 @@ class NSC_Abundances(object):
         mean_x_on_h = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II)
         z_err = np.sqrt(self.group_var_z)
         up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
-        down = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II - z_err)
+        down = self.abund.x_on_h(element, self.mean_Z_Ia, max(self.mean_Z_II - z_err, 0))
 
         return (mean_x_on_h - down,
                 up - mean_x_on_h)
@@ -387,7 +387,7 @@ class NSC_Abundances(object):
         mean_x_on_h = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II)
         z_err = np.sqrt(self.total_var_z)
         up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
-        down = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II - z_err)
+        down = self.abund.x_on_h(element, self.mean_Z_Ia, max(self.mean_Z_II - z_err, 0))
 
         return (mean_x_on_h - down,
                 up - mean_x_on_h)
