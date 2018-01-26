@@ -112,8 +112,9 @@ class NSC_Abundances(object):
         self.mean_Z_tot = utils.weighted_mean(self.Z_tot,
                                               weights=self.mass)
 
-        self.internal_var_z = utils.weighted_mean(self.sigma_squared_z,
-                                                  weights=self.mass)
+        self.internal_var_z = utils.weighted_variance(self.sigma_squared_z,
+                                                      weights=self.mass,
+                                                      ddof=0)
         self.group_var_z = utils.weighted_variance(self.sigma_squared_z,
                                                    weights=self.mass,
                                                    ddof=0)
