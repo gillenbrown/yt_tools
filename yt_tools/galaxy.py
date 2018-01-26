@@ -1587,6 +1587,16 @@ class Galaxy(object):
             return
         birth_times, masses = self._sort_mass_and_birth_nsc()
 
+        from yt import YTArray
+        def sf_ave_time(data, region):
+            # calculate the average cluster formation time in unit of Myrs
+
+        average_age = self.j_sphere[("STAR", "AVERAGE_AGE")][self.nsc_idx_j_sphere]
+        birth_time = self.j_sphere[("STAR", "BIRTH_TIME")][self.nsc_idx_j_sphere]
+        creation_time = self.j_sphere[("STAR", "creation_time")][self.nsc_idx_j_sphere]
+
+        time =  YTArray(self.ds._handle.tphys_from_tcode_array(average_age + birth_time) / 1e6, "Myr") - creation_time.in_units("Myr")
+        max_time = max(time.to("Myr"))
         # get the fraction of mass that has formed as a function of time
         # the masses are sorted by their age, which is why this works.
         total_mass = np.sum(masses)
@@ -1605,4 +1615,4 @@ class Galaxy(object):
             if timescale < min_timescale:
                 min_timescale = timescale
 
-        self.sfh_time = min_timescale
+        self.sfh_time = min_timescale + max_time
