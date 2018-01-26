@@ -1459,7 +1459,7 @@ class Galaxy(object):
         # NSC [Fe/H]
         _write_single_item(file_obj, self.nsc_abundances.x_on_h_total("Fe"),
                            "fe_on_h")
-        fe_group_var = self.nsc_abundances.x_on_h_average("Fe")[1]
+        fe_group_var = self.nsc_abundances.x_on_h_group_variance("Fe")
         _write_single_item(file_obj, fe_group_var, "fe_on_h_group_variance")
         fe_int_var = np.sqrt(self.nsc_abundances.internal_variance_elt("Fe", "H"))
         _write_single_item(file_obj, fe_int_var, "fe_on_h_internal_variance")
@@ -1467,7 +1467,7 @@ class Galaxy(object):
         # Gal [Fe/H]
         _write_single_item(file_obj, self.gal_abundances.x_on_h_total("Fe"),
                            "gal_fe_on_h")
-        gal_fe_group_var = self.gal_abundances.x_on_h_average("Fe")[1]
+        gal_fe_group_var = self.gal_abundances.x_on_fe_group_variance("Fe")
         _write_single_item(file_obj, gal_fe_group_var,
                            "gal_fe_on_h_group_variance")
         gal_fe_int_var = self.gal_abundances.internal_variance_elt("Fe", "H")
@@ -1477,7 +1477,7 @@ class Galaxy(object):
         # [O/Fe]
         _write_single_item(file_obj, self.nsc_abundances.x_on_fe_total("O"),
                            "o_on_fe")
-        o_group_var = self.nsc_abundances.x_on_fe_average("O")[1]
+        o_group_var = self.nsc_abundances.x_on_fe_group_variance("O")
         _write_single_item(file_obj, o_group_var, "o_on_fe_group_variance")
         o_int_var = self.nsc_abundances.internal_variance_elt("O", "Fe")
         _write_single_item(file_obj, o_int_var, "o_on_fe_internal_variance")
@@ -1485,7 +1485,7 @@ class Galaxy(object):
         # [Mg/Fe]
         _write_single_item(file_obj, self.nsc_abundances.x_on_fe_total("Mg"),
                            "mg_on_fe")
-        mg_group_var = self.nsc_abundances.x_on_fe_average("Mg")[1]
+        mg_group_var = self.nsc_abundances.x_on_fe_group_variance("Mg")
         _write_single_item(file_obj, mg_group_var, "mg_on_fe_group_variance")
         mg_int_var = self.nsc_abundances.internal_variance_elt("Mg", "Fe")
         _write_single_item(file_obj, mg_int_var, "mg_on_fe_internal_variance")
@@ -1493,7 +1493,7 @@ class Galaxy(object):
         # [Al/Fe]
         _write_single_item(file_obj, self.nsc_abundances.x_on_fe_total("Al"),
                            "al_on_fe")
-        al_group_var = self.nsc_abundances.x_on_fe_average("Al")[1]
+        al_group_var = self.nsc_abundances.x_on_fe_group_variance("Al")
         _write_single_item(file_obj, al_group_var, "al_on_fe_group_variance")
         al_int_var = self.nsc_abundances.internal_variance_elt("Al", "Fe")
         _write_single_item(file_obj, al_int_var, "al_on_fe_internal_variance")

@@ -166,34 +166,12 @@ class NSC_Abundances(object):
 
         return np.log10(star_frac * sun_frac)
 
-    def x_on_h_average(self, element):
-        """
-        Calculate the [X/H] value for this collection of stars, but calculating
-        a weighted average of the [X/H] of each star particle.
-
-        This returns the weighted average and the weighted variance of the
-        [Fe/H] values of the star particles.
-
-        This is calculated in the following way.
-
-        .. math::
-            [X/Fe] = \log_{10} \left[ \frac{Z_\star^{Ia}f_X^{Ia} +
-            Z_\star^{II} f_X^{II}}{Z_{tot \odot} f_{Fe \odot}}
-            \frac{1 - Z_{tot \odot}}{1 - Z_{tot \star}} \right]
-
-        Where f is the fraction of the total metals element x takes up for
-        either the type Ia or II yields.
-
-        :param element: Element to be used in place of X.
-        :type element: str
-        :returns: Mean value of [X/H] for the given element.
-        :rtype: float
-        :returns: Variance of [X/H] for the given element.
-        :rtype: float
-        """
-        star_x_on_h = self.abund.x_on_h(element, self.Z_Ia, self.Z_II)
-        return (utils.weighted_mean(star_x_on_h, self.mass),
-                utils.weighted_variance(star_x_on_h, self.mass, ddof=0))
+    def x_on_h_group_variance(self, element):
+        mean = self.x_on_h_total(element)
+        x_on_fe_individual = self.abund.x_on_h(element, self.Z_Ia, self.Z_II)
+        return utils.weighted_variance(values=x_on_fe_individual,
+                                       weights=self.mass, ddof=1,
+                                       mean=mean)
 
     def x_on_fe_total(self, element):
         """Calculate the [X/Fe] value for this collection of stars.
@@ -234,36 +212,12 @@ class NSC_Abundances(object):
 
         return np.log10(star_frac * sun_frac)
 
-    def x_on_fe_average(self, element):
-        """
-        Calculate the [X/Fe] value for this collection of stars, but calculating
-        a weighted average of the [X/Fe] of each star particle.
-
-        This returns the weighted average and the weighted variance of the
-        [Fe/H] values of the star particles.
-
-        This is calculated in the following way.
-
-        .. math::
-            [X/Fe] = \log_{10} \left[ \frac{Z_\star^{Ia}f_X^{Ia} + Z_\star^{II}
-            f_X^{II}}{Z_\star^{Ia}f_{Fe}^{Ia} + Z_\star^{II}
-            f_{Fe}^{II}}\frac{f_{Fe \odot}}{f_{X \odot}} \right]
-
-        Where f is the fraction of the total metals element x takes up for
-        either the type Ia or II yields.
-
-        :param element: Element to be used in place of X.
-        :type element: str
-        :returns: Mean value of [X/Fe] for the given element.
-        :rtype: float
-        :returns: Variance of [X/Fe] for the given element.
-        :rtype: float
-        """
-
-
-        star_x_on_fe = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
-        return (utils.weighted_mean(star_x_on_fe, self.mass),
-                utils.weighted_variance(star_x_on_fe, self.mass, ddof=0))
+    def x_on_fe_group_variance(self, element):
+        mean = self.x_on_fe_total(element)
+        x_on_fe_individual = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
+        return utils.weighted_variance(values=x_on_fe_individual,
+                                       weights=self.mass, ddof=1,
+                                       mean=mean)
 
     def log_z_over_z_sun_total(self):
         """Returns the value of log(Z/Z_sun).

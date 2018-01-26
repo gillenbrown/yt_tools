@@ -243,7 +243,7 @@ def weighted_mean(values, weights):
         raise ValueError("Weights and values must be the same length.")
 
 
-def weighted_variance(values, weights, ddof=1):
+def weighted_variance(values, weights, ddof=1, mean=None):
     """Calculate the weighted variance among some values.
 
     The weighted variance is defined as
@@ -271,7 +271,8 @@ def weighted_variance(values, weights, ddof=1):
 
     """
     # error checking is done by the weighted mean function.
-    mean = weighted_mean(values, weights)
+    if mean is None:
+        mean = weighted_mean(values, weights)
     return np.sum((values - mean)**2 * weights) / (np.sum(weights) - ddof)
 
 def sum_in_quadrature(*args):
