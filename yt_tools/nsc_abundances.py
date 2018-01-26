@@ -80,15 +80,6 @@ class NSC_Abundances(object):
         self.Z_tot = self.Z_Ia + self.Z_II
         self.one_minus_Z_tot = 1.0 - self.Z_tot
 
-        # Calculate a few simple things that will be useful later
-        sigma_squared_z = self.mZZ_II / self.initial_masses - self.Z_II ** 2
-        # then throw away negative values
-        self.sigma_squared_z = np.clip(sigma_squared_z, a_min=0, a_max=None)
-        # then transform to log_Z
-        numerator = np.log(1 + self.sigma_squared_z / self.Z_II**2)
-        denominator = (np.log(10))**2
-        self.sigma_squared_log_z = numerator / denominator
-
         # also have to check that the total metallicity isn't larger than one.
         if any(self.Z_tot < 0) or any(self.Z_tot > 1):
             raise ValueError("Total metallicity can't be larger than one. ")
@@ -103,6 +94,30 @@ class NSC_Abundances(object):
         # also create the yield abundance object that is used to calculate
         # things for each star particle.
         self.abund = yields.Abundances()
+
+        # Calculate a few simple things that will be useful later
+        sigma_squared_z = self.mZZ_II / self.initial_masses - self.Z_II ** 2
+        # then throw away negative values
+        self.sigma_squared_z = np.clip(sigma_squared_z, a_min=0, a_max=None)
+        # then transform to log_Z
+        numerator = np.log(1 + self.sigma_squared_z / self.Z_II ** 2)
+        denominator = (np.log(10)) ** 2
+        self.sigma_squared_log_z = numerator / denominator
+
+        # stuff for the whole cluster
+        self.mean_Z_Ia = utils.weighted_mean(self.Z_Ia,
+                                              weights=self.mass)
+        self.mean_Z_II = utils.weighted_mean(self.Z_II,
+                                              weights=self.mass)
+        self.mean_Z_tot = utils.weighted_mean(self.Z_tot,
+                                              weights=self.mass)
+
+        self.internal_var_z = utils.weighted_mean(self.sigma_squared_z,
+                                                  weights=self.mass)
+        self.group_var_z = utils.weighted_variance(self.sigma_squared_z,
+                                                   weights=self.mass,
+                                                   ddof=0)
+        self.total_var_z = self.internal_var_z + self.group_var_z
 
     def z_on_h_total(self):
         """Calculate the Z on H value for this collection of stars, by
@@ -338,3 +353,41 @@ class NSC_Abundances(object):
     def x_on_fe_individual(self, element):
         star_x_on_fe = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
         return self.to_array(star_x_on_fe), self.mass
+
+    # def log_z_err_new(self):
+    #     mean_log_z = np.log10(self.mean_z)
+    #     z_err = np.sqrt(self.total_var_z)
+    #     up = np.log10(self.mean_z + z_err)
+    #     down = np.log10(self.mean_z - z_err)
+    #
+    #     return (mean_log_z - down,
+    #             up - mean_log_z)
+
+
+
+    def x_on_h_err_new_internal(self, element):
+        mean_x_on_h = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II)
+        z_err = np.sqrt(self.internal_var_z)
+        up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
+        down = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II - z_err)
+
+        return (mean_x_on_h - down,
+                up - mean_x_on_h)
+
+    def x_on_h_err_new_group(self, element):
+        mean_x_on_h = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II)
+        z_err = np.sqrt(self.group_var_z)
+        up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
+        down = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II - z_err)
+
+        return (mean_x_on_h - down,
+                up - mean_x_on_h)
+
+    def x_on_h_err_new_total(self, element):
+        mean_x_on_h = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II)
+        z_err = np.sqrt(self.total_var_z)
+        up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
+        down = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II - z_err)
+
+        return (mean_x_on_h - down,
+                up - mean_x_on_h)

@@ -1459,20 +1459,20 @@ class Galaxy(object):
         # NSC [Fe/H]
         _write_single_item(file_obj, self.nsc_abundances.x_on_h_total("Fe"),
                            "fe_on_h")
-        fe_group_var = self.nsc_abundances.x_on_h_group_variance("Fe")
-        _write_single_item(file_obj, fe_group_var, "fe_on_h_group_variance")
-        fe_int_var = np.sqrt(self.nsc_abundances.internal_variance_elt("Fe", "H"))
-        _write_single_item(file_obj, fe_int_var, "fe_on_h_internal_variance")
+        fe_group_sd = self.nsc_abundances.x_on_h_err_new_group("Fe")
+        _write_single_item(file_obj, np.mean(fe_group_sd), "fe_on_h_group_sd")
+        fe_int_sd = np.sqrt(self.nsc_abundances.x_on_h_err_new_internal("Fe"))
+        _write_single_item(file_obj, np.mean(fe_int_sd), "fe_on_h_internal_sd")
 
         # Gal [Fe/H]
         _write_single_item(file_obj, self.gal_abundances.x_on_h_total("Fe"),
                            "gal_fe_on_h")
-        gal_fe_group_var = self.gal_abundances.x_on_fe_group_variance("Fe")
-        _write_single_item(file_obj, gal_fe_group_var,
-                           "gal_fe_on_h_group_variance")
-        gal_fe_int_var = self.gal_abundances.internal_variance_elt("Fe", "H")
-        _write_single_item(file_obj, gal_fe_int_var,
-                           "gal_fe_on_h_internal_variance")
+        gal_fe_group_sd = self.gal_abundances.x_on_h_err_new_group("Fe")
+        _write_single_item(file_obj, gal_fe_group_sd,
+                           "gal_fe_on_h_group_sd")
+        gal_fe_int_sd = self.gal_abundances.x_on_h_err_new_internal("Fe")
+        _write_single_item(file_obj, gal_fe_int_sd,
+                           "gal_fe_on_h_internal_sd")
 
         # [O/Fe]
         _write_single_item(file_obj, self.nsc_abundances.x_on_fe_total("O"),
@@ -1512,6 +1512,8 @@ class Galaxy(object):
 
         # SFH time
         _write_single_item(file_obj, self.sfh_time, "sfh_time")
+
+
 
         # # fraction of mass within r_half
         # nsc_mass = self.stellar_mass(self.nsc_radius, spherical=False)
