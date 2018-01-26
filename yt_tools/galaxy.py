@@ -1466,18 +1466,18 @@ class Galaxy(object):
         _write_single_item(file_obj, self.nsc_abundances.x_on_h_total("Fe"),
                            "fe_on_h")
         fe_group_sd = self.nsc_abundances.x_on_h_err_new_group("Fe")
-        _write_single_item(file_obj, np.mean(fe_group_sd), "fe_on_h_group_sd")
+        _write_single_item(file_obj, fe_group_sd, "fe_on_h_group_sd")
         fe_int_sd = np.sqrt(self.nsc_abundances.x_on_h_err_new_internal("Fe"))
-        _write_single_item(file_obj, np.mean(fe_int_sd), "fe_on_h_internal_sd")
+        _write_single_item(file_obj, fe_int_sd, "fe_on_h_internal_sd")
 
         # Gal [Fe/H]
         _write_single_item(file_obj, self.gal_abundances.x_on_h_total("Fe"),
                            "gal_fe_on_h")
         gal_fe_group_sd = self.gal_abundances.x_on_h_err_new_group("Fe")
-        _write_single_item(file_obj, np.mean(gal_fe_group_sd),
+        _write_single_item(file_obj, gal_fe_group_sd,
                            "gal_fe_on_h_group_sd")
         gal_fe_int_sd = self.gal_abundances.x_on_h_err_new_internal("Fe")
-        _write_single_item(file_obj, np.mean(gal_fe_int_sd),
+        _write_single_item(file_obj, gal_fe_int_sd,
                            "gal_fe_on_h_internal_sd")
 
         # [O/Fe]

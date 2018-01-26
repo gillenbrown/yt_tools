@@ -283,6 +283,19 @@ class NSC_Abundances(object):
 
         return np.array(slopes)
 
+    def _x_on_h_derivative(self, element, z):
+        """
+        Calculates the derivative of [X/H] against log(Z_II), which is what is
+        needed to calculate the internal dispersion of the clusters.
+
+        :return: Value of d[X/H] / d log_Z_II for all the metallicities of the
+                 star particles in the cluster.
+        """
+        def x_on_h_wrapper(z_II):
+            return self.abund.x_on_h(element, 0, z_II)
+
+        return derivative(x_on_h_wrapper, z, dx=z/10.0)
+
     def _x_on_fe_log_derivative(self, element):
         """
         Calculates the derivative of [X/Fe] against log(Z_II), which is what is
@@ -384,28 +397,31 @@ class NSC_Abundances(object):
 
 
     def x_on_h_err_new_internal(self, element):
-        mean_x_on_h = self.x_on_h_total(element)
         z_err = np.sqrt(self.internal_var_z)
-        up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
-        down = self.abund.x_on_h(element, self.mean_Z_Ia, max(self.mean_Z_II - z_err, 0))
-
-        return (mean_x_on_h - down,
-                up - mean_x_on_h)
+        slope = self._x_on_h_derivative(element, self.mean_Z_II)
+        return slope * z_err
+        # up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
+        # down = self.abund.x_on_h(element, self.mean_Z_Ia, max(self.mean_Z_II - z_err, 0))
+        #
+        # return (mean_x_on_h - down,
+        #         up - mean_x_on_h)
 
     def x_on_h_err_new_group(self, element):
-        mean_x_on_h = self.x_on_h_total(element)
         z_err = np.sqrt(self.group_var_z)
-        up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
-        down = self.abund.x_on_h(element, self.mean_Z_Ia, max(self.mean_Z_II - z_err, 0))
-
-        return (mean_x_on_h - down,
-                up - mean_x_on_h)
+        slope = self._x_on_h_derivative(element, self.mean_Z_II)
+        return slope * z_err
+        # up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
+        # down = self.abund.x_on_h(element, self.mean_Z_Ia, max(self.mean_Z_II - z_err, 0))
+        #
+        # return (mean_x_on_h - down,
+        #         up - mean_x_on_h)
 
     def x_on_h_err_new_total(self, element):
-        mean_x_on_h = self.x_on_h_total(element)
         z_err = np.sqrt(self.total_var_z)
-        up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
-        down = self.abund.x_on_h(element, self.mean_Z_Ia, max(self.mean_Z_II - z_err, 0))
-
-        return (mean_x_on_h - down,
-                up - mean_x_on_h)
+        slope = self._x_on_h_derivative(element, self.mean_Z_II)
+        return slope * z_err
+        # up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
+        # down = self.abund.x_on_h(element, self.mean_Z_Ia, max(self.mean_Z_II - z_err, 0))
+        #
+        # return (mean_x_on_h - down,
+        #         up - mean_x_on_h)
