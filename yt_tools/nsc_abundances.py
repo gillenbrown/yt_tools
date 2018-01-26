@@ -170,7 +170,7 @@ class NSC_Abundances(object):
         mean = self.x_on_h_total(element)
         x_on_fe_individual = self.abund.x_on_h(element, self.Z_Ia, self.Z_II)
         return utils.weighted_variance(values=x_on_fe_individual,
-                                       weights=self.mass, ddof=1,
+                                       weights=self.mass, ddof=0,
                                        mean=mean)
 
     def x_on_fe_total(self, element):
@@ -216,7 +216,7 @@ class NSC_Abundances(object):
         mean = self.x_on_fe_total(element)
         x_on_fe_individual = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
         return utils.weighted_variance(values=x_on_fe_individual,
-                                       weights=self.mass, ddof=1,
+                                       weights=self.mass, ddof=0,
                                        mean=mean)
 
     def log_z_over_z_sun_total(self):
