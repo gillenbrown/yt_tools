@@ -1594,7 +1594,7 @@ class Galaxy(object):
         creation_time = self.j_sphere[("STAR", "creation_time")][self.nsc_idx_j_sphere]
 
         time =  YTArray(self.ds._handle.tphys_from_tcode_array(average_age + birth_time) / 1e6, "Myr") - creation_time.in_units("Myr")
-        max_time = max(time.to("Myr"))
+        max_time = max(time.to("Myr").value)
         # get the fraction of mass that has formed as a function of time
         # the masses are sorted by their age, which is why this works.
         total_mass = np.sum(masses)
