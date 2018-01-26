@@ -1452,10 +1452,15 @@ class Galaxy(object):
         # metallicity
         z = self.nsc_abundances.log_z_over_z_sun_total()
         _write_single_item(file_obj, z, "metallicity")
-        z_group_var = self.nsc_abundances.log_z_over_z_sun_average()[1]
+        z_group_var = np.mean(self.nsc_abundances.log_z_err_new_group())**2
         _write_single_item(file_obj, z_group_var, "z_group_variance")
-        z_int_var = self.nsc_abundances.internal_variance_log_z()
+        z_int_var = np.mean(self.nsc_abundances.log_z_err_new_internal())**2
         _write_single_item(file_obj, z_int_var, "z_internal_variance")
+
+        total_z = self.nsc_abundances.mean_Z_tot
+        total_z_var = self.nsc_abundances.total_var_z
+        _write_single_item(file_obj, total_z, "z_tot_nsc")
+        _write_single_item(file_obj, total_z_var, "z_tot_var_nsc")
 
         # NSC [Fe/H]
         _write_single_item(file_obj, self.nsc_abundances.x_on_h_total("Fe"),

@@ -354,14 +354,32 @@ class NSC_Abundances(object):
         star_x_on_fe = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
         return self.to_array(star_x_on_fe), self.mass
 
-    # def log_z_err_new(self):
-    #     mean_log_z = np.log10(self.mean_z)
-    #     z_err = np.sqrt(self.total_var_z)
-    #     up = np.log10(self.mean_z + z_err)
-    #     down = np.log10(self.mean_z - z_err)
-    #
-    #     return (mean_log_z - down,
-    #             up - mean_log_z)
+    def log_z_err_new_total(self):
+        mean_log_z = np.log10(self.mean_Z_tot)
+        z_err = np.sqrt(self.total_var_z)
+        up = np.log10(self.mean_Z_tot + z_err)
+        down = np.log10(self.mean_Z_tot - z_err)
+
+        return (mean_log_z - down,
+                up - mean_log_z)
+
+    def log_z_err_new_internal(self):
+        mean_log_z = np.log10(self.mean_Z_tot)
+        z_err = np.sqrt(self.internal_var_z)
+        up = np.log10(self.mean_Z_tot + z_err)
+        down = np.log10(self.mean_Z_tot - z_err)
+
+        return (mean_log_z - down,
+                up - mean_log_z)
+
+    def log_z_err_new_group(self):
+        mean_log_z = np.log10(self.mean_Z_tot)
+        z_err = np.sqrt(self.group_var_z)
+        up = np.log10(self.mean_Z_tot + z_err)
+        down = np.log10(self.mean_Z_tot - z_err)
+
+        return (mean_log_z - down,
+                up - mean_log_z)
 
 
 
