@@ -1585,16 +1585,16 @@ class Galaxy(object):
         """
         if self.nsc_radius is None:
             return
-        birth_times, masses = self._sort_mass_and_birth_nsc()
+        birth_times_sorted, masses = self._sort_mass_and_birth_nsc()
 
         from yt import YTArray
 
-        average_age = self.j_sphere[("STAR", "AVERAGE_AGE")][self.nsc_idx_j_sphere]
-        birth_time = self.j_sphere[("STAR", "BIRTH_TIME")][self.nsc_idx_j_sphere]
+        # average_age = self.j_sphere[("STAR", "AVERAGE_AGE")][self.nsc_idx_j_sphere]
         creation_time = self.j_sphere[("STAR", "creation_time")][self.nsc_idx_j_sphere]
+        termination_time = self.j_sphere[("STAR", "TERMINATION_TIME")][self.nsc_idx_j_sphere]
 
-        time =  YTArray(self.ds._handle.tphys_from_tcode_array(average_age + birth_time) / 1e6, "Myr") - creation_time.in_units("Myr")
-        max_time = max(time.to("Myr").value)
+        time = YTArray(self.ds._handle.tphys_from_tcode_array(termination_time) / 1e6, "Myr") - creation_time.in_units("Myr")
+        max_time = np.max(time.to("Myr").value)
         # get the fraction of mass that has formed as a function of time
         # the masses are sorted by their age, which is why this works.
         total_mass = np.sum(masses)
@@ -1607,7 +1607,7 @@ class Galaxy(object):
         min_timescale = 10**99
         for min_level in np.linspace(0, 0.1, 500):
             max_level = min_level + 0.9
-            timescale =  self._timescale(cumulative_mass, birth_times,
+            timescale =  self._timescale(cumulative_mass, birth_times_sorted,
                                          min_level, max_level)
 
             if timescale < min_timescale:
