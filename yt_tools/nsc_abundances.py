@@ -96,13 +96,9 @@ class NSC_Abundances(object):
         self.abund = yields.Abundances()
 
         # Calculate a few simple things that will be useful later
-        sigma_squared_z = self.mZZ_II / self.initial_masses - self.Z_II ** 2
+        var_z_temp = self.mZZ_II / self.initial_masses - self.Z_II ** 2
         # then throw away negative values
-        self.sigma_squared_z = np.clip(sigma_squared_z, a_min=0, a_max=None)
-        # then transform to log_Z
-        numerator = np.log(1 + self.sigma_squared_z / self.Z_II ** 2)
-        denominator = (np.log(10)) ** 2
-        self.sigma_squared_log_z = numerator / denominator
+        self.var_z_II_int_ind = np.clip(var_z_temp, a_min=0, a_max=None)
 
         # stuff for the whole cluster
         self.mean_Z_Ia = utils.weighted_mean(self.Z_Ia,
@@ -112,12 +108,17 @@ class NSC_Abundances(object):
         self.mean_Z_tot = utils.weighted_mean(self.Z_tot,
                                               weights=self.mass)
 
-        self.internal_var_z = utils.weighted_mean(self.sigma_squared_z,
-                                                  weights=self.mass)
-        self.group_var_z = utils.weighted_variance(self.Z_tot,
+        self.var_z_II_int_tot = utils.weighted_mean(self.var_z_II_int_ind,
+                                                    weights=self.mass)
+        self.var_z_group = utils.weighted_variance(self.Z_tot,
                                                    weights=self.mass,
                                                    ddof=0)
-        self.total_var_z = self.internal_var_z + self.group_var_z
+        self.var_z_tot = self.var_z_II_int_tot + self.var_z_group
+
+        # # then transform to log_Z
+        # numerator = np.log(1 + self.sigma_squared_z / self.Z_II ** 2)
+        # denominator = (np.log(10)) ** 2
+        # self.sigma_squared_log_z = numerator / denominator
 
     def z_on_h_total(self):
         """Calculate the Z on H value for this collection of stars, by
@@ -181,13 +182,6 @@ class NSC_Abundances(object):
 
         return np.log10(star_frac * sun_frac)
 
-    def x_on_h_group_variance(self, element):
-        mean = self.x_on_h_total(element)
-        x_on_fe_individual = self.abund.x_on_h(element, self.Z_Ia, self.Z_II)
-        return utils.weighted_variance(values=x_on_fe_individual,
-                                       weights=self.mass, ddof=0,
-                                       mean=mean)
-
     def x_on_fe_total(self, element):
         """Calculate the [X/Fe] value for this collection of stars.
 
@@ -227,13 +221,6 @@ class NSC_Abundances(object):
 
         return np.log10(star_frac * sun_frac)
 
-    def x_on_fe_group_variance(self, element):
-        mean = self.x_on_fe_total(element)
-        x_on_fe_individual = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
-        return utils.weighted_variance(values=x_on_fe_individual,
-                                       weights=self.mass, ddof=0,
-                                       mean=mean)
-
     def log_z_over_z_sun_total(self):
         """Returns the value of log(Z/Z_sun).
 
@@ -251,177 +238,188 @@ class NSC_Abundances(object):
         metallicity = total_metals / total_mass
         return np.log10(metallicity / self.z_sun)
 
-    def log_z_over_z_sun_average(self):
-        """Returns the mean and variance of log(Z/Z_sun).
-
-        Unlike z_over_z_sun_total, here we take the weighted mean of all the
-        individual values of log(Z/Z_sun). This will slightly different results,
-        but is a way to get the variance of this population.
-
-        :returns: mean and variance of log(Z/Z_sun)
-        """
-
-        z_over_z_sun = self.Z_tot / self.z_sun
-        log_z = np.log10(z_over_z_sun)
-        return (utils.weighted_mean(log_z, self.mass),
-                utils.weighted_variance(log_z, self.mass, ddof=0))
-
-    def _x_on_h_log_derivative(self, element):
-        """
-        Calculates the derivative of [X/H] against log(Z_II), which is what is
-        needed to calculate the internal dispersion of the clusters.
-
-        :return: Value of d[X/H] / d log_Z_II for all the metallicities of the
-                 star particles in the cluster.
-        """
-        def x_on_h_wrapper(log_z_II):
-            return self.abund.x_on_h(element, 0, 10**log_z_II)
-
-        slopes = []
-        for log_z in np.log10(self.Z_II):
-            slopes.append(derivative(x_on_h_wrapper, log_z, dx=0.01))
-
-        return np.array(slopes)
-
-    def _x_on_h_derivative(self, element, z):
-        """
-        Calculates the derivative of [X/H] against log(Z_II), which is what is
-        needed to calculate the internal dispersion of the clusters.
-
-        :return: Value of d[X/H] / d log_Z_II for all the metallicities of the
-                 star particles in the cluster.
-        """
-        def x_on_h_wrapper(z_II):
-            return self.abund.x_on_h(element, 0, z_II)
-
-        return derivative(x_on_h_wrapper, z, dx=z/10.0)
-
-    def _x_on_fe_log_derivative(self, element):
-        """
-        Calculates the derivative of [X/Fe] against log(Z_II), which is what is
-        needed to calculate the internal dispersion of the clusters.
-
-        :return: Value of d[X/Fe] / d log_Z_II for all the metallicities of the
-                 star particles in the cluster.
-        """
-        def x_on_fe_wrapper(log_z_II):
-            return self.abund.x_on_fe(element, 0, 10**log_z_II)
-
-        slopes = []
-        for log_z in np.log10(self.Z_II):
-            slopes.append(derivative(x_on_fe_wrapper, log_z, dx=0.01))
-
-        return np.array(slopes)
-
-    def internal_variance_log_z(self):
-        numerator = np.sum(self.mass * self.sigma_squared_log_z)
-        denominator = np.sum(self.mass)
-        return numerator / denominator
-
-    def internal_variance_individual(self, element, over):
-        """Variance in elemental abundances that come from internal dispersion.
-
-        This is calculated in my notebook, and the equation will be in the
-        paper.
-
-        :return: List of the values of the variances in an elemental abundance
-                 due to internal dispersion.
-        """
-        if over == "Fe":
-            slopes_log = self._x_on_fe_log_derivative(element)
-        elif over == "H":
-            slopes_log = self._x_on_h_log_derivative(element)
-        else:
-            raise ValueError("over must be either 'Fe' or 'H'")
-
-        return self.sigma_squared_log_z * slopes_log**2
-
-    def internal_variance_elt(self, element, over):
-        """Total variance that comes from the spread among [Fe/H]
-        within particles.
-
-        This is calculated in my notebook, and the equation will be in the
-        paper.
-
-        :return: Value of the variance in [Fe/H] contributed by the internal
-                 dispersion within star particles.
-        """
-        individual_var = self.internal_variance_individual(element, over)
-        numerator = np.sum(self.mass * individual_var)
-        denominator = np.sum(self.mass)
-        return numerator / denominator
-
-    def to_array(self, item):
-        try:
-            len(item)  # checks for scalars
-        except TypeError:
-            return np.array([item])  # scalars need to be in a list
-        else:
-            return np.array(item)  # lists don't.
-
     def x_on_h_individual(self, element):
         star_x_on_h = self.abund.x_on_h(element, self.Z_Ia, self.Z_II)
-        return self.to_array(star_x_on_h), self.mass
+        return utils.to_array(star_x_on_h), self.mass
 
     def x_on_fe_individual(self, element):
         star_x_on_fe = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
-        return self.to_array(star_x_on_fe), self.mass
+        return utils.to_array(star_x_on_fe), self.mass
 
-    def log_z_err_new_total(self):
-        mean_log_z = np.log10(self.mean_Z_tot)
-        z_err = np.sqrt(self.total_var_z)
-        up = np.log10(self.mean_Z_tot + z_err)
-        down = np.log10(self.mean_Z_tot - z_err)
+    def _get_z_err(self, form):
+        if form == "internal":
+            z_variance = self.var_z_II_int_tot
+        elif form == "group":
+            z_variance = self.var_z_group
+        elif form == "total":
+            z_variance = self.var_z_tot
+        else:
+            raise ValueError("Wrong type")
 
-        return (mean_log_z - down,
-                up - mean_log_z)
+        return np.sqrt(z_variance)
 
-    def log_z_err_new_internal(self):
-        mean_log_z = np.log10(self.mean_Z_tot)
-        z_err = np.sqrt(self.internal_var_z)
-        up = np.log10(self.mean_Z_tot + z_err)
-        down = np.log10(self.mean_Z_tot - z_err)
+    def log_z_err(self, form):
+        z_err = self._get_z_err(form)
+        mean_logz = self.log_z_over_z_sun_total()
+        up = np.log10((self.mean_Z_tot + z_err) / self.z_sun)
+        down = np.log10((self.mean_Z_tot - z_err) / self.z_sun)
+        return (mean_logz - down,
+                up - mean_logz)
 
-        return (mean_log_z - down,
-                up - mean_log_z)
+    def z_on_h_err(self, form):
+        z_err = self._get_z_err(form)
+        mean_zh = self.z_on_h_total()
+        up = self.abund.z_on_h(self.mean_Z_Ia, self.mean_Z_II + z_err)
+        down = self.abund.z_on_h(self.mean_Z_Ia, self.mean_Z_II - z_err)
 
-    def log_z_err_new_group(self):
-        mean_log_z = np.log10(self.mean_Z_tot)
-        z_err = np.sqrt(self.group_var_z)
-        up = np.log10(self.mean_Z_tot + z_err)
-        down = np.log10(self.mean_Z_tot - z_err)
+        return (mean_zh - down,
+                up - mean_zh)
 
-        return (mean_log_z - down,
-                up - mean_log_z)
+    def x_on_h_err(self, element, form):
+        z_err = self._get_z_err(form)
+        mean_xh = self.x_on_h_total(element)
+        up = self.abund.x_on_h(element, self.mean_Z_Ia,
+                               self.mean_Z_II + z_err)
+        down = self.abund.x_on_h(element, self.mean_Z_Ia,
+                                 self.mean_Z_II - z_err)
 
+        return (mean_xh - down,
+                up - mean_xh)
 
+    def x_on_fe_err(self, element, form):
+        z_err = self._get_z_err(form)
+        mean_xh = self.x_on_fe_total(element)
+        up = self.abund.x_on_fe(element, self.mean_Z_Ia,
+                                self.mean_Z_II + z_err)
+        down = self.abund.x_on_fe(element, self.mean_Z_Ia,
+                                  self.mean_Z_II - z_err)
 
-    def x_on_h_err_new_internal(self, element):
-        z_err = np.sqrt(self.internal_var_z)
-        slope = self._x_on_h_derivative(element, self.mean_Z_II)
-        return slope * z_err
-        # up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
-        # down = self.abund.x_on_h(element, self.mean_Z_Ia, max(self.mean_Z_II - z_err, 0))
-        #
-        # return (mean_x_on_h - down,
-        #         up - mean_x_on_h)
+        return (mean_xh - down,
+                up - mean_xh)
 
-    def x_on_h_err_new_group(self, element):
-        z_err = np.sqrt(self.group_var_z)
-        slope = self._x_on_h_derivative(element, self.mean_Z_II)
-        return slope * z_err
-        # up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
-        # down = self.abund.x_on_h(element, self.mean_Z_Ia, max(self.mean_Z_II - z_err, 0))
-        #
-        # return (mean_x_on_h - down,
-        #         up - mean_x_on_h)
+    def x_on_fe_err_individual(self, element):
+        """Only internal dispersion can be considered here, since this is
+        on a star by star basis."""
+        z_errs = np.sqrt(self.var_z_II_int_ind)
+        # the mean values are equivalent to what we do in x_on_fe_individual
+        mean_values = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
+        up = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II + z_errs)
+        down = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II + z_errs)
 
-    def x_on_h_err_new_total(self, element):
-        z_err = np.sqrt(self.total_var_z)
-        slope = self._x_on_h_derivative(element, self.mean_Z_II)
-        return slope * z_err
-        # up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
-        # down = self.abund.x_on_h(element, self.mean_Z_Ia, max(self.mean_Z_II - z_err, 0))
-        #
-        # return (mean_x_on_h - down,
-        #         up - mean_x_on_h)
+        mean_err = []
+        for d, m, u in zip(down, mean_values, up):
+            up_diff = u - m
+            down_diff = m - d
+            mean_err.append(np.mean([up_diff, down_diff]))
+
+        return mean_err
+
+    # def _x_on_h_log_derivative(self, element):
+    #     """
+    #     Calculates the derivative of [X/H] against log(Z_II), which is what is
+    #     needed to calculate the internal dispersion of the clusters.
+    #
+    #     :return: Value of d[X/H] / d log_Z_II for all the metallicities of the
+    #              star particles in the cluster.
+    #     """
+    #     def x_on_h_wrapper(log_z_II):
+    #         return self.abund.x_on_h(element, 0, 10**log_z_II)
+    #
+    #     slopes = []
+    #     for log_z in np.log10(self.Z_II):
+    #         slopes.append(derivative(x_on_h_wrapper, log_z, dx=0.01))
+    #
+    #     return np.array(slopes)
+
+    # def _x_on_fe_log_derivative(self, element):
+    #     """
+    #     Calculates the derivative of [X/Fe] against log(Z_II), which is what is
+    #     needed to calculate the internal dispersion of the clusters.
+    #
+    #     :return: Value of d[X/Fe] / d log_Z_II for all the metallicities of the
+    #              star particles in the cluster.
+    #     """
+    #     def x_on_fe_wrapper(log_z_II):
+    #         return self.abund.x_on_fe(element, 0, 10**log_z_II)
+    #
+    #     slopes = []
+    #     for log_z in np.log10(self.Z_II):
+    #         slopes.append(derivative(x_on_fe_wrapper, log_z, dx=0.01))
+    #
+    #     return np.array(slopes)
+
+    # def _elt_derivative(self, element, over, Z_II):
+    #     """
+    #     Calculates the derivative of [X/H] against Z_II, which is what is
+    #     needed to calculate the internal dispersion of the clusters.
+    #
+    #     :return: Value of d[X/H] / d log_Z_II for all the metallicities of the
+    #              star particles in the cluster.
+    #     """
+    #     if over == "Fe":
+    #         def wrapper(Z_II):
+    #             return self.abund.x_on_fe(element, 0, Z_II)
+    #     elif over == "H":
+    #         def wrapper(Z_II):
+    #             return self.abund.x_on_h(element, 0, Z_II)
+    #     else:
+    #         raise ValueError("over must be either 'Fe' or 'H'")
+    #
+    #     return derivative(wrapper, Z_II, dx=Z_II/10.0)
+    #
+    # def internal_variance_individual_derivative(self, element, over):
+    #     """Variance in elemental abundances that come from internal dispersion.
+    #
+    #     This is calculated in my notebook, and the equation will be in the
+    #     paper.
+    #
+    #     :return: List of the values of the variances in an elemental abundance
+    #              due to internal dispersion.
+    #     """
+    #     slopes = [self._elt_derivative(element, over, z) for z in self.Z_II]
+    #     return self.var_z_II_ind * np.array(slopes)**2
+    #
+    # def internal_variance_elt(self, element, over):
+    #     """Total variance that comes from the spread among [Fe/H]
+    #     within particles.
+    #
+    #     This is calculated in my notebook, and the equation will be in the
+    #     paper.
+    #
+    #     :return: Value of the variance in [Fe/H] contributed by the internal
+    #              dispersion within star particles.
+    #     """
+    #     individual_var = self.internal_variance_individual_derivative(element, over)
+    #     return utils.weighted_mean(individual_var, weights=self.mass)
+    #
+    # def x_on_h_err_new_internal(self, element):
+    #     z_err = np.sqrt(self.var_z_II_int_tot)
+    #     # slope = self._x_on_h_derivative(element, self.mean_Z_II)
+    #     # return slope * z_err
+    #     mean_x_on_h = self.x_on_h_total(element)
+    #     up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
+    #     down = self.abund.x_on_h(element, self.mean_Z_Ia, max(self.mean_Z_II - z_err, 0))
+    #
+    #     return (mean_x_on_h - down,
+    #             up - mean_x_on_h)
+    #
+    # def x_on_h_err_new_group(self, element):
+    #     z_err = np.sqrt(self.var_z_group)
+    #     # slope = self._x_on_h_derivative(element, self.mean_Z_II)
+    #     # return slope * z_err
+    #     mean_x_on_h = self.x_on_h_total(element)
+    #     up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
+    #     down = self.abund.x_on_h(element, self.mean_Z_Ia, max(self.mean_Z_II - z_err, 0))
+    #
+    #     return (mean_x_on_h - down,
+    #             up - mean_x_on_h)
+    #
+    # def x_on_h_err_new_total(self, element):
+    #     z_err = np.sqrt(self.var_z_tot)
+    #     slope = self._x_on_h_derivative(element, self.mean_Z_II)
+    #     return slope * z_err
+    #     # up = self.abund.x_on_h(element, self.mean_Z_Ia, self.mean_Z_II + z_err)
+    #     # down = self.abund.x_on_h(element, self.mean_Z_Ia, max(self.mean_Z_II - z_err, 0))
+    #     #
+    #     # return (mean_x_on_h - down,
+    #     #         up - mean_x_on_h)

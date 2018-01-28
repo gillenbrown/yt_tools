@@ -1450,69 +1450,63 @@ class Galaxy(object):
                            "nsc_3d_sigma")
 
         # metallicity
-        z = self.nsc_abundances.log_z_over_z_sun_total()
-        _write_single_item(file_obj, z, "metallicity")
-        z_group_var = np.mean(self.nsc_abundances.log_z_err_new_group())**2
-        _write_single_item(file_obj, z_group_var, "z_group_variance")
-        z_int_var = np.mean(self.nsc_abundances.log_z_err_new_internal())**2
-        _write_single_item(file_obj, z_int_var, "z_internal_variance")
+        log_z = self.nsc_abundances.log_z_over_z_sun_total()
+        log_z_sd = np.mean(self.nsc_abundances.log_z_err("total"))
+        _write_single_item(file_obj, log_z, "log_z_z_sun")
+        _write_single_item(file_obj, log_z_sd, "log_z_z_sun_sd_total")
 
-        total_z = self.nsc_abundances.mean_Z_tot
-        total_z_var = self.nsc_abundances.total_var_z
-        _write_single_item(file_obj, total_z, "z_tot_nsc")
-        _write_single_item(file_obj, total_z_var, "z_tot_var_nsc")
+        # [Z/H] errors
+        zh_sd_int = self.nsc_abundances.z_on_h_err("internal")
+        zh_sd_group = self.nsc_abundances.z_on_h_err("group")
+        zh_sd_total = self.nsc_abundances.z_on_h_err("total")
+        _write_single_item(file_obj, zh_sd_int, "z_on_h_sd_internal")
+        _write_single_item(file_obj, zh_sd_group, "z_on_h_sd_group")
+        _write_single_item(file_obj, zh_sd_total, "z_on_h_sd_total")
 
         # NSC [Fe/H]
-        _write_single_item(file_obj, self.nsc_abundances.x_on_h_total("Fe"),
-                           "fe_on_h")
-        fe_group_sd = self.nsc_abundances.x_on_h_err_new_group("Fe")
-        _write_single_item(file_obj, fe_group_sd, "fe_on_h_group_sd")
-        fe_int_sd = np.sqrt(self.nsc_abundances.x_on_h_err_new_internal("Fe"))
-        _write_single_item(file_obj, fe_int_sd, "fe_on_h_internal_sd")
+        feh = self.nsc_abundances.x_on_h_total("Fe")
+        feh_sd_int = self.nsc_abundances.x_on_h_err("Fe", "internal")
+        feh_sd_group = self.nsc_abundances.x_on_h_err("Fe", "group")
+        feh_sd_total = self.nsc_abundances.x_on_h_err("Fe", "total")
+        _write_single_item(file_obj, feh, "fe_on_h")
+        _write_single_item(file_obj, feh_sd_int, "fe_on_h_sd_internal")
+        _write_single_item(file_obj, feh_sd_group, "fe_on_h_sd_group")
+        _write_single_item(file_obj, feh_sd_total, "fe_on_h_sd_total")
 
         # Gal [Fe/H]
-        _write_single_item(file_obj, self.gal_abundances.x_on_h_total("Fe"),
-                           "gal_fe_on_h")
-        gal_fe_group_sd = self.gal_abundances.x_on_h_err_new_group("Fe")
-        _write_single_item(file_obj, gal_fe_group_sd,
-                           "gal_fe_on_h_group_sd")
-        gal_fe_int_sd = self.gal_abundances.x_on_h_err_new_internal("Fe")
-        _write_single_item(file_obj, gal_fe_int_sd,
-                           "gal_fe_on_h_internal_sd")
+        gal_feh = self.gal_abundances.x_on_h_total("Fe")
+        gal_feh_sd = self.gal_abundances.x_on_h_err("total")
+        _write_single_item(file_obj, gal_feh, "gal_fe_on_h")
+        _write_single_item(file_obj, gal_feh_sd, "gal_fe_on_h_sd_total")
 
         # [O/Fe]
-        _write_single_item(file_obj, self.nsc_abundances.x_on_fe_total("O"),
-                           "o_on_fe")
-        o_group_var = self.nsc_abundances.x_on_fe_group_variance("O")
-        _write_single_item(file_obj, o_group_var, "o_on_fe_group_variance")
-        o_int_var = self.nsc_abundances.internal_variance_elt("O", "Fe")
-        _write_single_item(file_obj, o_int_var, "o_on_fe_internal_variance")
+        ofe = self.nsc_abundances.x_on_fe_total("O")
+        ofe_sd = self.nsc_abundances.x_on_fe_err("O", "total")
+        _write_single_item(file_obj, ofe, "o_on_fe")
+        _write_single_item(file_obj, ofe_sd, "o_on_fe_sd_total")
 
         # [Mg/Fe]
-        _write_single_item(file_obj, self.nsc_abundances.x_on_fe_total("Mg"),
-                           "mg_on_fe")
-        mg_group_var = self.nsc_abundances.x_on_fe_group_variance("Mg")
-        _write_single_item(file_obj, mg_group_var, "mg_on_fe_group_variance")
-        mg_int_var = self.nsc_abundances.internal_variance_elt("Mg", "Fe")
-        _write_single_item(file_obj, mg_int_var, "mg_on_fe_internal_variance")
+        mgfe = self.nsc_abundances.x_on_fe_total("Mg")
+        mgfe_sd = self.nsc_abundances.x_on_fe_err("Mg", "total")
+        _write_single_item(file_obj, mgfe, "mg_on_fe")
+        _write_single_item(file_obj, mgfe_sd, "mg_on_fe_sd_total")
 
         # [Al/Fe]
-        _write_single_item(file_obj, self.nsc_abundances.x_on_fe_total("Al"),
-                           "al_on_fe")
-        al_group_var = self.nsc_abundances.x_on_fe_group_variance("Al")
-        _write_single_item(file_obj, al_group_var, "al_on_fe_group_variance")
-        al_int_var = self.nsc_abundances.internal_variance_elt("Al", "Fe")
-        _write_single_item(file_obj, al_int_var, "al_on_fe_internal_variance")
+        alfe = self.nsc_abundances.x_on_fe_total("Al")
+        alfe_sd = self.nsc_abundances.x_on_fe_err("Al", "total")
+        _write_single_item(file_obj, alfe, "al_on_fe")
+        _write_single_item(file_obj, alfe_sd, "al_on_fe_sd_total")
 
         # individual abundances
         for elt in ["Mg", "Al", "O", "Na"]:
             abund, star_masses = self.nsc_abundances.x_on_fe_individual(elt)
-            _write_single_item(file_obj, abund, multiple=True,
-                               name="star_{}_on_fe".format(elt.lower()))
+            elt_sd = self.nsc_abundances.x_on_fe_err_individual(elt)
 
-            vars = self.nsc_abundances.internal_variance_individual(elt, "Fe")
-            _write_single_item(file_obj, np.sqrt(vars), multiple=True,
-                               name="star_{}_on_fe_sd".format(elt.lower()))
+            abund_name = "star_{}_on_fe".format(elt.lower())
+            sd_name = "star_{}_on_fe_sd".format(elt.lower())
+
+            _write_single_item(file_obj, abund, multiple=True, name=abund_name)
+            _write_single_item(file_obj, elt_sd, multiple=True, name=sd_name)
 
         _write_single_item(file_obj, star_masses, "star_masses", multiple=True)
 

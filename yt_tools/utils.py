@@ -637,3 +637,11 @@ def transform_coords(loc, vec_a, vec_b, vec_c):
         return np.linalg.solve(matrix, loc)
     except ValueError:
         raise ValueError("All values need to have length three.")
+
+def to_array(item):
+    try:
+        len(item)  # checks for scalars
+    except TypeError:
+        return np.array([item])  # scalars need to be in a list
+    else:
+        return np.array(item)  # lists don't.
