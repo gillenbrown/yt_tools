@@ -1451,7 +1451,7 @@ class Galaxy(object):
 
         # metallicity
         log_z = self.nsc_abundances.log_z_over_z_sun_total()
-        log_z_sd = np.mean(self.nsc_abundances.log_z_err("total"))
+        log_z_sd = self.nsc_abundances.log_z_err("total")
         _write_single_item(file_obj, log_z, "log_z_z_sun")
         _write_single_item(file_obj, log_z_sd, "log_z_z_sun_sd_total", multiple=True)
 
