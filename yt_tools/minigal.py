@@ -85,7 +85,13 @@ class Minigal():
                          "star_al_on_fe", "star_mg_on_fe",
                          "star_o_on_fe", "star_na_on_fe",
                          "star_al_on_fe_sd", "star_mg_on_fe_sd",
-                         "star_o_on_fe_sd", "star_na_on_fe_sd"]
+                         "star_o_on_fe_sd", "star_na_on_fe_sd",
+                         "log_z_z_sun_sd_total", "z_on_h_sd_internal",
+                         "z_on_h_sd_group", "z_on_h_sd_total",
+                         "fe_on_h_sd_internal", "fe_on_h_sd_group",
+                         "fe_on_h_sd_total", "gal_fe_on_h_sd_total",
+                         "o_on_fe_sd_total", "mg_on_fe_sd_total",
+                         "al_on_fe_sd_total"]
         for key in keys_to_check:
             if key in self.value_dict:
                 this_value = self.value_dict[key]

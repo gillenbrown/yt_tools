@@ -306,13 +306,10 @@ class NSC_Abundances(object):
         up = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II + z_errs)
         down = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II + z_errs)
 
-        mean_err = []
-        for d, m, u in zip(down, mean_values, up):
-            up_diff = u - m
-            down_diff = m - d
-            mean_err.append(np.mean([up_diff, down_diff]))
+        up_diff = up - mean_values
+        down_diff = mean_values - down
 
-        return mean_err
+        return np.mean([up_diff, down_diff], axis=0)
 
     # def _x_on_h_log_derivative(self, element):
     #     """
