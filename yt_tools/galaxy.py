@@ -1453,15 +1453,18 @@ class Galaxy(object):
         log_z = self.nsc_abundances.log_z_over_z_sun_total()
         log_z_sd = np.mean(self.nsc_abundances.log_z_err("total"))
         _write_single_item(file_obj, log_z, "log_z_z_sun")
-        _write_single_item(file_obj, log_z_sd, "log_z_z_sun_sd_total")
+        _write_single_item(file_obj, log_z_sd, "log_z_z_sun_sd_total", multiple=True)
 
         # [Z/H] errors
         zh_sd_int = self.nsc_abundances.z_on_h_err("internal")
         zh_sd_group = self.nsc_abundances.z_on_h_err("group")
         zh_sd_total = self.nsc_abundances.z_on_h_err("total")
-        _write_single_item(file_obj, zh_sd_int, "z_on_h_sd_internal")
-        _write_single_item(file_obj, zh_sd_group, "z_on_h_sd_group")
-        _write_single_item(file_obj, zh_sd_total, "z_on_h_sd_total")
+        _write_single_item(file_obj, zh_sd_int, "z_on_h_sd_internal",
+                           multiple=True)
+        _write_single_item(file_obj, zh_sd_group, "z_on_h_sd_group",
+                           multiple=True)
+        _write_single_item(file_obj, zh_sd_total, "z_on_h_sd_total",
+                           multiple=True)
 
         # NSC [Fe/H]
         feh = self.nsc_abundances.x_on_h_total("Fe")
@@ -1469,33 +1472,40 @@ class Galaxy(object):
         feh_sd_group = self.nsc_abundances.x_on_h_err("Fe", "group")
         feh_sd_total = self.nsc_abundances.x_on_h_err("Fe", "total")
         _write_single_item(file_obj, feh, "fe_on_h")
-        _write_single_item(file_obj, feh_sd_int, "fe_on_h_sd_internal")
-        _write_single_item(file_obj, feh_sd_group, "fe_on_h_sd_group")
-        _write_single_item(file_obj, feh_sd_total, "fe_on_h_sd_total")
+        _write_single_item(file_obj, feh_sd_int, "fe_on_h_sd_internal",
+                           multiple=True)
+        _write_single_item(file_obj, feh_sd_group, "fe_on_h_sd_group",
+                           multiple=True)
+        _write_single_item(file_obj, feh_sd_total, "fe_on_h_sd_total",
+                           multiple=True)
 
         # Gal [Fe/H]
         gal_feh = self.gal_abundances.x_on_h_total("Fe")
         gal_feh_sd = self.gal_abundances.x_on_h_err("Fe", "total")
         _write_single_item(file_obj, gal_feh, "gal_fe_on_h")
-        _write_single_item(file_obj, gal_feh_sd, "gal_fe_on_h_sd_total")
+        _write_single_item(file_obj, gal_feh_sd, "gal_fe_on_h_sd_total",
+                           multiple=True)
 
         # [O/Fe]
         ofe = self.nsc_abundances.x_on_fe_total("O")
         ofe_sd = self.nsc_abundances.x_on_fe_err("O", "total")
         _write_single_item(file_obj, ofe, "o_on_fe")
-        _write_single_item(file_obj, ofe_sd, "o_on_fe_sd_total")
+        _write_single_item(file_obj, ofe_sd, "o_on_fe_sd_total",
+                           multiple=True)
 
         # [Mg/Fe]
         mgfe = self.nsc_abundances.x_on_fe_total("Mg")
         mgfe_sd = self.nsc_abundances.x_on_fe_err("Mg", "total")
         _write_single_item(file_obj, mgfe, "mg_on_fe")
-        _write_single_item(file_obj, mgfe_sd, "mg_on_fe_sd_total")
+        _write_single_item(file_obj, mgfe_sd, "mg_on_fe_sd_total",
+                           multiple=True)
 
         # [Al/Fe]
         alfe = self.nsc_abundances.x_on_fe_total("Al")
         alfe_sd = self.nsc_abundances.x_on_fe_err("Al", "total")
         _write_single_item(file_obj, alfe, "al_on_fe")
-        _write_single_item(file_obj, alfe_sd, "al_on_fe_sd_total")
+        _write_single_item(file_obj, alfe_sd, "al_on_fe_sd_total",
+                           multiple=True)
 
         # individual abundances
         for elt in ["Mg", "Al", "O", "Na"]:
