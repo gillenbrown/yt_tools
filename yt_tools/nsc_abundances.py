@@ -288,14 +288,14 @@ class NSC_Abundances(object):
 
     def x_on_fe_err(self, element, form):
         z_err = self._get_z_err(form)
-        mean_xh = self.x_on_fe_total(element)
+        mean_xfe = self.x_on_fe_total(element)
         up = self.abund.x_on_fe(element, self.mean_Z_Ia,
                                 self.mean_Z_II + z_err)
         down = self.abund.x_on_fe(element, self.mean_Z_Ia,
                                   self.mean_Z_II - z_err)
 
-        return (mean_xh - down,
-                up - mean_xh)
+        return (mean_xfe - down,
+                up - mean_xfe)
 
     def x_on_fe_err_individual(self, element):
         """Only internal dispersion can be considered here, since this is

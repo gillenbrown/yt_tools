@@ -1475,7 +1475,7 @@ class Galaxy(object):
 
         # Gal [Fe/H]
         gal_feh = self.gal_abundances.x_on_h_total("Fe")
-        gal_feh_sd = self.gal_abundances.x_on_h_err("total")
+        gal_feh_sd = self.gal_abundances.x_on_h_err("Fe", "total")
         _write_single_item(file_obj, gal_feh, "gal_fe_on_h")
         _write_single_item(file_obj, gal_feh_sd, "gal_fe_on_h_sd_total")
 
