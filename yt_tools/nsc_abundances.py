@@ -246,7 +246,7 @@ class NSC_Abundances(object):
         star_x_on_fe = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
         return utils.to_array(star_x_on_fe), self.mass
 
-    def _get_z_err(self, form):
+    def _get_z_edges(self, form, z_type):
         if form == "internal":
             z_variance = self.var_z_II_int_tot
         elif form == "group":
@@ -254,45 +254,53 @@ class NSC_Abundances(object):
         elif form == "total":
             z_variance = self.var_z_tot
         else:
-            raise ValueError("Wrong type")
+            raise ValueError("Wrong form.")
 
-        return np.sqrt(z_variance)
+        z_err = np.sqrt(z_variance)
+
+        if z_type == "total":
+            z_mean = self.mean_Z_tot
+        elif z_type == "II":
+            z_mean = self.mean_Z_II
+        else:
+            raise ValueError("Wrong z type.")
+
+        z_up = z_mean + z_err
+        z_down = max(0, z_mean - z_err)
+
+        return z_down, z_up
 
     def log_z_err(self, form):
-        z_err = self._get_z_err(form)
+        z_down, z_up = self._get_z_edges(form, z_type="total")
         mean_logz = self.log_z_over_z_sun_total()
-        up = np.log10((self.mean_Z_tot + z_err) / self.z_sun)
-        down = np.log10((self.mean_Z_tot - z_err) / self.z_sun)
+        up = np.log10(z_up / self.z_sun)
+        down = np.log10(z_down / self.z_sun)
         return (mean_logz - down,
                 up - mean_logz)
 
     def z_on_h_err(self, form):
-        z_err = self._get_z_err(form)
+        z_down, z_up = self._get_z_edges(form, z_type="II")
         mean_zh = self.z_on_h_total()
-        up = self.abund.z_on_h(self.mean_Z_Ia, self.mean_Z_II + z_err)
-        down = self.abund.z_on_h(self.mean_Z_Ia, self.mean_Z_II - z_err)
+        up = self.abund.z_on_h(self.mean_Z_Ia, z_up)
+        down = self.abund.z_on_h(self.mean_Z_Ia, z_down)
 
         return (mean_zh - down,
                 up - mean_zh)
 
     def x_on_h_err(self, element, form):
-        z_err = self._get_z_err(form)
+        z_down, z_up = self._get_z_edges(form, z_type="II")
         mean_xh = self.x_on_h_total(element)
-        up = self.abund.x_on_h(element, self.mean_Z_Ia,
-                               self.mean_Z_II + z_err)
-        down = self.abund.x_on_h(element, self.mean_Z_Ia,
-                                 self.mean_Z_II - z_err)
+        up = self.abund.x_on_h(element, self.mean_Z_Ia, z_up)
+        down = self.abund.x_on_h(element, self.mean_Z_Ia, z_down)
 
         return (mean_xh - down,
                 up - mean_xh)
 
     def x_on_fe_err(self, element, form):
-        z_err = self._get_z_err(form)
+        z_down, z_up = self._get_z_edges(form, z_type="II")
         mean_xfe = self.x_on_fe_total(element)
-        up = self.abund.x_on_fe(element, self.mean_Z_Ia,
-                                self.mean_Z_II + z_err)
-        down = self.abund.x_on_fe(element, self.mean_Z_Ia,
-                                  self.mean_Z_II - z_err)
+        up = self.abund.x_on_fe(element, self.mean_Z_Ia, z_up)
+        down = self.abund.x_on_fe(element, self.mean_Z_Ia, z_down)
 
         return (mean_xfe - down,
                 up - mean_xfe)
@@ -303,8 +311,12 @@ class NSC_Abundances(object):
         z_errs = np.sqrt(self.var_z_II_int_ind)
         # the mean values are equivalent to what we do in x_on_fe_individual
         mean_values = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
-        up = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II + z_errs)
-        down = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II + z_errs)
+
+        z_up = self.Z_II + z_errs
+        z_down = np.clip(self.Z_II - z_errs, a_min=0, a_max=1)
+
+        up = self.abund.x_on_fe(element, self.Z_Ia, z_up)
+        down = self.abund.x_on_fe(element, self.Z_Ia, z_down)
 
         up_diff = up - mean_values
         down_diff = mean_values - down
