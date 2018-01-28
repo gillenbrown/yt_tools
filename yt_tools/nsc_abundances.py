@@ -309,7 +309,7 @@ class NSC_Abundances(object):
         up_diff = up - mean_values
         down_diff = mean_values - down
 
-        return np.mean([up_diff, down_diff], axis=0)
+        return utils.to_array(np.mean([up_diff, down_diff], axis=0))
 
     # def _x_on_h_log_derivative(self, element):
     #     """
