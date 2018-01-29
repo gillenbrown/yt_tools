@@ -1449,11 +1449,19 @@ class Galaxy(object):
         _write_single_item(file_obj, self.nsc_3d_sigma.to("km/s").value,
                            "nsc_3d_sigma")
 
-        # metallicity
+        # simple metallicity (mainly for debugging)
+        z = self.nsc_abundances.mean_Z_tot
+        z_int_err = np.sqrt(self.nsc_abundances.var_z_II_int_tot)
+        num_particles = len(self.nsc_abundances.Z_II)
+        _write_single_item(file_obj, z_int_err / z, "z_err_over_z")
+        _write_single_item(file_obj, num_particles, "nsc_particles")
+
+        # log metallicity
         log_z = self.nsc_abundances.log_z_over_z_sun_total()
         log_z_sd = self.nsc_abundances.log_z_err("total")
         _write_single_item(file_obj, log_z, "log_z_z_sun")
-        _write_single_item(file_obj, log_z_sd, "log_z_z_sun_sd_total", multiple=True)
+        _write_single_item(file_obj, log_z_sd, "log_z_z_sun_sd_total",
+                           multiple=True)
 
         # [Z/H] errors
         zh_sd_int = self.nsc_abundances.z_on_h_err("internal")
