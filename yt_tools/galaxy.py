@@ -1450,7 +1450,7 @@ class Galaxy(object):
                            "nsc_3d_sigma")
 
         # simple metallicity (mainly for debugging)
-        z = self.nsc_abundances.mean_Z_tot
+        z = self.nsc_abundances.mean_Z_II
         z_int_err = np.sqrt(self.nsc_abundances.var_z_II_int_tot)
         num_particles = len(self.nsc_abundances.Z_II)
         _write_single_item(file_obj, z_int_err / z, "z_err_over_z")
