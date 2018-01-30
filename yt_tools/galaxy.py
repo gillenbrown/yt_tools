@@ -1001,6 +1001,14 @@ class Galaxy(object):
 
         self._check_nsc_existence()  # need an NSC
 
+        cheat_value = 5 * yt.units.km / yt.units.second
+        self.mean_rot_vel = cheat_value
+        self.nsc_sigma_radial = cheat_value
+        self.nsc_sigma_rot = cheat_value
+        self.nsc_sigma_z = cheat_value
+        self.nsc_3d_sigma = cheat_value
+        return
+
         radial_key = ('STAR', 'particle_velocity_cylindrical_radius')
         theta_key = ('STAR', 'particle_velocity_cylindrical_theta')
         z_key = ('STAR', 'particle_velocity_cylindrical_z')
