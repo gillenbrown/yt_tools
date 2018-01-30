@@ -246,7 +246,7 @@ class NSC_Abundances(object):
         star_x_on_fe = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
         return utils.to_array(star_x_on_fe), self.mass
 
-    def _get_z_edges(self, form, z_type):
+    def _get_z_err(self, form):
         if form == "internal":
             z_variance = self.var_z_II_int_tot
         elif form == "group":
@@ -256,8 +256,10 @@ class NSC_Abundances(object):
         else:
             raise ValueError("Wrong form.")
 
-        z_err = np.sqrt(z_variance)
+        return np.sqrt(z_variance)
 
+    def _get_z_edges(self, form, z_type):
+        z_err = self._get_z_err(form)
         if z_type == "total":
             z_mean = self.mean_Z_tot
         elif z_type == "II":
@@ -287,41 +289,52 @@ class NSC_Abundances(object):
         return (mean_zh - down,
                 up - mean_zh)
 
-    def x_on_h_err(self, element, form):
-        z_down, z_up = self._get_z_edges(form, z_type="II")
-        mean_xh = self.x_on_h_total(element)
-        up = self.abund.x_on_h(element, self.mean_Z_Ia, z_up)
-        down = self.abund.x_on_h(element, self.mean_Z_Ia, z_down)
+    def abund_err(self, element, over, form):
+        z_err = self._get_z_err(form)
+        slope = self._elt_derivative(element, over, self.mean_Z_II)
+        return abs(slope * z_err)  # takes care of sqrt of squared terms
 
-        return (mean_xh - down,
-                up - mean_xh)
+    def abund_err_individual(self, element, over):
+        z_var = self.var_z_II_int_ind
+        slopes = np.array([self._elt_derivative(element, over, z_II)
+                           for z_II in self.Z_II])
+        return np.sqrt(z_var * slopes**2)
 
-    def x_on_fe_err(self, element, form):
-        z_down, z_up = self._get_z_edges(form, z_type="II")
-        mean_xfe = self.x_on_fe_total(element)
-        up = self.abund.x_on_fe(element, self.mean_Z_Ia, z_up)
-        down = self.abund.x_on_fe(element, self.mean_Z_Ia, z_down)
-
-        return (mean_xfe - down,
-                up - mean_xfe)
-
-    def x_on_fe_err_individual(self, element):
-        """Only internal dispersion can be considered here, since this is
-        on a star by star basis."""
-        z_errs = np.sqrt(self.var_z_II_int_ind)
-        # the mean values are equivalent to what we do in x_on_fe_individual
-        mean_values = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
-
-        z_up = self.Z_II + z_errs
-        z_down = np.clip(self.Z_II - z_errs, a_min=0, a_max=1)
-
-        up = self.abund.x_on_fe(element, self.Z_Ia, z_up)
-        down = self.abund.x_on_fe(element, self.Z_Ia, z_down)
-
-        up_diff = up - mean_values
-        down_diff = mean_values - down
-
-        return utils.to_array(np.mean([up_diff, down_diff], axis=0))
+    # def x_on_h_err(self, element, form):
+    #     z_down, z_up = self._get_z_edges(form, z_type="II")
+    #     mean_xh = self.x_on_h_total(element)
+    #     up = self.abund.x_on_h(element, self.mean_Z_Ia, z_up)
+    #     down = self.abund.x_on_h(element, self.mean_Z_Ia, z_down)
+    #
+    #     return (mean_xh - down,
+    #             up - mean_xh)
+    #
+    # def x_on_fe_err(self, element, form):
+    #     z_down, z_up = self._get_z_edges(form, z_type="II")
+    #     mean_xfe = self.x_on_fe_total(element)
+    #     up = self.abund.x_on_fe(element, self.mean_Z_Ia, z_up)
+    #     down = self.abund.x_on_fe(element, self.mean_Z_Ia, z_down)
+    #
+    #     return (mean_xfe - down,
+    #             up - mean_xfe)
+    #
+    # def x_on_fe_err_individual(self, element):
+    #     """Only internal dispersion can be considered here, since this is
+    #     on a star by star basis."""
+    #     z_errs = np.sqrt(self.var_z_II_int_ind)
+    #     # the mean values are equivalent to what we do in x_on_fe_individual
+    #     mean_values = self.abund.x_on_fe(element, self.Z_Ia, self.Z_II)
+    #
+    #     z_up = self.Z_II + z_errs
+    #     z_down = np.clip(self.Z_II - z_errs, a_min=0, a_max=1)
+    #
+    #     up = self.abund.x_on_fe(element, self.Z_Ia, z_up)
+    #     down = self.abund.x_on_fe(element, self.Z_Ia, z_down)
+    #
+    #     up_diff = up - mean_values
+    #     down_diff = mean_values - down
+    #
+    #     return utils.to_array(np.mean([up_diff, down_diff], axis=0))
 
     # def _x_on_h_log_derivative(self, element):
     #     """
@@ -357,24 +370,24 @@ class NSC_Abundances(object):
     #
     #     return np.array(slopes)
 
-    # def _elt_derivative(self, element, over, Z_II):
-    #     """
-    #     Calculates the derivative of [X/H] against Z_II, which is what is
-    #     needed to calculate the internal dispersion of the clusters.
-    #
-    #     :return: Value of d[X/H] / d log_Z_II for all the metallicities of the
-    #              star particles in the cluster.
-    #     """
-    #     if over == "Fe":
-    #         def wrapper(Z_II):
-    #             return self.abund.x_on_fe(element, 0, Z_II)
-    #     elif over == "H":
-    #         def wrapper(Z_II):
-    #             return self.abund.x_on_h(element, 0, Z_II)
-    #     else:
-    #         raise ValueError("over must be either 'Fe' or 'H'")
-    #
-    #     return derivative(wrapper, Z_II, dx=Z_II/10.0)
+    def _elt_derivative(self, element, over, Z_II):
+        """
+        Calculates the derivative of [X/H] against Z_II, which is what is
+        needed to calculate the internal dispersion of the clusters.
+
+        :return: Value of d[X/H] / d log_Z_II for all the metallicities of the
+                 star particles in the cluster.
+        """
+        if over == "Fe":
+            def wrapper(Z_II):
+                return self.abund.x_on_fe(element, 0, Z_II)
+        elif over == "H":
+            def wrapper(Z_II):
+                return self.abund.x_on_h(element, 0, Z_II)
+        else:
+            raise ValueError("over must be either 'Fe' or 'H'")
+
+        return derivative(wrapper, Z_II, dx=Z_II/10.0)
     #
     # def internal_variance_individual_derivative(self, element, over):
     #     """Variance in elemental abundances that come from internal dispersion.
