@@ -1,7 +1,5 @@
 import yt
 import numpy as np
-import time
-from scipy import integrate
 
 from . import kde
 from . import utils
@@ -1592,6 +1590,26 @@ class Galaxy(object):
 
         return birth_times[max_idx] - birth_times[min_idx]
 
+    def _physical_array(self, array):
+        return self.ds._handle.tphys_from_tcode_array(array)
+
+    def _max_sf_age_spread_nsc(self):
+        region = self.j_sphere
+        idx = self.nsc_idx_j_sphere
+
+        initial_mass = region[("STAR", "initial_mass")][idx]
+        age_spread = region[("STAR", "AGE_SPREAD")][idx]
+        birth_time = region[("STAR", "BIRTH_TIME")][idx]
+        creation_time = region[("STAR", "creation_time")][idx]
+
+        numerator = initial_mass**2
+        denominator = age_spread * self.ds.arr(1, 'code_mass**2')
+        birth = self._physical_array((numerator / denominator) + birth_time)
+        birth = yt.YTArray(birth / 1e6, "Myr")
+
+        age_spreads = birth - creation_time.in_units("Myr")
+        return np.max(age_spreads.to("Myr").value)
+
     def cumulative_sfh_nsc(self):
         """
         Find the time required to assemble 90% of the mass of the cluster.
@@ -1602,14 +1620,6 @@ class Galaxy(object):
             return
         birth_times_sorted, masses = self._sort_mass_and_birth_nsc()
 
-        from yt import YTArray
-
-        # average_age = self.j_sphere[("STAR", "AVERAGE_AGE")][self.nsc_idx_j_sphere]
-        creation_time = self.j_sphere[("STAR", "creation_time")][self.nsc_idx_j_sphere]
-        termination_time = self.j_sphere[("STAR", "TERMINATION_TIME")][self.nsc_idx_j_sphere]
-
-        time = YTArray(self.ds._handle.tphys_from_tcode_array(termination_time) / 1e6, "Myr") - creation_time.in_units("Myr")
-        max_time = np.max(time.to("Myr").value)
         # get the fraction of mass that has formed as a function of time
         # the masses are sorted by their age, which is why this works.
         total_mass = np.sum(masses)
@@ -1628,4 +1638,5 @@ class Galaxy(object):
             if timescale < min_timescale:
                 min_timescale = timescale
 
-        self.sfh_time = min_timescale + max_time
+        # include the time taken for particles to form
+        self.sfh_time = min_timescale + self._max_sf_age_spread_nsc()
