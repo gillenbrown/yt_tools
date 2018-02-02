@@ -707,7 +707,10 @@ class Galaxy(object):
 
         :return: NSC half mass radius and errors
         """
-        return 10, [2, 2]
+        self.half_mass_radius = 10
+        self.half_mass_radius_errs = [2, 2]
+        return
+
         try:
             self._check_nsc_existence()
         except AttributeError:

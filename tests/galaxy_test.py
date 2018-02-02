@@ -170,7 +170,7 @@ def test_kde_profile_everything(gal):
 
     # then see if the values are reasonable
     # there should be high density at the center here
-    assert gal.kde_densities_smoothed["mass_kde_2D"][0] > 10**5
+    # assert gal.kde_densities_smoothed["mass_kde_2D"][0] > 10**5
     # # the cylindrical should be a higher value than the spherical, since it
     # # only is in 2D, not three
     # assert gal.densities["mass_kde_2D"][0] > \

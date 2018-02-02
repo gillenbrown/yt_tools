@@ -32,13 +32,13 @@ class NSC_Abundances(object):
         """Create an abundance object.
 
         :param masses: The masses of the star partices.
-        :type masses: np.ndarray
+        :type masses: list, np.ndarray
         :param Z_Ia: Values for the metallicity from Type II supernovae of the
                      star particles. Must have the same length as `masses`.
-        :type Z_Ia: np.ndarray
+        :type Z_Ia: list, np.ndarray
         :param Z_II: Values for the metallicity from Type II supernovae of the
                      star particles. Must have the same length as `masses`.
-        :type Z_II: np.ndarray
+        :type Z_II: list, np.ndarray
         :param II_type: Which model of Type Ia supernovae to use. Either
                         "nomtoto" or "ww".
         :type II_type: str
@@ -58,7 +58,7 @@ class NSC_Abundances(object):
 
         # do error checking.
         # masses must be positive.
-        if any(masses <= 0):
+        if any(masses <= 0) or any(m_i <= 0):
             raise ValueError("Masses must all be positive. ")
         # all arrays must be the same length
         if not len(masses) == len(Z_Ia) == len(Z_II) == len(mZZ_II) == len(m_i):
