@@ -1,6 +1,7 @@
 from yt_tools import utils
 from yt.units import pc
 import numpy as np
+np.random.seed(0)
 
 from scipy.integrate import quad
 

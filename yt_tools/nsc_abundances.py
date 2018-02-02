@@ -27,6 +27,7 @@ class NSC_Abundances(object):
     """Holds infomation about the abundances of an object. """
     # get some of the solar information
     z_sun, solar_metal_fractions = create_solar_metal_fractions()
+
     def __init__(self, masses, Z_Ia, Z_II, mZZ_II, m_i,
                  II_type="nomoto"):
         """Create an abundance object.
@@ -120,6 +121,16 @@ class NSC_Abundances(object):
         # denominator = (np.log(10)) ** 2
         # self.sigma_squared_log_z = numerator / denominator
 
+    def weighted_hydrogen(self):
+        """Calculate the fraction of mass in H for. This assumes a solar
+        ratio of Helium to Hydrogen, and we use the following math:
+
+        X + Y + Z = 1
+        X (1 + Y/X) = 1 - Z
+        X = (1 - Z)/(1 + Y/X)"""
+        fracs = np.array([self.abund.hydrogen(Z) for Z in self.Z_tot])
+        return np.sum(fracs * self.mass)
+
     def z_on_h_total(self):
         """Calculate the Z on H value for this collection of stars, by
         dividing the total Z by the total H.
@@ -140,11 +151,12 @@ class NSC_Abundances(object):
         :rtype: float
         """
         star_num = np.sum(self.mass * self.Z_tot)
-        star_denom = np.sum(self.mass * self.one_minus_Z_tot)
+        star_denom = self.weighted_hydrogen()
         star_frac = star_num / star_denom
-        sun_frac = (1.0 - self.z_sun) / self.z_sun
 
-        return np.log10(star_frac * sun_frac)
+        sun_frac = self.z_sun / self.abund.hydrogen(self.abund.Z_sun)
+
+        return np.log10(star_frac / sun_frac)
 
     def x_on_h_total(self, element):
         """Calculate the [X/H] value for this collection of stars.
@@ -173,14 +185,14 @@ class NSC_Abundances(object):
         f_Ia = self.yields_Ia.mass_fraction(element, self.Z_Ia)
         f_II = self.yields_II.mass_fraction(element, self.Z_II)
         star_num = np.sum(self.mass * (self.Z_Ia * f_Ia + self.Z_II * f_II))
-        star_denom = np.sum(self.mass * self.one_minus_Z_tot)
+        star_denom = self.weighted_hydrogen()
         star_frac = star_num / star_denom
 
-        sun_num = 1.0 - self.z_sun
-        sun_denom = self.z_sun * self.solar_metal_fractions[element]
+        sun_num = self.z_sun * self.solar_metal_fractions[element]
+        sun_denom = self.abund.hydrogen(self.abund.Z_sun)
         sun_frac = sun_num / sun_denom
 
-        return np.log10(star_frac * sun_frac)
+        return np.log10(star_frac / sun_frac)
 
     def x_on_fe_total(self, element):
         """Calculate the [X/Fe] value for this collection of stars.
