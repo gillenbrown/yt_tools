@@ -1042,6 +1042,8 @@ class Galaxy(object):
         self.nsc_3d_sigma = utils.sum_in_quadrature(sigma_z, sigma_rot,
                                                     sigma_radial)
 
+        self._nsc_anisotropy()
+
     def _nsc_anisotropy(self):
         radial_key = ('STAR', 'particle_spherical_velocity_radius')
         theta_key = ('STAR', 'particle_spherical_velocity_theta')
