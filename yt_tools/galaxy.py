@@ -1651,7 +1651,14 @@ class Galaxy(object):
         termination = yt.YTArray(self._physical_array(termination) / 1e6, "Myr")
 
         t_duration = termination - creation_time.in_units("Myr")
-        return np.max(t_duration.to("Myr").value)
+        t_duration = t_duration.to("Myr").value
+        # particles that are still forming have erroneously large t_termination
+        # so we have to take care of those particles. We replace their values
+        # by zero to remove them from the calculation. We use 16 to account for
+        # rounding errors around 15.
+        np.place(t_duration, t_duration > 16, 0)
+
+        return np.max(t_duration)
 
     def cumulative_sfh_nsc(self):
         """
