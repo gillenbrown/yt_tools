@@ -1613,6 +1613,18 @@ class Galaxy(object):
         age_spreads = birth - creation_time.in_units("Myr")
         return np.max(age_spreads.to("Myr").value)
 
+    def _max_sf_t_duration_nsc(self):
+        region = self.j_sphere
+        idx = self.nsc_idx_j_sphere
+
+        creation_time = region[("STAR", "creation_time")][idx]
+        termination = region[("STAR", "TERMINATION_TIME")][idx]
+
+        termination = yt.YTArray(self._physical_array(termination) / 1e6, "Myr")
+
+        t_duration = termination - creation_time.in_units("Myr")
+        return np.max(t_duration.to("Myr").value)
+
     def cumulative_sfh_nsc(self):
         """
         Find the time required to assemble 90% of the mass of the cluster.
@@ -1642,4 +1654,4 @@ class Galaxy(object):
                 min_timescale = timescale
 
         # include the time taken for particles to form
-        self.sfh_time = min_timescale + self._max_sf_age_spread_nsc()
+        self.sfh_time = min_timescale + self._max_sf_t_duration_nsc()
