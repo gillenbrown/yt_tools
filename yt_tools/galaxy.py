@@ -1042,6 +1042,31 @@ class Galaxy(object):
         self.nsc_3d_sigma = utils.sum_in_quadrature(sigma_z, sigma_rot,
                                                     sigma_radial)
 
+    def _nsc_anisotropy(self):
+        radial_key = ('STAR', 'particle_spherical_velocity_radius')
+        theta_key = ('STAR', 'particle_spherical_velocity_theta')
+        phi_key = ('STAR', 'particle_spherical_velocity_phi')
+
+        vel_rad = self.j_sphere[radial_key].in_units("km/s").value
+        vel_theta = self.j_sphere[theta_key].in_units("km/s").value
+        vel_phi = self.j_sphere[phi_key].in_units("km/s").value
+        masses = self.j_sphere[('STAR', 'MASS')].in_units("msun").value
+
+        # then restrict down the NSC disk
+        vel_rad = vel_rad[self.nsc_idx_j_sphere]
+        vel_theta = vel_theta[self.nsc_idx_j_sphere]
+        vel_phi = vel_phi[self.nsc_idx_j_sphere]
+        masses = masses[self.nsc_idx_j_sphere]
+
+        sigma_squared_radial = utils.weighted_variance(vel_rad, masses, ddof=0)
+        sigma_squared_theta = utils.weighted_variance(vel_theta, masses, ddof=0)
+        sigma_squared_phi = utils.weighted_variance(vel_phi, masses, ddof=0)
+
+        # tangential dispersion
+        numerator = sigma_squared_phi + sigma_squared_theta
+
+        self.anisotropy = 1.0 - numerator / (2.0 * sigma_squared_radial)
+
     def nsc_dispersion_eigenvectors(self):
         """Calculate the dispersion along each of the eigenvalues of the
            shape matrix of the NSC. These should line up with the axis ratios
@@ -1457,6 +1482,7 @@ class Galaxy(object):
                            "nsc_sigma_z")
         _write_single_item(file_obj, self.nsc_3d_sigma.to("km/s").value,
                            "nsc_3d_sigma")
+        _write_single_item(file_obj, self.anisotropy, "anisotropy")
 
         # simple metallicity (mainly for debugging)
         z = self.nsc_abundances.mean_Z_II
