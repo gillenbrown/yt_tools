@@ -6,27 +6,10 @@ from scipy.misc import derivative
 import yields
 import utils
 
-# need to get the solar abundances
-def create_solar_metal_fractions():
-    this_file_loc = os.path.dirname(__file__)
-    enclosing_dir = os.sep.join(this_file_loc.split(os.sep)[:-1])
-    solar_file = enclosing_dir + '/data/solar_abundance.txt'
-    solar = np.genfromtxt(solar_file, dtype=None,
-                          names=['Natom', 'name', 'fN', 'log', 'f_mass'])
-    z_mass = np.sum(solar["f_mass"][2:])
-
-    metal_fractions = dict()
-    for row in solar:
-        elt = row["name"]
-        f_mass = row["f_mass"]
-        metal_fractions[elt] = f_mass / z_mass
-
-    return z_mass, metal_fractions
-
 class NSC_Abundances(object):
     """Holds infomation about the abundances of an object. """
     # get some of the solar information
-    z_sun, solar_metal_fractions = create_solar_metal_fractions()
+    z_sun, solar_metal_fractions = yields.create_solar_metal_fractions()
 
     def __init__(self, masses, Z_Ia, Z_II, mZZ_II, m_i,
                  II_type="nomoto"):
