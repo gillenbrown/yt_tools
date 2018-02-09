@@ -603,6 +603,7 @@ def normalize_vector(vector):
     :param vector:
     :return:
     """
+    vector = to_array(vector)
     if len(vector.shape) != 1:
         raise ValueError("Only works for 1D vectors.")
     return vector / np.linalg.norm(vector)
@@ -645,3 +646,25 @@ def to_array(item):
         return np.array([item])  # scalars need to be in a list
     else:
         return np.array(item)  # lists don't.
+
+def angle_between_special(vec_a, vec_b):
+    """Calculate the angle between two vectors, where we ignore anti-alignment.
+    The result is always between 0 and 90. """
+    a = normalize_vector(vec_a)
+    b = normalize_vector(vec_b)
+
+    if len(a) != len(b):
+        raise ValueError("a and b need to have same dimension.")
+    if len(a) < 2 or len(a) > 3:
+        raise ValueError("vectors have to length 2 or 3.")
+
+    cos_theta = np.dot(a, b)
+    theta = np.arccos(cos_theta)
+    return angle_symmetry(theta * 180 / np.pi)
+
+def angle_symmetry(angle):
+    """Calculate how far an angle is away from horizontal, either 180 or 0."""
+    if angle <= 90.0:
+        return angle
+    else:
+        return 180.0 - angle

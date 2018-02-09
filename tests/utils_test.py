@@ -6,6 +6,7 @@ np.random.seed(0)
 from scipy.integrate import quad
 
 import pytest
+from pytest import approx
 
 # -----------------------------------------------------------
 
@@ -1089,6 +1090,64 @@ def test_transform_coords_general():
 
         assert np.allclose(loc, reconstructed_loc)
 
+# -----------------------------------------------------------------------------
+
+# test angle between vectors
+
+# -----------------------------------------------------------------------------
+def test_angle_error_checking_proper_dimension():
+    # only thing that matters is length
+    with pytest.raises(ValueError):
+        utils.angle_between_special([1], [1])
+    with pytest.raises(ValueError):
+        utils.angle_between_special(2, 3)
+    with pytest.raises(ValueError):
+        utils.angle_between_special([1, 2, 3, 4], [2, 3, 4, 5])
+
+def test_angle_error_checking_same_length():
+    with pytest.raises(ValueError):
+        utils.angle_between_special([1, 2], [2, 3, 4])
+    with pytest.raises(ValueError):
+        utils.angle_between_special([1, 2, 3], [2, 3])
+
+def test_angle_between_45_regular():
+    assert utils.angle_between_special([1, 0], [1, 1]) == approx(45)
+
+def test_angle_between_45_opposite():
+    assert utils.angle_between_special([1, 0], [1, -1]) == approx(45)
+
+def test_angle_between_zero_regular():
+    assert utils.angle_between_special([1, 0], [1, 0]) == approx(0)
+
+def test_angle_between_zero_opposite():
+    assert utils.angle_between_special([1, 0], [-1, 0]) == approx(0)
+
+def test_angle_between_90_regular():
+    assert utils.angle_between_special([0, 1], [1, 0]) == approx(90)
+
+def test_angle_between_90_opposite():
+    assert utils.angle_between_special([0, 1], [-1, 0]) == approx(90)
+
+def test_angle_between_random_angles():
+    for angle, rad in zip(np.random.uniform(0, 2 * np.pi, 100),
+                          np.random.uniform(1, 10, 100)):
+        x = rad * np.cos(angle)
+        y = rad * np.sin(angle)
+
+        test_angle = utils.angle_between_special([1, 0], [x, y])
+        assert 0 <= test_angle <= 90
+
+        if angle <= np.pi / 2.0:
+            assert test_angle == approx(angle * 180 / np.pi)
 
 
-
+def test_angle_symmetry():
+    assert utils.angle_symmetry(0) == approx(0)
+    assert utils.angle_symmetry(0.01) == approx(0.01)
+    assert utils.angle_symmetry(45) == approx(45)
+    assert utils.angle_symmetry(89.9) == approx(89.9)
+    assert utils.angle_symmetry(90.0) == approx(90.0)
+    assert utils.angle_symmetry(90.1) == approx(89.9)
+    assert utils.angle_symmetry(135) == approx(45)
+    assert utils.angle_symmetry(179.9) == approx(0.1)
+    assert utils.angle_symmetry(180) == approx(0)

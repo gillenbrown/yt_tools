@@ -3,6 +3,8 @@ from yt_tools import nsc_abundances
 import pytest
 import numpy as np
 
+import yields
+
 m_2 = [1, 2]
 mzz0_2 = [0, 0]
 
@@ -103,7 +105,7 @@ def test_solar_fractions():
 # -----------------------------------------------------------
 
 # setup
-solar_z = nsc_abundances.create_solar_metal_fractions()[0]
+solar_z = yields.solar_z
 
 @pytest.fixture
 def single_mass_zero():

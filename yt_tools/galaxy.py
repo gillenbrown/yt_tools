@@ -1,4 +1,5 @@
 import yt
+yt.funcs.mylog.setLevel(50)
 import numpy as np
 
 from . import kde
@@ -1563,7 +1564,12 @@ class Galaxy(object):
         # SFH time
         _write_single_item(file_obj, self.sfh_time, "sfh_time")
 
-
+        # total angular momentum
+        l_tot = self.specific_angular_momentum.to("cm**2 / s").value
+        _write_single_item(file_obj, l_tot, "specific_angular_momentum")
+        # angle between the NSC angular momentum and galaxy plane
+        angle = self.nsc_offset_angle
+        _write_single_item(file_obj, angle, "nsc_offset_angle")
 
         # # fraction of mass within r_half
         # nsc_mass = self.stellar_mass(self.nsc_radius, spherical=False)
@@ -1690,3 +1696,43 @@ class Galaxy(object):
 
         # include the time taken for particles to form
         self.sfh_time = min_timescale + self._max_sf_t_duration_nsc()
+
+    def _calc_specific_angular_momentum(self, nsc=True, use_dm=False):
+        """
+        Calculate the angular momentum of the object.
+
+        :param nsc: Whether or not to cut on the NSC or use the whole galaxy.
+        :return:
+        """
+        if use_dm:
+            p_type = "all"
+        else:
+            p_type = "STAR"
+
+        l_each = self.j_sphere[(p_type, "particle_specific_angular_momentum")]
+        mass = self.j_sphere[(p_type, "MASS")]
+
+        if nsc:
+            l_each = l_each[self.nsc_idx_j_sphere]
+            mass = mass[self.nsc_idx_j_sphere]
+
+        # # reshape mass for multiplication
+        L_each = l_each * np.reshape(mass, [len(mass), 1])
+
+        total_L = np.sum(L_each, axis=0)
+        specific_L = total_L / np.sum(mass)
+        return specific_L
+
+    def nsc_angular_momentum(self):
+        l_nsc_vec = self._calc_specific_angular_momentum(nsc=True, use_dm=False)
+        l_nsc_vec_no_units = l_nsc_vec.to("cm**2/s").value
+
+        l_tot = np.linalg.norm(l_nsc_vec_no_units) * yt.units.cm**2 / yt.units.s
+        self.specific_angular_momentum = l_tot
+
+        # then get the angle between it and the plane of the galaxy
+        plane_vec = self.disk_kde._norm_vec
+        angle = utils.angle_between_special(l_nsc_vec_no_units, plane_vec)
+        self.nsc_offset_angle = angle
+
+

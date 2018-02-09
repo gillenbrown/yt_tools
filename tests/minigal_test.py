@@ -18,6 +18,7 @@ read_in_gal.nsc_rotation()
 read_in_gal.nsc_dispersion_eigenvectors()
 read_in_gal.create_abundances()
 read_in_gal.nsc_half_mass_radius()
+read_in_gal.nsc_angular_momentum()
 file.close()
 
 out_file = open("./minigal_save.txt", "w")

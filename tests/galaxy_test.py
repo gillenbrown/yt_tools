@@ -74,6 +74,7 @@ def real_gal():  # has larger radius to actually include everythign we need to
     gal.nsc_rotation()
     gal.nsc_dispersion_eigenvectors()
     gal.create_abundances()
+    gal.nsc_angular_momentum()
     return gal
 
 @pytest.fixture
@@ -87,6 +88,7 @@ def read_in_gal():
     gal.nsc_rotation()
     gal.nsc_dispersion_eigenvectors()
     gal.create_abundances()
+    gal.nsc_angular_momentum()
     return gal
 
 # -----------------------------------------------------------------------------
@@ -378,6 +380,22 @@ def test_half_mass_radius_actually_worked(read_in_gal):
     half_mass = read_in_gal.stellar_mass(radius_cut=half_mass_radius)
     assert 0.5 < half_mass / total_mass
     assert 0 * pc < half_mass_radius < read_in_gal.radius
+
+# -----------------------------------------------------------------------------
+#
+# test angular momentum vector
+#
+# -----------------------------------------------------------------------------
+def test_angular_momentum_vector_even_cells(read_in_gal):
+    """Test the angular momentum on all the stars within a cell, without
+    doing any partial cell cuts. This will allow us to directly compare to yt.
+    """
+    yt_vector = read_in_gal.j_sphere.quantities.angular_momentum_vector(use_gas=False,
+                                                                use_particles=True)
+    my_vector = read_in_gal._calc_specific_angular_momentum(nsc=False, use_dm=True)
+
+    units = "cm**2 / s"
+    assert np.allclose(my_vector.to(units).value, yt_vector.to(units).value)
 
 # -----------------------------------------------------------------------------
 #
