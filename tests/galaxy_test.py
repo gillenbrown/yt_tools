@@ -297,8 +297,8 @@ def test_real_nsc_disk_attributes(read_in_gal):
 def test_real_nsc_stellar_mass(read_in_gal):
     # Test that the NSC mass is less than the total galaxy mass
     nsc_rad = read_in_gal.nsc_radius
-    assert read_in_gal.stellar_mass(radius_cut=None) > \
-           read_in_gal.stellar_mass(radius_cut=nsc_rad)
+    assert read_in_gal.particle_mass(radius_cut=None) > \
+           read_in_gal.particle_mass(radius_cut=nsc_rad)
 
 def test_real_nsc_radius_cut(read_in_gal):
     # test that the NSC indices actually pick up the right objects
@@ -376,8 +376,8 @@ def test_half_mass_radius_units(read_in_gal):
 
 def test_half_mass_radius_actually_worked(read_in_gal):
     half_mass_radius = read_in_gal.galaxy_half_mass_radius()
-    total_mass = read_in_gal.stellar_mass(radius_cut=None)
-    half_mass = read_in_gal.stellar_mass(radius_cut=half_mass_radius)
+    total_mass = read_in_gal.particle_mass(radius_cut=None)
+    half_mass = read_in_gal.particle_mass(radius_cut=half_mass_radius)
     assert 0.5 < half_mass / total_mass
     assert 0 * pc < half_mass_radius < read_in_gal.radius
 

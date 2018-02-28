@@ -51,7 +51,7 @@ def test_nsc_radius(new_gal):
     assert np.isclose(nsc_radius, new_gal.nsc_radius)
 
 def test_gal_mass(new_gal):
-    gal_mass = read_in_gal.stellar_mass(radius_cut=None)
+    gal_mass = read_in_gal.particle_mass(radius_cut=None)
     assert np.isclose(gal_mass.to("msun").value, new_gal.gal_mass)
 
 def test_gal_half_mass_radius(new_gal):

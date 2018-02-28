@@ -373,6 +373,7 @@ class Galaxy(object):
         self.nsc_abundances = None  # used for elemental abundances
         self.gal_abundances = None  # used for elemental abundances
         self.sfh_time = None  # used for elemental abundances
+        self.nsc_dm_mass = None  # used for dark matter content
 
     def _create_kde_object(self, dimension=2, quantity="mass"):
         """Creates a KDE object in the desired coordinates for the desired
@@ -550,21 +551,26 @@ class Galaxy(object):
         if quantity.lower() not in ["mass", "z"]:
             raise ValueError("Only mass and Z are supported. ")
 
-    def stellar_mass(self, radius_cut=None, spherical=True):
+    def particle_mass(self, radius_cut=None, spherical=True, stars=True):
         """Calculate the total stellar mass in this galaxy. 
         
         This sums the masses of the star particles that are inside the radius 
         of the galaxy or NSC, and returns the answer in solar masses.
 
         """
+        if stars:
+            object = "STAR"
+        else:
+            object = "N-BODY"
+
         if spherical:
             container = self.sphere
-            radius_key = ('STAR', 'particle_position_spherical_radius')
+            radius_key = (object, 'particle_position_spherical_radius')
         else:
             container = self.disk_kde
-            radius_key = ('STAR', 'particle_position_cylindrical_radius')
+            radius_key = (object, 'particle_position_cylindrical_radius')
 
-        masses = container[('STAR', "MASS")].in_units("msun")
+        masses = container[(object, "MASS")].in_units("msun")
 
         if radius_cut is not None:
             # check for units
@@ -584,10 +590,10 @@ class Galaxy(object):
         resolution of 50 pc right now, which is hopefully good enough for the
         brief comparison we will make.
         """
-        total_gal_mass = self.stellar_mass(radius_cut=None)
+        total_gal_mass = self.particle_mass(radius_cut=None)
         # then iterate through a range of radii
         for radius in np.arange(0, 10, 0.05) * yt.units.kpc:
-            interior_mass = self.stellar_mass(radius_cut=radius)
+            interior_mass = self.particle_mass(radius_cut=radius)
             # when we get to more than half of the total, we have the
             # half mass radius.
             if interior_mass > 0.5 * total_gal_mass:
@@ -674,9 +680,9 @@ class Galaxy(object):
         nsc_low = self.nsc_radius - self.nsc_radius_err[0]
         nsc_high = self.nsc_radius + self.nsc_radius_err[1]
 
-        best_nsc_mass = self.stellar_mass(radius_cut=self.nsc_radius)
-        low_nsc_mass = self.stellar_mass(radius_cut=nsc_low)
-        high_nsc_mass = self.stellar_mass(radius_cut=nsc_high)
+        best_nsc_mass = self.particle_mass(radius_cut=self.nsc_radius)
+        low_nsc_mass = self.particle_mass(radius_cut=nsc_low)
+        high_nsc_mass = self.particle_mass(radius_cut=nsc_high)
 
         half_masses = [mass / 2.0 for mass in
                        [best_nsc_mass, low_nsc_mass, high_nsc_mass]]
@@ -685,7 +691,7 @@ class Galaxy(object):
 
         # then iterate through a range of radii
         for radius in np.arange(0, 500, 0.01) * yt.units.pc:
-            interior_mass = self.stellar_mass(radius_cut=radius)
+            interior_mass = self.particle_mass(radius_cut=radius)
             # when we get to more than half of the total, we have the
             # half mass radius.
             for idx in range(3):
@@ -742,9 +748,9 @@ class Galaxy(object):
         nsc_low = self.nsc_radius - self.nsc_radius_err[0]
         nsc_high = self.nsc_radius + self.nsc_radius_err[1]
 
-        this_nsc_mass = self.stellar_mass(radius_cut=self.nsc_radius)
-        this_nsc_low_mass = self.stellar_mass(radius_cut=nsc_low)
-        this_nsc_high_mass = self.stellar_mass(radius_cut=nsc_high)
+        this_nsc_mass = self.particle_mass(radius_cut=self.nsc_radius)
+        this_nsc_low_mass = self.particle_mass(radius_cut=nsc_low)
+        this_nsc_high_mass = self.particle_mass(radius_cut=nsc_high)
 
         errors = (this_nsc_mass - this_nsc_low_mass,
                   this_nsc_high_mass - this_nsc_mass)
@@ -1453,6 +1459,11 @@ class Galaxy(object):
         _write_single_item(file_obj, mass.to("Msun").value, "nsc_mass")
         _write_single_item(file_obj, mass_err, "nsc_mass_err", multiple=True)
 
+        nsc_dm_mass = self.particle_mass(self.nsc_radius, spherical=True,
+                                         stars=False)
+        _write_single_item(file_obj, nsc_dm_mass.to("Msun").value,
+                           "nsc_dm_mass")
+
         # nsc radius
         _write_single_item(file_obj, self.nsc_radius.to("pc").value,
                            "nsc_radius")
@@ -1463,7 +1474,7 @@ class Galaxy(object):
                            "nsc_r_half_err", multiple=True)
 
         # galaxy mass
-        gal_mass = self.stellar_mass(radius_cut=None)
+        gal_mass = self.particle_mass(radius_cut=None)
         _write_single_item(file_obj, gal_mass.to("Msun").value, "gal_mass")
 
         # galaxy half mass radius
@@ -1588,8 +1599,8 @@ class Galaxy(object):
         _write_single_item(file_obj, angle, "nsc_offset_angle")
 
         # # fraction of mass within r_half
-        # nsc_mass = self.stellar_mass(self.nsc_radius, spherical=False)
-        # half_mass = self.stellar_mass(self.half_mass_radius*yt.units.pc,
+        # nsc_mass = self.particle_mass(self.nsc_radius, spherical=False)
+        # half_mass = self.particle_mass(self.half_mass_radius*yt.units.pc,
         #                               spherical=False)
         # fraction = (half_mass / nsc_mass).value
         # _write_single_item(file_obj, fraction, "mass_fraction", units=False)
@@ -1750,5 +1761,16 @@ class Galaxy(object):
         plane_vec = self.disk_kde._norm_vec
         angle = utils.angle_between_special(l_nsc_vec_no_units, plane_vec)
         self.nsc_offset_angle = angle
+
+    def dark_matter_content(self, radius=None):
+        if radius is None:
+            radius = self.nsc_radius
+
+        utils.test_for_units(radius, "radius")
+
+        dm_radii = self.j_sphere[('N-BODY', 'particle_position_spherical_radius')]
+        dm_masses = self.j_sphere[('N-BODY', 'MASS')].to("Msun").value
+        idx = np.where(dm_radii < radius)[0]
+        self.nsc_dm_mass = np.sum(dm_masses[idx])
 
 
