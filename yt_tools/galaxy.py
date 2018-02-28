@@ -1558,6 +1558,12 @@ class Galaxy(object):
         _write_single_item(file_obj, alfe, "al_on_fe")
         _write_single_item(file_obj, alfe_sd, "al_on_fe_sd_total")
 
+        # [Na/Fe]
+        nafe = self.nsc_abundances.x_on_fe_total("Na")
+        nafe_sd = self.nsc_abundances.abund_err("Na", "Fe", "total")
+        _write_single_item(file_obj, nafe, "na_on_fe")
+        _write_single_item(file_obj, nafe_sd, "na_on_fe_sd_total")
+
         # individual abundances
         for elt in ["Mg", "Al", "O", "Na"]:
             abund, star_masses = self.nsc_abundances.x_on_fe_individual(elt)
