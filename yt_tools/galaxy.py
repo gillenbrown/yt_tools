@@ -1065,6 +1065,10 @@ class Galaxy(object):
         sigma_squared_theta = utils.weighted_variance(vel_theta, masses, ddof=0)
         sigma_squared_phi = utils.weighted_variance(vel_phi, masses, ddof=0)
 
+        self.nsc_sigma_radial_spherical = np.sqrt(sigma_squared_radial)
+        self.nsc_sigma_theta_spherical = np.sqrt(sigma_squared_theta)
+        self.nsc_sigma_phi_spherical= np.sqrt(sigma_squared_phi)
+
         # tangential dispersion
         numerator = sigma_squared_phi + sigma_squared_theta
 
@@ -1485,6 +1489,12 @@ class Galaxy(object):
                            "nsc_sigma_z")
         _write_single_item(file_obj, self.nsc_3d_sigma.to("km/s").value,
                            "nsc_3d_sigma")
+        _write_single_item(file_obj, self.nsc_sigma_radial_spherical,  # in km/s
+                           "nsc_sigma_radial_spherical")
+        _write_single_item(file_obj, self.nsc_sigma_theta_spherical,  # in km/s
+                           "nsc_sigma_theta_spherical")
+        _write_single_item(file_obj, self.nsc_sigma_phi_spherical,  # in km/s
+                           "nsc_sigma_phi_spherical")
         _write_single_item(file_obj, self.anisotropy, "anisotropy")
 
         # simple metallicity (mainly for debugging)
