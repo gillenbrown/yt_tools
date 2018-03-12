@@ -1459,7 +1459,7 @@ class Galaxy(object):
         _write_single_item(file_obj, mass.to("Msun").value, "nsc_mass")
         _write_single_item(file_obj, mass_err, "nsc_mass_err", multiple=True)
 
-        nsc_dm_mass = self.particle_mass(2 * self.nsc_radius, spherical=True,
+        nsc_dm_mass = self.particle_mass(1 * self.nsc_radius, spherical=True,
                                          stars=False)
         _write_single_item(file_obj, nsc_dm_mass.to("Msun").value,
                            "nsc_dm_mass")
