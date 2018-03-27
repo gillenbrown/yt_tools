@@ -439,7 +439,7 @@ class AxisRatios(object):
         equation 10 in Zemp et al 2011). """
         # check for few values, in which case the intertia tensor won't tell us
         # anything
-        if len(self.x) <= 2:
+        if len(self.x) <= 10:
             self.a_over_b = 0
             self.b_over_a = 0
             self.a_over_c = 0
