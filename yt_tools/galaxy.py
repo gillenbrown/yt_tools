@@ -714,9 +714,9 @@ class Galaxy(object):
 
         :return: NSC half mass radius and errors
         """
-        # self.half_mass_radius = 10
-        # self.half_mass_radius_errs = [2, 2]
-        # return
+        self.half_mass_radius = 10
+        self.half_mass_radius_errs = [2, 2]
+        return
 
         try:
             self._check_nsc_existence()
