@@ -1473,6 +1473,10 @@ class Galaxy(object):
         _write_single_item(file_obj, self.half_mass_radius_errs,
                            "nsc_r_half_err", multiple=True)
 
+        # fraction of mass taken by largest particle
+        self.largest_particle_fraction()
+        _write_single_item(file_obj, self.max_frac, "largest_particle_fraction")
+
         # galaxy mass
         gal_mass = self.particle_mass(radius_cut=None)
         _write_single_item(file_obj, gal_mass.to("Msun").value, "gal_mass")
@@ -1773,4 +1777,8 @@ class Galaxy(object):
         idx = np.where(dm_radii < radius)[0]
         self.nsc_dm_mass = np.sum(dm_masses[idx])
 
+    def largest_particle_fraction(self):
+        nsc_star_masses = self.j_sphere[('STAR', "MASS")][self.nsc_idx_j_sphere]
+        frac = np.max(nsc_star_masses) / np.sum(nsc_star_masses)
+        self.max_frac = frac.value  # get rid of dimensionless unit
 
