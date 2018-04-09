@@ -1594,6 +1594,7 @@ class Galaxy(object):
 
         # SFH time
         _write_single_item(file_obj, self.sfh_time, "sfh_time")
+        _write_single_item(file_obj, self.sfh_time_particle, "sfh_time_part")
 
         # total angular momentum
         l_tot = self.specific_angular_momentum.to("cm**2 / s").value
@@ -1726,7 +1727,9 @@ class Galaxy(object):
                 min_timescale = timescale
 
         # include the time taken for particles to form
-        self.sfh_time = min_timescale + self._max_sf_t_duration_nsc()
+        particle_timescale = self._max_sf_t_duration_nsc()
+        self.sfh_time_particle = particle_timescale
+        self.sfh_time = min_timescale + particle_timescale
 
     def _calc_specific_angular_momentum(self, nsc=True, use_dm=False):
         """
