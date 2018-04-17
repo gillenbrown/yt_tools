@@ -4,7 +4,7 @@ import numpy as np
 from scipy.misc import derivative
 
 import yields
-import utils
+from . import utils
 
 class NSC_Abundances(object):
     """Holds infomation about the abundances of an object. """
