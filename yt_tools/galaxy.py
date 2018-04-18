@@ -1581,7 +1581,7 @@ class Galaxy(object):
 
         # individual abundances
         for elt in ["Mg", "Al", "O", "Na"]:
-            abund, star_masses = self.nsc_abundances.x_on_fe_individual(elt)
+            abund, _ = self.nsc_abundances.x_on_fe_individual(elt)
             elt_sd = self.nsc_abundances.abund_err_individual(elt, "Fe")
 
             abund_name = "star_{}_on_fe".format(elt.lower())
@@ -1593,10 +1593,9 @@ class Galaxy(object):
         # individual Z and [Fe/H]
         _write_single_item(file_obj, self.nsc_abundances.Z_tot,
                            multiple=True, name="star_Z_all")
-        fe_on_h_all = self.nsc_abundances.x_on_h_individual("Fe")
+        fe_on_h_all, star_masses = self.nsc_abundances.x_on_h_individual("Fe")
         _write_single_item(file_obj, fe_on_h_all,
                            multiple=True, name="star_fe_on_h")
-
         _write_single_item(file_obj, star_masses, "star_masses", multiple=True)
 
         # SFH time
