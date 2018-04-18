@@ -1590,9 +1590,12 @@ class Galaxy(object):
             _write_single_item(file_obj, abund, multiple=True, name=abund_name)
             _write_single_item(file_obj, elt_sd, multiple=True, name=sd_name)
 
-        # individual Z
+        # individual Z and [Fe/H]
         _write_single_item(file_obj, self.nsc_abundances.Z_tot,
                            multiple=True, name="star_Z_all")
+        fe_on_h_all = self.nsc_abundances.x_on_h_individual("Fe")
+        _write_single_item(file_obj, fe_on_h_all,
+                           multiple=True, name="star_fe_on_h")
 
         _write_single_item(file_obj, star_masses, "star_masses", multiple=True)
 
