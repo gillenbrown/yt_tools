@@ -1464,7 +1464,7 @@ class Galaxy(object):
                                          stars=False)
         _write_single_item(file_obj, nsc_dm_mass.to("Msun").value,
                            "nsc_dm_mass")
-        _write_single_item(file_obj, nsc_dm_mass_kde, "nsc_dm_mass_kde")
+        _write_single_item(file_obj, self.nsc_dm_mass_kde, "nsc_dm_mass_kde")
 
         # nsc radius
         _write_single_item(file_obj, self.nsc_radius.to("pc").value,
