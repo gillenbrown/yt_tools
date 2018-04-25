@@ -1793,6 +1793,9 @@ class Galaxy(object):
         grid_levels = data_obj[('index', 'grid_level')]
         dx = data_obj[('index', 'dx')]
 
+        if len(dx) == 0:
+            return 100
+
         good_idx = np.where(grid_levels == 6)
         dm_size = dx[good_idx][0]
 
