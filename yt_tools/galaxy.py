@@ -1809,7 +1809,7 @@ class Galaxy(object):
         dm_z = np.array(self.sphere[('N-BODY', 'POSITION_Z')].to("pc").value)
         dm_mass = np.array(self.sphere[('N-BODY', 'MASS')].to("Msun").value)
 
-        dm_kde = kde.KDE([dm_x, dm_y, dm_z], value=dm_mass)
+        dm_kde = kde.KDE([dm_x, dm_y, dm_z], values=dm_mass)
         density_func = dm_kde.density
         density_func_params = {"inner_kernel": self.dm_kernel(self.sphere),
                                "break_radius": 10 ** 99, "outer_kernel": -1}
