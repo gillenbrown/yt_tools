@@ -374,6 +374,7 @@ class Galaxy(object):
         self.gal_abundances = None  # used for elemental abundances
         self.sfh_time = None  # used for elemental abundances
         self.nsc_dm_mass = None  # used for dark matter content
+        self.nsc_dm_mass_kde = None  # used for dark matter content
 
     def _create_kde_object(self, dimension=2, quantity="mass"):
         """Creates a KDE object in the desired coordinates for the desired
@@ -1463,6 +1464,7 @@ class Galaxy(object):
                                          stars=False)
         _write_single_item(file_obj, nsc_dm_mass.to("Msun").value,
                            "nsc_dm_mass")
+        _write_single_item(file_obj, nsc_dm_mass_kde, "nsc_dm_mass_kde")
 
         # nsc radius
         _write_single_item(file_obj, self.nsc_radius.to("pc").value,
