@@ -1799,7 +1799,7 @@ class Galaxy(object):
         try:
             dm_size = dx[good_idx][0]
         except IndexError:
-            print(dx, good_idx)
+            return 100.0
 
         return float(dm_size.to("pc").value)
 
