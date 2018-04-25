@@ -1790,7 +1790,7 @@ class Galaxy(object):
 
     @staticmethod
     def dm_kernel(data_obj):
-        return 100
+        return 200
         
         grid_levels = data_obj[('index', 'grid_level')]
         dx = data_obj[('index', 'dx')]
@@ -1811,10 +1811,14 @@ class Galaxy(object):
 
         utils.test_for_units(radius, "radius")
 
-        dm_x = np.array(self.sphere[('N-BODY', 'POSITION_X')].to("pc").value)
-        dm_y = np.array(self.sphere[('N-BODY', 'POSITION_Y')].to("pc").value)
-        dm_z = np.array(self.sphere[('N-BODY', 'POSITION_Z')].to("pc").value)
+        dm_x = self.sphere[('N-BODY', 'POSITION_X')] - self.center[0]
+        dm_y = self.sphere[('N-BODY', 'POSITION_Y')] - self.center[1]
+        dm_z = self.sphere[('N-BODY', 'POSITION_Z')] - self.center[2]
         dm_mass = np.array(self.sphere[('N-BODY', 'MASS')].to("Msun").value)
+
+        dm_x = np.array(dm_x.to("pc").value)
+        dm_y = np.array(dm_y.to("pc").value)
+        dm_z = np.array(dm_z.to("pc").value)
 
         if len(dm_x) == 0:
             self.nsc_dm_mass_kde = 0
