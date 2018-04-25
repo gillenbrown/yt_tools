@@ -1794,9 +1794,12 @@ class Galaxy(object):
         dx = data_obj[('index', 'dx')]
 
         good_idx = np.where(grid_levels == 6)
-        if len(good_idx) == 0 or len(dx) == 0:
-            return 100
-        dm_size = dx[good_idx][0]
+        # if len(good_idx) == 0 or len(dx) == 0:
+        #     return 100
+        try:
+            dm_size = dx[good_idx][0]
+        except IndexError:
+            print(dx, good_idx)
 
         return float(dm_size.to("pc").value)
 
