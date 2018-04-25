@@ -157,6 +157,32 @@ def generate_random_xy_annulus(inner_radius, outer_radius, number):
 
     return x, y
 
+def generate_random_xyz_sphere(inner_radius, outer_radius, number):
+    # radii must be positive
+    if inner_radius < 0 or outer_radius < 0:
+        raise ValueError("Radii must be non-negative.")
+    # so must number
+    if number <= 0:
+        raise ValueError("Number must be positive.")
+
+    xs = np.random.uniform(-outer_radius, outer_radius, 10 * number)
+    ys = np.random.uniform(-outer_radius, outer_radius, 10 * number)
+    zs = np.random.uniform(-outer_radius, outer_radius, 10 * number)
+
+    radii = np.sqrt(xs ** 2 + ys ** 2 + zs ** 2)
+    good_i = inner_radius <= radii
+    good_o = radii <= outer_radius
+    both_good = np.logical_and(good_i, good_o)
+
+    good_xs = xs[both_good]
+    good_ys = ys[both_good]
+    good_zs = zs[both_good]
+
+    if len(good_xs) < number:
+        return generate_random_xyz_sphere(inner_radius, outer_radius, number)
+
+    return good_xs[:number], good_ys[:number], good_zs[:number]
+
 def convert_polar_to_cartesian(r, phi):
     """Converts polar coordinate to cartesian.
 
@@ -474,6 +500,12 @@ def annulus_area(radius_a, radius_b):
         raise ValueError("Both radii in annulus_area have to be positive.")
     return abs(np.pi * (radius_a**2 - radius_b**2))
 
+def shell_volume(radius_a, radius_b):
+    if min([radius_a, radius_b]) < 0:
+        raise ValueError("Both radii in shell_volume have to be positive.")
+    r_cubed_diff = abs(radius_a**3 - radius_b**3)
+    return 4.0 * np.pi * r_cubed_diff / 3.0
+
 def surface_density_annulus(density_func, radius_a, radius_b, error_tolerance,
                             density_func_kwargs=None):
     """
@@ -534,6 +566,43 @@ def surface_density_annulus(density_func, radius_a, radius_b, error_tolerance,
 
     return mean
 
+def density_shell(density_func, radius_a, radius_b, error_tolerance,
+                  density_func_kwargs=None):
+    if error_tolerance <= 0:
+        raise ValueError("Error tolerance must be positive.")
+    # If there are no kwargs, make them an empty dictionary. I did the None
+    # value as the default because I did not want a mutable default parameter.
+    if density_func_kwargs is None:
+        density_func_kwargs = dict()
+
+    # define some initial quantities
+    number = 100  # number of samples for the next iteration
+    fractional_error = 10**99
+    values = np.array([])
+    squared_values = np.array([])
+    # We add points to our sample while our fractional error is larger than
+    # the desired error.
+    while error_tolerance < fractional_error:
+        # create random ponts within the annulus.
+        xs, ys, zs = generate_random_xyz_sphere(radius_a, radius_b, number)
+        # get the density at all these points
+        new_values = np.array([density_func([x, y, z], **density_func_kwargs)
+                               for x, y, z in zip(xs, ys, zs)])
+        # add to existing points from previous iterations.
+        values = np.concatenate([values, new_values])
+        squared_values = np.concatenate([squared_values, new_values**2])
+
+        # calculate the mean and error
+        n = len(values)
+        mean = np.sum(values) / n
+        squared_mean = np.sum(squared_values) / n
+        error_term = np.sqrt((squared_mean - mean**2) / n)
+        fractional_error = error_term / mean
+        # then double the amount of values for the next iteration, if needed
+        number = n
+
+    return mean
+
 def mass_annulus(density_func, radius_a, radius_b, error_tolerance,
                             density_func_kwargs=None):
     """
@@ -546,6 +615,15 @@ def mass_annulus(density_func, radius_a, radius_b, error_tolerance,
                                    error_tolerance=error_tolerance,
                                    density_func_kwargs=density_func_kwargs)
     return area * dens
+
+def mass_shell(density_func, radius_a, radius_b, error_tolerance,
+               density_func_kwargs=None):
+    volume = shell_volume(radius_a, radius_b)
+    density = density_shell(density_func, radius_a, radius_b, error_tolerance,
+                            density_func_kwargs)
+
+    return volume * density
+
 
 def round_up_ten(val):
     """

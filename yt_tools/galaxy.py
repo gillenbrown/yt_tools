@@ -1786,6 +1786,40 @@ class Galaxy(object):
         idx = np.where(dm_radii < radius)[0]
         self.nsc_dm_mass = np.sum(dm_masses[idx])
 
+    @staticmethod
+    def dm_kernel(data_obj):
+        grid_levels = data_obj[('index', 'grid_level')]
+        dx = data_obj[('index', 'dx')]
+
+        good_idx = np.where(grid_levels == 6)
+        dm_size = dx[good_idx][0]
+
+        return float(dm_size.to("pc").value)
+
+    def dark_matter_content_kde(self, radius=None):
+        if radius is None:
+            radius = self.nsc_radius
+
+        utils.test_for_units(radius, "radius")
+
+        dm_x = np.array(self.sphere[('N-BODY', 'POSITION_X')].to("pc").value)
+        dm_y = np.array(self.sphere[('N-BODY', 'POSITION_Y')].to("pc").value)
+        dm_z = np.array(self.sphere[('N-BODY', 'POSITION_Z')].to("pc").value)
+        dm_mass = np.array(self.sphere[('N-BODY', 'MASS')].to("Msun").value)
+
+        dm_kde = kde.KDE([dm_x, dm_y, dm_z], value=dm_mass)
+        density_func = dm_kde.density
+        density_func_params = {"inner_kernel": self.dm_kernel(self.sphere),
+                               "break_radius": 10 ** 99, "outer_kernel": -1}
+
+        nsc_dm_mass = utils.mass_shell(density_func,
+                                       radius_a=0,
+                                       radius_b=radius.to("pc").value,
+                                       error_tolerance=0.1,
+                                       density_func_kwargs=density_func_params)
+
+        self.nsc_dm_mass_kde = nsc_dm_mass
+
     def largest_particle_fraction(self):
         nsc_star_masses = self.j_sphere[('STAR', "MASS")][self.nsc_idx_j_sphere]
         frac = np.max(nsc_star_masses) / np.sum(nsc_star_masses)

@@ -673,6 +673,36 @@ def test_annulus_random_distribution_lengths():
 
     assert len(x) == len(y) == 1000
 
+def test_sphere_random_distribution_error_checking_positive_radii():
+    with pytest.raises(ValueError):
+        utils.generate_random_xyz_sphere(-1, 1, 100)
+    with pytest.raises(ValueError):
+        utils.generate_random_xyz_sphere(1, -1, 100)
+    with pytest.raises(ValueError):
+        utils.generate_random_xyz_sphere(-1, -2, 100)
+    utils.generate_random_xyz_sphere(1, 2, 100)  # no error
+
+def test_sphere_random_distibution_postive_number():
+    with pytest.raises(ValueError):
+        utils.generate_random_xyz_sphere(1, 2, -100)
+    utils.generate_random_xyz_sphere(1, 2, 100)  # no error
+
+def test_sphere_random_distribution_radii():
+    inner_radius = np.random.uniform(1, 5, 1)
+    outer_radius = np.random.uniform(5, 8, 1)
+    x, y, z = utils.generate_random_xyz_sphere(inner_radius, outer_radius, 1000)
+
+    radii = np.sqrt(x**2 + y**2 + z**2)
+    assert np.all(inner_radius < radii)
+    assert np.all(radii < outer_radius)
+
+def test_sphere_random_distribution_lengths():
+    inner_radius = np.random.uniform(1, 5, 1)
+    outer_radius = np.random.uniform(5, 8, 1)
+    x, y, z = utils.generate_random_xyz_sphere(inner_radius, outer_radius, 1000)
+
+    assert len(x) == len(y) == len(z) == 1000
+
 # then checked the evenness by eye.
 
 # -----------------------------------------------------------------------------
@@ -832,6 +862,159 @@ def test_mass_annulus_r_squared_tolerance(tolerance):
 
     integral = utils.mass_annulus(radius_squared, r_a, r_b,
                                              error_tolerance=tolerance)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+
+# -----------------------------------------------------------------------------
+
+# test sphere integration
+
+# -----------------------------------------------------------------------------
+def test_shell_density_error_checking_no_function():
+    with pytest.raises(TypeError):
+        utils.density_shell(1, 1, 2, 0.1)
+
+def test_density_shell_positive_error():
+    with pytest.raises(ValueError):
+        utils.density_shell(lambda x, y:1, 1, 2, -1)
+
+def test_density_shell_positive_radii():
+    # should be takes care of by annulus point generation
+    with pytest.raises(ValueError):
+        utils.density_shell(lambda loc:1, -1, 2, 1)
+    with pytest.raises(ValueError):
+        utils.density_shell(lambda loc:1, -1, -2, 1)
+    with pytest.raises(ValueError):
+        utils.density_shell(lambda loc:1, 1, -2, 1)
+    utils.density_shell(lambda loc:1, 1, 2, 1) # no error
+
+@pytest.mark.parametrize("r_a,r_b,result", [
+    (0, 1, 2.45),
+    (1, 10, 3.21)
+])
+def test_density_shell_constant_density(r_a, r_b, result):
+    def flat(loc):
+        return result
+    tolerance = 0.01
+    integral = utils.density_shell(flat, r_a, r_b, error_tolerance=tolerance)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+
+@pytest.mark.parametrize("r_a,r_b,result", [
+    (0, 1, 3.0/4.0),
+    (3, 8, 6.208762886597938)
+])
+def test_density_shell_r(r_a, r_b, result):
+    def radius(loc):
+        x, y, z = loc
+        return np.sqrt(x**2 + y**2 + z**2)
+
+    tolerance = 0.01
+    integral = utils.density_shell(radius, r_a, r_b, error_tolerance=tolerance)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+
+@pytest.mark.parametrize("r_a,r_b,result", [
+    (0, 1, 3.0/5.0),
+    (3, 8, 40.23711340206186)
+])
+def test_density_shell_r_squared(r_a, r_b, result):
+    def radius_squared(loc):
+        x, y, z = loc
+        return x ** 2 + y ** 2 + z **2
+
+    tolerance = 0.01
+    integral = utils.density_shell(radius_squared, r_a, r_b,
+                                   error_tolerance=tolerance)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+
+@pytest.mark.parametrize("r_a,r_b,dens", [
+    (0, 1, 3.14234872),
+    (1, 10, 8.64738)
+])
+def test_density_shell_constant_density_args(r_a, r_b, dens):
+    # make sure this works with an argument.
+    def flat(loc, k):
+        return k
+    tolerance = 0.01
+    integral = utils.density_shell(flat, r_a, r_b, error_tolerance=tolerance,
+                                   density_func_kwargs={"k": dens})
+    assert np.isclose(integral, dens, rtol=2*tolerance, atol=0)
+
+@pytest.mark.parametrize("tolerance", [0.5, 0.1, 0.05, 0.01, 0.001])
+def test_density_shell_r_squared_tolerance(tolerance):
+    def radius_squared(loc):
+        x, y, z = loc
+        return x ** 2 + y ** 2 + z ** 2
+
+    r_a = 3
+    r_b = 8
+    result = 40.23711340206186
+
+    integral = utils.density_shell(radius_squared, r_a, r_b,
+                                   error_tolerance=tolerance)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+
+@pytest.mark.parametrize("r_a,r_b,result", [
+    (0, 1, 4.1887902047863905),
+    (1, 10, 4188.790205)
+])
+def test_mass_shell_constant_density(r_a, r_b, result):
+    def flat(loc):
+        return 1
+    tolerance = 0.01
+    integral = utils.mass_shell(flat, r_a, r_b, error_tolerance=tolerance)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+
+@pytest.mark.parametrize("r_a,r_b,result", [
+    (0, 1, np.pi),
+    (3, 8, 12613.49450416302)
+])
+def test_mass_shell_r(r_a, r_b, result):
+    def radius(loc):
+        x, y, z = loc
+        return np.sqrt(x**2 + y**2 + z**2)
+
+    tolerance = 0.01
+    integral = utils.mass_shell(radius, r_a, r_b, error_tolerance=tolerance)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+
+@pytest.mark.parametrize("r_a,r_b,result", [
+    (0, 1, 2.5132741228718345),
+    (3, 8, 81744.2408464064)
+])
+def test_mass_shell_r_squared(r_a, r_b, result):
+    def radius_squared(loc):
+        x, y, z = loc
+        return x ** 2 + y ** 2 + z ** 2
+
+    tolerance = 0.01
+    integral = utils.mass_shell(radius_squared, r_a, r_b,
+                                error_tolerance=tolerance)
+    assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
+
+@pytest.mark.parametrize("r_a,r_b,dens,mass", [
+    (0, 1, 5, 20.943951023931955),
+    (1, 10, 2.5, 10461.50354)
+])
+def test_mass_shell_constant_density_args(r_a, r_b, dens, mass):
+    # make sure this works with an argument.
+    def flat(loc, k):
+        return k
+    tolerance = 0.01
+    integral = utils.mass_shell(flat, r_a, r_b, error_tolerance=tolerance,
+                                density_func_kwargs={"k": dens})
+    assert np.isclose(integral, mass, rtol=2*tolerance, atol=0)
+
+@pytest.mark.parametrize("tolerance", [0.5, 0.1, 0.05, 0.01, 0.001])
+def test_mass_shell_r_squared_tolerance(tolerance):
+    def radius_squared(loc):
+        x, y, z = loc
+        return x ** 2 + y ** 2 + z ** 2
+
+    r_a = 3
+    r_b = 8
+    result = 81744.2408464064
+
+    integral = utils.mass_shell(radius_squared, r_a, r_b,
+                                error_tolerance=tolerance)
     assert np.isclose(integral, result, rtol=2*tolerance, atol=0)
 
 # -----------------------------------------------------------------------------
