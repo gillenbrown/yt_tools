@@ -1790,6 +1790,8 @@ class Galaxy(object):
 
     @staticmethod
     def dm_kernel(data_obj):
+        return 100
+        
         grid_levels = data_obj[('index', 'grid_level')]
         dx = data_obj[('index', 'dx')]
 
