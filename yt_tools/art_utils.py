@@ -19,32 +19,35 @@ def code_density_to_cgs(field_name, data_obj):
     # then return this in cgs
     return code_array.to("g/cm**3")
 
-def add_species_fields():
+def add_species_fields(ds):
     """
     This adds the various species fields that ART has to be full-fledged
     fields with proper units.
+
+    :param ds: Dataset to add these fields to.
     :return: None, but adds fields
     """
-    @yt.derived_field(("gas", "H2_density"), units="g/cm**3")
     def _h2_density(field, data):
         return 2 * code_density_to_cgs(('artio', 'RT_HVAR_H2'), data)
 
-    @yt.derived_field(("gas", "HI_density"), units="g/cm**3")
     def _hI_density(field, data):
         return code_density_to_cgs(('artio', 'RT_HVAR_HI'), data)
 
-    @yt.derived_field(("gas", "HII_density"), units="g/cm**3")
     def _hII_density(field, data):
         return code_density_to_cgs(('artio', 'RT_HVAR_HII'), data)
 
-    @yt.derived_field(("gas", "HeI_density"), units="g/cm**3")
     def _heI_density(field, data):
         return 4 * code_density_to_cgs(('artio', 'RT_HVAR_HeI'), data)
 
-    @yt.derived_field(("gas", "HeII_density"), units="g/cm**3")
     def _heII_density(field, data):
         return 4 * code_density_to_cgs(('artio', 'RT_HVAR_HeII'), data)
 
-    @yt.derived_field(("gas", "HeIII_density"), units="g/cm**3")
     def _heIII_density(field, data):
         return 4 * code_density_to_cgs(('artio', 'RT_HVAR_HeIII'), data)
+
+    ds.add_field(("gas", "H2_density"), function=_h2_density, units="g/cm**3")
+    ds.add_field(("gas", "HI_density"), function=_hI_density, units="g/cm**3")
+    ds.add_field(("gas", "HII_density"), function=_hII_density, units="g/cm**3")
+    ds.add_field(("gas", "HeI_density"), function=_heI_density, units="g/cm**3")
+    ds.add_field(("gas", "HeII_density"), function=_heII_density, units="g/cm**3")
+    ds.add_field(("gas", "HeIII_density"), function=_heIII_density, units="g/cm**3")
