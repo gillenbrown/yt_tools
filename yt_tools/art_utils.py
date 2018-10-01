@@ -45,9 +45,15 @@ def add_species_fields(ds):
     def _heIII_density(field, data):
         return 4 * code_density_to_cgs(('artio', 'RT_HVAR_HeIII'), data)
 
-    ds.add_field(("gas", "H2_density"), function=_h2_density, units="g/cm**3")
-    ds.add_field(("gas", "HI_density"), function=_hI_density, units="g/cm**3")
-    ds.add_field(("gas", "HII_density"), function=_hII_density, units="g/cm**3")
-    ds.add_field(("gas", "HeI_density"), function=_heI_density, units="g/cm**3")
-    ds.add_field(("gas", "HeII_density"), function=_heII_density, units="g/cm**3")
-    ds.add_field(("gas", "HeIII_density"), function=_heIII_density, units="g/cm**3")
+    ds.add_field(("gas", "H2_density"), function=_h2_density,
+                 units="g/cm**3", sampling_type="cell")
+    ds.add_field(("gas", "HI_density"), function=_hI_density,
+                 units="g/cm**3", sampling_type="cell")
+    ds.add_field(("gas", "HII_density"), function=_hII_density,
+                 units="g/cm**3", sampling_type="cell")
+    ds.add_field(("gas", "HeI_density"), function=_heI_density,
+                 units="g/cm**3", sampling_type="cell")
+    ds.add_field(("gas", "HeII_density"), function=_heII_density,
+                 units="g/cm**3", sampling_type="cell")
+    ds.add_field(("gas", "HeIII_density"), function=_heIII_density,
+                 units="g/cm**3", sampling_type="cell")
